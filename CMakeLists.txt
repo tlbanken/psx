@@ -6,7 +6,6 @@ project(PSX VERSION 0.01)
 
 add_executable(psx 
     src/psx.cpp
-    src/hello.cpp
 )
 
 

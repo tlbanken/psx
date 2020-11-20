@@ -1,5 +1,5 @@
 .vscode
-resources
+manuals
 build
 **/*.log
 **/*.dump
