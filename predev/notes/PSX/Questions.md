@@ -1,5 +1,3 @@
-Questions
-
 # Questions
 ## CPU
 - In load/store instructions, do the offsets need to be multiplied by 2 or 4 for halfword and word?
