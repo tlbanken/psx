@@ -12,10 +12,10 @@ PSX Roadmap
         - [x] GTE
         - [x] MDEC
     - [x] Sound
-    - [ ] CD-ROM
-    - [ ] Root Counters
-    - [ ] Controllers
-    - [ ] Memory Cards
+    - [x] CD-ROM
+    - [x] Root Counters
+    - [x] Controllers
+    - [x] Memory Cards
     - [ ] Serial port I/O
     - [ ] Parallel port I/O
 - [ ] Plan implementation
