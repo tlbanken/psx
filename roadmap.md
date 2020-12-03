@@ -1,10 +1,8 @@
-PSX Roadmap
-
 # PSX Roadmap
 
-## Pre-development
-
-- [ ] Take notes on psx development guide
+# Pre-development
+## Notes
+- [x] Take notes on psx development guide
     - [x] CPU
     - [x] Memory
     - [x] Video
@@ -16,20 +14,39 @@ PSX Roadmap
     - [x] Root Counters
     - [x] Controllers
     - [x] Memory Cards
-    - [ ] Serial port I/O
-    - [ ] Parallel port I/O
-- [ ] Plan implementation
-    - [ ] CPU
-    - [ ] Memory
-    - [ ] Video
-        - [ ] GPU
-        - [ ] GTE
-        - [ ] MDEC
-    - [ ] Sound
-    - [ ] CD-ROM
-    - [ ] Root Counters
-    - [ ] Controllers
-    - [ ] Memory Cards
-    - [ ] Serial port I/O
-    - [ ] Parallel port I/O
+
+## Planning
+- [x] Overview
+- [x] Debug
+
+## Misc
 - [ ] Organize project
+    - [ ] Setup cmake
+    - [ ] folder structure
+    - [ ] add thirdparty lib support
+- [ ] Hello World
+
+# Development
+## Tier 1
+- [ ] CPU
+- [ ] Memory
+
+## Tier 2
+- [ ] Root Counters (Timers)
+- [ ] Video
+    - [ ] GPU
+    - [ ] GTE
+    - [ ] MDEC
+
+## Tier 3
+- [ ] CD-ROM
+- [ ] Controllers
+
+## Tier 4
+- [ ] Memory Cards
+- [ ] Sound
+
+## Bonus
+- [ ] BIOS
+
+

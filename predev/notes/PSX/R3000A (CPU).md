@@ -1,5 +1,3 @@
-R3000A (CPU)
-
 # R3000A CPU
 
 ## Architecture
