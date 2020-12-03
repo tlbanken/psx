@@ -1,6 +1,10 @@
 src
 └── psx.cpp
 include
+scripts
+├── set_clang.env
+├── set_gcc.env
+└── update_tree.sh
 predev
 ├── notes
 │   ├── PSX
@@ -25,4 +29,4 @@ predev
     ├── Overview.md
     └── Possible Libraries.md
 
-4 directories, 19 files
+4 directories, 22 files

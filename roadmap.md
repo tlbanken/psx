@@ -16,8 +16,8 @@
     - [x] Memory Cards
 
 ## Planning
-- [x] Overview
-- [x] Debug
+- [ ] Overview
+- [ ] Debug
 
 ## Misc
 - [ ] Organize project

@@ -5,7 +5,17 @@
 
 ## Graphics
 - [OpenGL](https://www.opengl.org//)
-- [Eigen](http://eigen.tuxfamily.org/index.php?title=Main_Page) for math
+
+### OpenGL loader
+- [GLEW](https://github.com/nigels-com/glew)
+- [GLAD](https://github.com/Dav1dde/glad)
+
+### Math
+- [Eigen](http://eigen.tuxfamily.org/index.php?title=Main_Page)
 
 ## Audio
 - [OpenAL](https://openal.org/)
+
+## Misc
+- [fmt](https://github.com/fmtlib/fmt)
+
