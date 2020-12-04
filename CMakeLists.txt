@@ -5,12 +5,39 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 project(psx VERSION 0.01)
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra")
 
+# Pedantic compile flags for gcc, clang, msvc
+if (CMAKE_CXX_COMPILER_ID MATCHES "GNU")
+    set(PEDANTIC_COMPILE_FLAGS "-pedantic-errors -Wall -Wextra -pedantic -Wold-style-cast -Wundef -Wredundant-decls -Wwrite-strings -Wpointer-arith -Wcast-qual -Wformat=2 -Wmissing-include-dirs -Wcast-align -Wctor-dtor-privacy -Wdisabled-optimization -Winvalid-pch -Woverloaded-virtual -Wconversion -Wswitch-enum -Wundef -Wno-ctor-dtor-privacy -Wno-format-nonliteral")
+    if (NOT CMAKE_CXX_COMPILER_VERSION VERSION_LESS 4.6)
+      set(PEDANTIC_COMPILE_FLAGS "${PEDANTIC_COMPILE_FLAGS} -Wnoexcept -Wno-dangling-else -Wno-unused-local-typedefs")
+    endif ()
+    if (NOT CMAKE_CXX_COMPILER_VERSION VERSION_LESS 5.0)
+      set(PEDANTIC_COMPILE_FLAGS "${PEDANTIC_COMPILE_FLAGS} -Wdouble-promotion -Wtrampolines -Wzero-as-null-pointer-constant -Wuseless-cast -Wvector-operation-performance -Wsized-deallocation -Wshadow")
+    endif ()
+    if (NOT CMAKE_CXX_COMPILER_VERSION VERSION_LESS 6.0)
+      set(PEDANTIC_COMPILE_FLAGS "${PEDANTIC_COMPILE_FLAGS} -Wshift-overflow=2 -Wnull-dereference -Wduplicated-cond")
+    endif ()
+    set(WERROR_FLAG -Werror)
+endif ()
 
-add_executable(psx 
-    src/psx.cpp
-)
+if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+    set(PEDANTIC_COMPILE_FLAGS "-Wall -Wextra -pedantic -Wconversion -Wundef -Wdeprecated -Wweak-vtables -Wshadow")
+    set(WERROR_FLAG -Werror)
+endif ()
 
-target_include_directories(psx PRIVATE $(PROJECT_SOURCE_DIR)/include)
+if (MSVC)
+    set(PEDANTIC_COMPILE_FLAGS /W3)
+    set(WERROR_FLAG /WX)
+endif ()
+
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${PEDANTIC_COMPILE_FLAGS}")
+
+# define exe
+add_executable(psx)
+
+# Subdirs
+add_subdirectory(src)
+
+target_include_directories(psx PRIVATE "${PROJECT_SOURCE_DIR}/src")
 

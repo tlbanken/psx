@@ -1,6 +1,8 @@
 src
-└── psx.cpp
-include
+├── CMakeLists.txt
+└── core
+    ├── CMakeLists.txt
+    └── main.cpp
 scripts
 ├── set_clang.env
 ├── set_gcc.env
@@ -29,4 +31,4 @@ predev
     ├── Overview.md
     └── Possible Libraries.md
 
-4 directories, 22 files
+5 directories, 24 files
