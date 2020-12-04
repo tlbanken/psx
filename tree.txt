@@ -1,0 +1,34 @@
+src
+├── CMakeLists.txt
+└── core
+    ├── CMakeLists.txt
+    └── main.cpp
+scripts
+├── set_clang.env
+├── set_gcc.env
+└── update_tree.sh
+predev
+├── notes
+│   ├── PSX
+│   │   ├── CDROM.md
+│   │   ├── Controllers.md
+│   │   ├── GPU.md
+│   │   ├── GTE.md
+│   │   ├── IO.md
+│   │   ├── MDEC.md
+│   │   ├── MemoryCards.md
+│   │   ├── Memory.md
+│   │   ├── PSX General Notes.md
+│   │   ├── Questions.md
+│   │   ├── R3000A (CPU).md
+│   │   ├── RootCounters.md
+│   │   └── Sound.md
+│   └── _resources
+│       ├── 68b62d7aae354a0da68f160f45d30640.png
+│       └── a7932d141d6b407dab3ad8441abe62d4.png
+└── plans
+    ├── Debug.md
+    ├── Overview.md
+    └── Possible Libraries.md
+
+5 directories, 24 files
