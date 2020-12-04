@@ -8,9 +8,11 @@
  */
 
 #include <iostream>
+#include "fmt/core.h"
 
 int main()
 {
-    std::cout << "Hello, PSX!\n";
+    fmt::print("Hello, World!\n");
+    std::cout << fmt::format("Format hex for {} is 0x{:04x}\n", 123, 123);
     return 0;
 }

@@ -3,3 +3,4 @@ manuals
 build
 **/*.log
 **/*.dump
+extern/include/*
