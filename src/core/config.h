@@ -9,9 +9,6 @@
 
 #pragma once
 
-// comment out to turn off logging
-#define LOGGING
-
 // Version from cmake
 #define PROJECT_NAME "PSX"
 #define PROJECT_VER  "0.0.1"

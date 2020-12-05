@@ -29,7 +29,8 @@
 # Development
 ## Tier 0
 - [x] Logging
-- [ ] utils
+- [x] utils
+- [x] Psx (system object)
 
 ## Tier 1
 - [ ] CPU

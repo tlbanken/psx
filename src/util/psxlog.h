@@ -21,5 +21,8 @@ namespace psxlog {
 
     void init(std::ostream& ofile, bool logging_enabled);
     void log(const std::string& label, const std::string& msg, psxlog::MsgType t);
+    void ilog(const std::string& label, const std::string& msg);
+    void wlog(const std::string& label, const std::string& msg);
+    void elog(const std::string& label, const std::string& msg);
 }
 

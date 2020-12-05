@@ -17,10 +17,11 @@
 
 #include "util/psxlog.h"
 #include "util/psxutil.h"
+#include "core/psx.h"
 
-#define SETUP_INFO(msg) INFO("Setup", msg)
-#define SETUP_WARN(msg) WARNING("Setup", msg)
-#define SETUP_ERR(msg) ERROR("Setup", msg)
+#define MAIN_INFO(msg) psxlog::ilog("Main", msg)
+#define MAIN_WARN(msg) psxlog::wlog("Main", msg)
+#define MAIN_ERR(msg) psxlog::elog("Main", msg)
 
 int main()
 {
@@ -28,14 +29,10 @@ int main()
     psxlog::init(std::cerr, true);
 
     // print project name and version
-    SETUP_INFO(fmt::format("{}: Playstation 1 Emulator!", PROJECT_NAME));
-    SETUP_INFO(fmt::format("Version: {}", PROJECT_VER));
+    MAIN_INFO(fmt::format("{}: Playstation 1 Emulator!", PROJECT_NAME));
+    MAIN_INFO(fmt::format("Version: {}", PROJECT_VER));
 
-    // setup memory
-    SETUP_INFO("Initializing system memory...");
-
-    // load BIOS
-    SETUP_INFO(fmt::format("Loading BIOS from {}", "<BIOS PATH HERE>"));
+    Psx psx;
 
     return 0;
 }

@@ -99,5 +99,21 @@ namespace psxlog {
         }
         o << fmt::format(" {:<15} {}\n", label, msg);
     }
+
+    // Logs that omit the type
+    void ilog(const std::string& label, const std::string& msg)
+    {
+        psxlog::log(label, msg, psxlog::MsgType::Info);
+    }
+
+    void wlog(const std::string& label, const std::string& msg)
+    {
+        psxlog::log(label, msg, psxlog::MsgType::Warning);
+    }
+
+    void elog(const std::string& label, const std::string& msg)
+    {
+        psxlog::log(label, msg, psxlog::MsgType::Error);
+    }
 }
 
