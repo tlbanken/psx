@@ -17,19 +17,27 @@
 
 ## Planning
 - [ ] Overview
-- [ ] Debug
+- [x] Debug
 
 ## Misc
-- [ ] Organize project
-    - [ ] Setup cmake
-    - [ ] folder structure
-    - [ ] add thirdparty lib support
-- [ ] Hello World
+- [x] Organize project
+    - [x] Setup cmake
+    - [x] folder structure
+    - [x] add thirdparty lib support
+- [x] Hello World
 
 # Development
+## Tier 0
+- [x] Logging
+- [ ] utils
+
 ## Tier 1
 - [ ] CPU
+    - [ ] cpu
+    - [ ] cop0
 - [ ] Memory
+    - [ ] Bus
+    - [ ] Ram
 
 ## Tier 2
 - [ ] Root Counters (Timers)

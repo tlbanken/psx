@@ -1,6 +1,3 @@
-# target_sources(psx PRIVATE
-#     core/main.cpp
-# )
-
 add_subdirectory(core)
+add_subdirectory(util)
 

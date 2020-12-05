@@ -1,8 +1,13 @@
 src
 ├── CMakeLists.txt
-└── core
+├── core
+│   ├── CMakeLists.txt
+│   └── main.cpp
+└── util
     ├── CMakeLists.txt
-    └── main.cpp
+    ├── psxlog.cpp
+    ├── psxlog.h
+    └── psxutil.h
 scripts
 ├── set_clang.env
 ├── set_gcc.env
@@ -31,4 +36,4 @@ predev
     ├── Overview.md
     └── Possible Libraries.md
 
-5 directories, 24 files
+6 directories, 28 files
