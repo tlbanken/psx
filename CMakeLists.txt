@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.18)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-project(psx VERSION 0.01)
+project(PSX VERSION 0.0.1)
 
 
 # Pedantic compile flags for gcc, clang, msvc
