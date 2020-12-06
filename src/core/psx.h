@@ -9,8 +9,13 @@
 
 #pragma once
 
+#include <memory>
+
+#include "mem/bus.h"
+
 class Psx {
 private:
+    std::shared_ptr<Bus> m_bus;
 
 public:
     Psx();
