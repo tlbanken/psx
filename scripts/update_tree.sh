@@ -1,3 +1,3 @@
 #!/bin/bash
 
-tree src scripts predev > tree.txt
+tree src scripts predev tests > tree.txt

@@ -2,7 +2,16 @@ src
 ├── CMakeLists.txt
 ├── core
 │   ├── CMakeLists.txt
-│   └── main.cpp
+│   ├── config.h
+│   ├── main.cpp
+│   ├── psx.cpp
+│   └── psx.h
+├── mem
+│   ├── bus.cpp
+│   ├── bus.h
+│   ├── CMakeLists.txt
+│   ├── ram.cpp
+│   └── ram.h
 └── util
     ├── CMakeLists.txt
     ├── psxlog.cpp
@@ -35,5 +44,11 @@ predev
     ├── Debug.md
     ├── Overview.md
     └── Possible Libraries.md
+tests
+├── CMakeLists.txt
+├── main.cpp
+├── psxtest.h
+├── psxtest_mem.cpp
+└── psxtest_mem.h
 
-6 directories, 28 files
+7 directories, 41 files

@@ -26,6 +26,9 @@ struct ASResult {
 
 class AddressSpace {
 public:
+    // this is important to avoid -Wweak-vtables from clang
+    virtual ~AddressSpace();
+
     // reads
     virtual ASResult read8(u32 addr) = 0;
     virtual ASResult read16(u32 addr) = 0;
@@ -65,8 +68,8 @@ public:
     u32 read32(u32 addr);
 
     // writes
-    void write8(u32 addr);
-    void write16(u32 addr);
-    void write32(u32 addr);
+    void write8(u8 data, u32 addr);
+    void write16(u16 data, u32 addr);
+    void write32(u32 data, u32 addr);
 };
 

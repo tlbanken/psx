@@ -21,6 +21,9 @@
 #define BUS_ERROR(msg) psxlog::elog("Bus", msg)
 
 
+// this is important to avoid -Wweak-vtables from clang
+AddressSpace::~AddressSpace() = default;
+
 // custom compare for std::sort
 static bool priorityLT(const std::unique_ptr<ASEntry>& e1, const std::unique_ptr<ASEntry>& e2)
 {
@@ -96,20 +99,29 @@ u32 Bus::read32(u32 addr)
 
 
 // writes
-void Bus::write8(u32 addr)
+void Bus::write8(u8 data, u32 addr)
 {
-    (void) addr;
-    return;
+    for (auto& entry : m_addressSpaces) {
+        if (entry->as->write8(data, addr)) {
+            return;
+        }
+    }
 }
 
-void Bus::write16(u32 addr)
+void Bus::write16(u16 data, u32 addr)
 {
-    (void) addr;
-    return;
+    for (auto& entry : m_addressSpaces) {
+        if (entry->as->write16(data, addr)) {
+            return;
+        }
+    }
 }
 
-void Bus::write32(u32 addr)
+void Bus::write32(u32 data, u32 addr)
 {
-    (void) addr;
-    return;
+    for (auto& entry : m_addressSpaces) {
+        if (entry->as->write32(data, addr)) {
+            return;
+        }
+    }
 }

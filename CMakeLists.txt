@@ -35,12 +35,17 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${PEDANTIC_COMPILE_FLAGS}")
 
 # define exe
 add_executable(psx)
+add_executable(psx-test)
 
 # Subdirs
 add_subdirectory("${PROJECT_SOURCE_DIR}/src")
 add_subdirectory("${PROJECT_SOURCE_DIR}/extern")
+add_subdirectory("${PROJECT_SOURCE_DIR}/tests")
 
 target_include_directories(psx PRIVATE "${PROJECT_SOURCE_DIR}/src" "${PROJECT_SOURCE_DIR}/extern/include")
+target_include_directories(psx-test PRIVATE "${PROJECT_SOURCE_DIR}/src" "${PROJECT_SOURCE_DIR}/extern/include")
 
 target_link_libraries(psx fmt)
+target_link_libraries(psx-test fmt)
+
 

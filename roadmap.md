@@ -37,8 +37,9 @@
     - [ ] cpu
     - [ ] cop0
 - [ ] Memory
-    - [ ] Bus
-    - [ ] Ram
+    - [x] Bus
+    - [x] Ram
+    - [ ] DMA?
 
 ## Tier 2
 - [ ] Root Counters (Timers)

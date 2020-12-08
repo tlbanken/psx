@@ -3,3 +3,7 @@ target_sources(psx PRIVATE
     psx.cpp
 )
 
+target_sources(psx-test PRIVATE
+    psx.cpp
+)
+

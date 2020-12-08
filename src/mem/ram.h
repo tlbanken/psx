@@ -9,11 +9,19 @@
 
 #pragma once
 
+#include <vector>
+#include <memory>
+
 #include "mem/bus.h"
 
-class Ram : public AddressSpace {
+class Ram final : public AddressSpace {
 private:
+    std::unique_ptr<std::vector<u8>> m_sysRam;
+
 public:
+    Ram();
+    // ~Ram() {};
+
     // reads
     ASResult read8(u32 addr);
     ASResult read16(u32 addr);

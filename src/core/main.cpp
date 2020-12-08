@@ -29,8 +29,7 @@ int main()
     psxlog::init(std::cerr, true);
 
     // print project name and version
-    MAIN_INFO(fmt::format("{}: Playstation 1 Emulator!", PROJECT_NAME));
-    MAIN_INFO(fmt::format("Version: {}", PROJECT_VER));
+    std::cout << PSX_FANCYTITLE(fmt::format("{} v{}", PROJECT_NAME, PROJECT_VER));
 
     Psx psx;
 
