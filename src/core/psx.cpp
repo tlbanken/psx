@@ -17,9 +17,9 @@
 #include "mem/bus.h"
 #include "mem/ram.h"
 
-#define PSX_INFO(msg) psxlog::ilog("PSX", msg)
-#define PSX_WARN(msg) psxlog::wlog("PSX", msg)
-#define PSX_ERROR(msg) psxlog::elog("PSX", msg)
+#define PSX_INFO(msg) PSXLOG_INFO("PSX", msg)
+#define PSX_WARN(msg) PSXLOG_WARN("PSX", msg)
+#define PSX_ERROR(msg) PSXLOG_ERROR("PSX", msg)
 
 Psx::Psx()
 {

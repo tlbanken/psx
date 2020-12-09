@@ -14,12 +14,13 @@
 
 #include "core/config.h"
 #include "util/psxlog.h"
+#include "util/psxutil.h"
 
 #include "psxtest_mem.h"
 
-#define TMAIN_INFO(msg) psxlog::ilog("Test-Main", msg)
-#define TMAIN_WARN(msg) psxlog::wlog("Test-Main", msg)
-#define TMAIN_ERROR(msg) psxlog::elog("Test-Main", msg)
+#define TMAIN_INFO(msg) PSXLOG_INFO("Test-Main", msg)
+#define TMAIN_WARN(msg) PSXLOG_WARN("Test-Main", msg)
+#define TMAIN_ERROR(msg) PSXLOG_ERROR("Test-Main", msg)
 
 static std::ofstream testout;
 

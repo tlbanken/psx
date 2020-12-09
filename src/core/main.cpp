@@ -19,9 +19,9 @@
 #include "util/psxutil.h"
 #include "core/psx.h"
 
-#define MAIN_INFO(msg) psxlog::ilog("Main", msg)
-#define MAIN_WARN(msg) psxlog::wlog("Main", msg)
-#define MAIN_ERR(msg) psxlog::elog("Main", msg)
+#define MAIN_INFO(msg) PSXLOG_INFO("Main", msg)
+#define MAIN_WARN(msg) PSXLOG_WARN("Main", msg)
+#define MAIN_ERR(msg) PSXLOG_ERROR("Main", msg)
 
 int main()
 {

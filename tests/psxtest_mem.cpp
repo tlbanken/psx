@@ -10,14 +10,15 @@
 #include <cassert>
 
 #include "util/psxlog.h"
+#include "util/psxutil.h"
 #include "mem/bus.h"
 #include "mem/ram.h"
 
 #include "psxtest.h"
 
-#define TMEM_INFO(msg) psxlog::ilog("Test-Mem", msg)
-#define TMEM_WARN(msg) psxlog::wlog("Test-Mem", msg)
-#define TMEM_ERROR(msg) psxlog::elog("Test-Mem", msg)
+#define TMEM_INFO(msg) PSXLOG_INFO("Test-Mem", msg)
+#define TMEM_WARN(msg) PSXLOG_WARN("Test-Mem", msg)
+#define TMEM_ERROR(msg) PSXLOG_ERROR("Test-Mem", msg)
 
 static void ramTests()
 {

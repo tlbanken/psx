@@ -42,6 +42,9 @@ add_subdirectory("${PROJECT_SOURCE_DIR}/src")
 add_subdirectory("${PROJECT_SOURCE_DIR}/extern")
 add_subdirectory("${PROJECT_SOURCE_DIR}/tests")
 
+# configure
+configure_file(src/core/config.h.in "${PROJECT_SOURCE_DIR}/src/core/config.h")
+
 target_include_directories(psx PRIVATE "${PROJECT_SOURCE_DIR}/src" "${PROJECT_SOURCE_DIR}/extern/include")
 target_include_directories(psx-test PRIVATE "${PROJECT_SOURCE_DIR}/src" "${PROJECT_SOURCE_DIR}/extern/include")
 

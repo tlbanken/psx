@@ -1,0 +1,21 @@
+/*
+ * config.h
+ * 
+ * Travis Banken
+ * 12/4/2020
+ * 
+ * Header file for configuring compile-time options.
+ */
+
+#pragma once
+
+
+// comment out to disable logging (as a compile-time option)
+#define PSX_LOGGING
+
+// Version from cmake
+#define PROJECT_NAME "@PROJECT_NAME@"
+#define PROJECT_VER  "@PROJECT_VERSION@"
+#define PROJECT_VER_MAJOR "@PROJECT_VERSION_MAJOR@"
+#define PROJECT_VER_MINOR "@PROJECT_VERSION_MINOR@"
+#define PTOJECT_VER_PATCH "@PROJECT_VERSION_PATCH@"

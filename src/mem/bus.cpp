@@ -16,9 +16,9 @@
 #include "mem/bus.h"
 #include "util/psxlog.h"
 
-#define BUS_INFO(msg) psxlog::ilog("Bus", msg)
-#define BUS_WARN(msg) psxlog::wlog("Bus", msg)
-#define BUS_ERROR(msg) psxlog::elog("Bus", msg)
+#define BUS_INFO(msg) PSXLOG_INFO("Bus", msg)
+#define BUS_WARN(msg) PSXLOG_WARN("Bus", msg)
+#define BUS_ERROR(msg) PSXLOG_ERROR("Bus", msg)
 
 
 // this is important to avoid -Wweak-vtables from clang

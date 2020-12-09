@@ -9,11 +9,23 @@
 
 #pragma once
 
+#include "core/config.h"
+
 #include <cstdint>
 
 #include "fmt/core.h"
 
 #include "util/psxlog.h"
+
+#ifdef PSX_LOGGING
+#define PSXLOG_INFO(label, msg) psxlog::ilog(label, msg)
+#define PSXLOG_WARN(label, msg) psxlog::wlog(label, msg)
+#define PSXLOG_ERROR(label, msg) psxlog::elog(label, msg)
+#else
+#define PSXLOG_INFO(label, msg)
+#define PSXLOG_WARN(label, msg)
+#define PSXLOG_ERROR(label, msg)
+#endif
 
 // shorter type names
 typedef uint32_t u32;

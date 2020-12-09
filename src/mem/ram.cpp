@@ -12,9 +12,9 @@
 
 #include "mem/ram.h"
 
-#define RAM_INFO(msg) psxlog::ilog("RAM", msg)
-#define RAM_WARN(msg) psxlog::wlog("RAM", msg)
-#define RAM_ERROR(msg) psxlog::elog("RAM", msg)
+#define RAM_INFO(msg) PSXLOG_INFO("RAM", msg)
+#define RAM_WARN(msg) PSXLOG_WARN("RAM", msg)
+#define RAM_ERROR(msg) PSXLOG_ERROR("RAM", msg)
 
 static std::pair<u32, bool> mirrorAddr(u32 addr)
 {
