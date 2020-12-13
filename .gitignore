@@ -3,4 +3,6 @@ manuals
 build
 **/*.log
 **/*.dump
-extern/include/*
+extern/include/fmt/*
+extern/include/imgui/*
+compile_commands.json

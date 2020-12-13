@@ -51,7 +51,7 @@ void Bus::addAddressSpace(std::shared_ptr<AddressSpace> as, BusPriority p)
 std::string Bus::toString()
 {
     std::string s("");
-    for (auto& e : m_addressSpaces) {
+    for (const auto& e : m_addressSpaces) {
         s.append(fmt::format("[@{:p}, {}] -> ", static_cast<void*>(e->as.get()), e->p));
     }
     return s;
@@ -60,7 +60,7 @@ std::string Bus::toString()
 // reads
 u8 Bus::read8(u32 addr)
 {
-    for (auto& entry : m_addressSpaces) {
+    for (const auto& entry : m_addressSpaces) {
         auto [res, found] = entry->as->read8(addr);
         if (found) {
             return res.res8;
@@ -73,7 +73,7 @@ u8 Bus::read8(u32 addr)
 
 u16 Bus::read16(u32 addr)
 {
-    for (auto& entry : m_addressSpaces) {
+    for (const auto& entry : m_addressSpaces) {
         auto [res, found] = entry->as->read16(addr);
         if (found) {
             return res.res16;
@@ -86,7 +86,7 @@ u16 Bus::read16(u32 addr)
 
 u32 Bus::read32(u32 addr)
 {
-    for (auto& entry : m_addressSpaces) {
+    for (const auto& entry : m_addressSpaces) {
         auto [res, found] = entry->as->read32(addr);
         if (found) {
             return res.res32;
@@ -101,7 +101,7 @@ u32 Bus::read32(u32 addr)
 // writes
 void Bus::write8(u8 data, u32 addr)
 {
-    for (auto& entry : m_addressSpaces) {
+    for (const auto& entry : m_addressSpaces) {
         if (entry->as->write8(data, addr)) {
             return;
         }
@@ -110,7 +110,7 @@ void Bus::write8(u8 data, u32 addr)
 
 void Bus::write16(u16 data, u32 addr)
 {
-    for (auto& entry : m_addressSpaces) {
+    for (const auto& entry : m_addressSpaces) {
         if (entry->as->write16(data, addr)) {
             return;
         }
@@ -119,7 +119,7 @@ void Bus::write16(u16 data, u32 addr)
 
 void Bus::write32(u32 data, u32 addr)
 {
-    for (auto& entry : m_addressSpaces) {
+    for (const auto& entry : m_addressSpaces) {
         if (entry->as->write32(data, addr)) {
             return;
         }

@@ -14,6 +14,11 @@
 #include <memory>
 
 #include "fmt/core.h"
+#include "imgui/imgui.h"
+#include "imgui/imgui_impl_glfw.h"
+#include "imgui/imgui_impl_opengl3.h"
+#include "glad/glad.h"
+#include "glfw/glfw3.h" // Important: include glfw AFTER glad
 
 #include "util/psxlog.h"
 #include "util/psxutil.h"
@@ -31,7 +36,16 @@ int main()
     // print project name and version
     std::cout << PSX_FANCYTITLE(fmt::format("{} v{}", PROJECT_NAME, PROJECT_VER));
 
-    Psx psx;
+    try {
+        // create PSX object
+        Psx psx;
+        psx.run();
+    } catch (std::exception e) {
+        std::cerr << e.what() << std::endl;
+        return 1;
+    }
 
     return 0;
 }
+
+

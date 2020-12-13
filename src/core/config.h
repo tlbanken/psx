@@ -10,7 +10,12 @@
 #pragma once
 
 
+// comment out to disable logging (as a compile-time option)
 #define PSX_LOGGING
+
+// TODO: Define in cmake
+#define DEBUG
+
 
 // Version from cmake
 #define PROJECT_NAME "PSX"
@@ -18,10 +23,3 @@
 #define PROJECT_VER_MAJOR "0"
 #define PROJECT_VER_MINOR "0"
 #define PTOJECT_VER_PATCH "1"
-
-// Version from cmake
-// #define PROJECT_NAME "PSX"
-// #define PROJECT_VER  "0.0.1"
-// #define PROJECT_VER_MAJOR "0"
-// #define PROJECT_VER_MINOR "0"
-// #define PTOJECT_VER_PATCH "1"

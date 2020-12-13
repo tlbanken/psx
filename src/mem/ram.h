@@ -13,14 +13,16 @@
 #include <memory>
 
 #include "mem/bus.h"
+#include "layer/imgui_layer.h"
 
-class Ram final : public AddressSpace {
+class Ram final : public AddressSpace, public ImGuiLayer::DbgModule {
 private:
-    std::unique_ptr<std::vector<u8>> m_sysRam;
+    std::vector<u8> m_sysRam;
 
+
+    std::string hexDumpLine(u32 addr);
 public:
     Ram();
-    // ~Ram() {};
 
     // reads
     ASResult read8(u32 addr);
@@ -31,4 +33,8 @@ public:
     bool write8(u8 data, u32 addr);
     bool write16(u16 data, u32 addr);
     bool write32(u32 data, u32 addr);
+
+    // Debug Module
+    std::string getModuleLabel();
+    void onActive(bool *active);
 };

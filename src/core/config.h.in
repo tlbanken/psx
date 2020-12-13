@@ -13,6 +13,10 @@
 // comment out to disable logging (as a compile-time option)
 #define PSX_LOGGING
 
+// TODO: Define in cmake
+#define DEBUG
+
+
 // Version from cmake
 #define PROJECT_NAME "@PROJECT_NAME@"
 #define PROJECT_VER  "@PROJECT_VERSION@"

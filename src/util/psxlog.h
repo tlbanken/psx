@@ -9,6 +9,8 @@
 
 #pragma once
 
+#include "core/config.h"
+
 #include <fstream>
 #include <memory>
 
@@ -25,4 +27,14 @@ namespace psxlog {
     void wlog(const std::string& label, const std::string& msg);
     void elog(const std::string& label, const std::string& msg);
 }
+
+#ifdef PSX_LOGGING
+#define PSXLOG_INFO(label, msg) psxlog::ilog(label, msg)
+#define PSXLOG_WARN(label, msg) psxlog::wlog(label, msg)
+#define PSXLOG_ERROR(label, msg) psxlog::elog(label, msg)
+#else
+#define PSXLOG_INFO(label, msg)
+#define PSXLOG_WARN(label, msg)
+#define PSXLOG_ERROR(label, msg)
+#endif
 

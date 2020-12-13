@@ -16,13 +16,15 @@ if (CMAKE_CXX_COMPILER_ID MATCHES "GNU")
       set(PEDANTIC_COMPILE_FLAGS "${PEDANTIC_COMPILE_FLAGS} -Wdouble-promotion -Wtrampolines -Wzero-as-null-pointer-constant -Wuseless-cast -Wvector-operation-performance -Wsized-deallocation -Wshadow")
     endif ()
     if (NOT CMAKE_CXX_COMPILER_VERSION VERSION_LESS 6.0)
-      set(PEDANTIC_COMPILE_FLAGS "${PEDANTIC_COMPILE_FLAGS} -Wshift-overflow=2 -Wnull-dereference -Wduplicated-cond -fsanitize=address")
+      set(PEDANTIC_COMPILE_FLAGS "${PEDANTIC_COMPILE_FLAGS} -Wshift-overflow=2 -Wnull-dereference -Wduplicated-cond")
+      set(ADDR_SANITIZE_FLAGS "-fsanitize=address")
     endif ()
     set(WERROR_FLAG -Werror)
 endif ()
 
 if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-    set(PEDANTIC_COMPILE_FLAGS "-Wall -Wextra -pedantic -Wconversion -Wundef -Wdeprecated -Wweak-vtables -Wshadow -fsanitize=address")
+    set(PEDANTIC_COMPILE_FLAGS "-Wall -Wextra -pedantic -Wconversion -Wundef -Wdeprecated -Wweak-vtables -Wshadow")
+    set(ADDR_SANITIZE_FLAGS "-fsanitize=address")
     set(WERROR_FLAG -Werror)
 endif ()
 
@@ -31,7 +33,12 @@ if (MSVC)
     set(WERROR_FLAG /WX)
 endif ()
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${PEDANTIC_COMPILE_FLAGS}")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${PEDANTIC_COMPILE_FLAGS} ${ADDR_SANITIZE_FLAGS}")
+
+# Generate Compile Commands for Language server
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+file(COPY "${PROJECT_SOURCE_DIR}/build/compile_commands.json" DESTINATION "${PROJECT_SOURCE_DIR}")
+
 
 # define exe
 add_executable(psx)
@@ -48,7 +55,7 @@ configure_file(src/core/config.h.in "${PROJECT_SOURCE_DIR}/src/core/config.h")
 target_include_directories(psx PRIVATE "${PROJECT_SOURCE_DIR}/src" "${PROJECT_SOURCE_DIR}/extern/include")
 target_include_directories(psx-test PRIVATE "${PROJECT_SOURCE_DIR}/src" "${PROJECT_SOURCE_DIR}/extern/include")
 
-target_link_libraries(psx fmt)
-target_link_libraries(psx-test fmt)
+target_link_libraries(psx fmt imgui glfw glad)
+target_link_libraries(psx-test fmt imgui glfw glad)
 
 
