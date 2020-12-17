@@ -188,7 +188,7 @@ void Ram::onActive(bool *active)
         for (u32 line = startLine; line < endLine; line++) {
             // color the line if it is our search target
             if (line != 0 && line == (target >> 4)) {
-                ImGui::TextColored(ImVec4(0.8f,0.2f,0,1), hexDumpLine(line << 4).data());
+                ImGui::TextColored(ImVec4(0.8f,0.2f,0,1), "%s", hexDumpLine(line << 4).data());
             } else {
                 ImGui::TextUnformatted(hexDumpLine(line << 4).data());
             }
@@ -212,10 +212,10 @@ std::string Ram::hexDumpLine(u32 addr)
     }
 
     // helper lambda
-    auto hexDumpChar = [] (u8 byte) {return byte != '%' && (byte >= '!' && byte <= '~') ? byte : '.';};
+    auto hexDumpChar = [] (u8 byte) {return (byte >= '!' && byte <= '~') ? byte : '.';};
 
     // format 16 bytes "hexdump -C" style
-    std::string dump = fmt::format(
+    std::string dump = PSX_FMT(
             "{:08x}  "
             "{:02x} {:02x} {:02x} {:02x} "
             "{:02x} {:02x} {:02x} {:02x}  "

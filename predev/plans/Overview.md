@@ -1,5 +1,4 @@
 # TODO
-- Cop0 vs Interrupts
 - Renderer Purpose
 - Framework for audio/video?
 
@@ -77,7 +76,9 @@
 
 ## Cop0 (class)
 - System Control Coprocessor
+- handles interrupts/exceptions
 ### Functions
+- Interrupts
 ### State
 - 16 32-bit registers
 ### Used by

@@ -59,8 +59,8 @@ Fixed 32-bit instructions with 3 different types.
 
 ### R-Type
 
-| op (6 bits) | rs (5 bits) | rt (5 bits) | shamt (5 bits) | funct (6 bits) |
-| --- | --- | --- | --- | --- |
+| op (6 bits) | rs (5 bits) | rt (5 bits) | rd (5 bits) | shamt (5 bits) | funct (6 bits) |
+| --- | --- | --- | --- | --- | --- |
 
 ### Key
 

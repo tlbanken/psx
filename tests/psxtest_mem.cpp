@@ -8,6 +8,7 @@
  */
 
 #include <cassert>
+#include <iostream>
 
 #include "util/psxlog.h"
 #include "util/psxutil.h"
@@ -148,6 +149,7 @@ static void ramTests()
 namespace psxtest {
     void memTests()
     {
+        std::cout << PSX_FANCYTITLE("MEM TESTS");
         TMEM_INFO("Performing RAM tests");
         ramTests();
     }

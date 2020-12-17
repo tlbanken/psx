@@ -4,9 +4,20 @@ src
 │   ├── CMakeLists.txt
 │   ├── config.h
 │   ├── config.h.in
+│   ├── globals.cpp
+│   ├── globals.h
 │   ├── main.cpp
 │   ├── psx.cpp
 │   └── psx.h
+├── cpu
+│   ├── asm
+│   │   ├── asm.cpp
+│   │   ├── asm.h
+│   │   └── CMakeLists.txt
+│   ├── CMakeLists.txt
+│   ├── cpu.cpp
+│   ├── cpu.h
+│   └── _cpu_ops.h
 ├── layer
 │   ├── CMakeLists.txt
 │   ├── imgui_layer.cpp
@@ -52,8 +63,10 @@ predev
 tests
 ├── CMakeLists.txt
 ├── main.cpp
+├── psxtest_asm.cpp
+├── psxtest_asm.h
 ├── psxtest.h
 ├── psxtest_mem.cpp
 └── psxtest_mem.h
 
-8 directories, 45 files
+10 directories, 56 files

@@ -12,10 +12,10 @@
 #include "imgui/imgui.h"
 #include "imgui/imgui_impl_glfw.h"
 #include "imgui/imgui_impl_opengl3.h"
-#include "fmt/core.h"
 
 #include "layer/imgui_layer.h"
 #include "util/psxlog.h"
+#include "util/psxutil.h"
 
 #define WINDOW_H 1280
 #define WINDOW_W 720
@@ -24,12 +24,14 @@
 #define IMGUILAYER_WARN(msg) PSXLOG_WARN("ImGui-Layer", msg)
 #define IMGUILAYER_ERR(msg) PSXLOG_ERROR("ImGui-Layer", msg)
 
+ImGuiLayer::DbgModule::~DbgModule() = default;
+
 /*
  * Will be called by GLFW on errors.
  */
 static void errorCallback(int error, const char* description)
 {
-    PSXLOG_ERROR("GLFW Error", fmt::format("({:d}), {}", error, description));
+    PSXLOG_ERROR("GLFW Error", PSX_FMT("({:d}), {}", error, description));
 }
 
 // ===============================================
@@ -109,7 +111,7 @@ bool ImGuiLayer::shouldStop()
  */
 void ImGuiLayer::addDbgModule(std::shared_ptr<ImGuiLayer::DbgModule> module)
 {
-    IMGUILAYER_INFO(fmt::format("Adding debug module [{}]", module->getModuleLabel()));
+    IMGUILAYER_INFO(PSX_FMT("Adding debug module [{}]", module->getModuleLabel()));
     DbgModEntry entry{module, false};
     m_modEntries.push_back(entry);
 }

@@ -17,6 +17,7 @@
 #include "util/psxutil.h"
 
 #include "psxtest_mem.h"
+#include "psxtest_asm.h"
 
 #define TMAIN_INFO(msg) PSXLOG_INFO("Test-Main", msg)
 #define TMAIN_WARN(msg) PSXLOG_WARN("Test-Main", msg)
@@ -28,8 +29,14 @@ int main()
 {
     psxlog::init(std::cerr, true);
 
+    std::cout << PSX_FANCYTITLE(PSX_FMT("{}-Tests v{}", PROJECT_NAME, PROJECT_VER));
     TMAIN_INFO("Starting Memory Tests");
     // call memory tests
     psxtest::memTests();
+
+    // call asm/dasm tests
+    TMAIN_INFO("Starting Asm/Dasm Tests");
+    psxtest::asmTests();
+
     return 0;
 }

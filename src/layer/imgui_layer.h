@@ -19,6 +19,8 @@
 class ImGuiLayer {
 public:
     class DbgModule {
+    protected:
+        virtual ~DbgModule();
     public:
         virtual std::string getModuleLabel() = 0;
         virtual void onActive(bool *active) = 0;

@@ -2,4 +2,5 @@ add_subdirectory(core)
 add_subdirectory(util)
 add_subdirectory(mem)
 add_subdirectory(layer)
+add_subdirectory(cpu)
 

@@ -8,6 +8,7 @@
  */
 
 #include "core/config.h"
+#include "core/globals.h"
 
 #include <iostream>
 #include <fstream>
@@ -30,11 +31,15 @@
 
 int main()
 {
+    // init global emulation state
+    g_emuState.paused = false;
+    g_emuState.stepInstr = false;
+
     // init the logger
     psxlog::init(std::cerr, true);
 
     // print project name and version
-    std::cout << PSX_FANCYTITLE(fmt::format("{} v{}", PROJECT_NAME, PROJECT_VER));
+    std::cout << PSX_FANCYTITLE(PSX_FMT("{} v{}", PROJECT_NAME, PROJECT_VER));
 
     try {
         // create PSX object

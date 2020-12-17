@@ -12,12 +12,14 @@
 #include <memory>
 
 #include "mem/bus.h"
+#include "cpu/cpu.h"
 #include "layer/imgui_layer.h"
 
 class Psx {
 private:
     std::shared_ptr<Bus> m_bus;
     ImGuiLayer m_imguiLayer;
+    std::shared_ptr<Cpu> m_cpu;
 
 public:
     Psx();

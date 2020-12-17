@@ -35,7 +35,7 @@ static bool priorityLT(const std::unique_ptr<ASEntry>& e1, const std::unique_ptr
 
 void Bus::addAddressSpace(std::shared_ptr<AddressSpace> as, BusPriority p)
 {
-    BUS_INFO(fmt::format("Adding AddressSpace obj @{:p} to Bus with priority {}", static_cast<void*>(as.get()), p));
+    BUS_INFO(PSX_FMT("Adding AddressSpace obj @{:p} to Bus with priority {}", static_cast<void*>(as.get()), p));
     // create new entry
     std::unique_ptr<ASEntry> entry(new ASEntry);
     entry->as = as;
@@ -52,7 +52,7 @@ std::string Bus::toString()
 {
     std::string s("");
     for (const auto& e : m_addressSpaces) {
-        s.append(fmt::format("[@{:p}, {}] -> ", static_cast<void*>(e->as.get()), e->p));
+        s.append(PSX_FMT("[@{:p}, {}] -> ", static_cast<void*>(e->as.get()), e->p));
     }
     return s;
 }
@@ -67,7 +67,7 @@ u8 Bus::read8(u32 addr)
         }
     }
 
-    BUS_WARN(fmt::format("Read8 attempt on invalid address 0x{:08x}", addr));
+    BUS_WARN(PSX_FMT("Read8 attempt on invalid address 0x{:08x}", addr));
     return 0;
 }
 
@@ -80,7 +80,7 @@ u16 Bus::read16(u32 addr)
         }
     }
 
-    BUS_WARN(fmt::format("Read16 attempt on invalid address 0x{:08x}", addr));
+    BUS_WARN(PSX_FMT("Read16 attempt on invalid address 0x{:08x}", addr));
     return 0;
 }
 
@@ -93,7 +93,7 @@ u32 Bus::read32(u32 addr)
         }
     }
 
-    BUS_WARN(fmt::format("Read32 attempt on invalid address 0x{:08x}", addr));
+    BUS_WARN(PSX_FMT("Read32 attempt on invalid address 0x{:08x}", addr));
     return 0;
 }
 
