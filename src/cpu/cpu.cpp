@@ -28,19 +28,15 @@ Cpu::Cpu(std::shared_ptr<Bus> bus)
 /*
  * Execute one instruction. Should take about 1 clock cycle.
  */
-void Cpu::step()
+void Cpu::Step()
 {
     // fetch instruction
-    u32 instr = m_bus->read32(m_regs.pc);
+    u32 instr = m_bus->Read32(m_regs.pc);
+    (void) instr;
 
     // decode
 
     // execute
-    // Do some random writes to registers
-    u32 val = (u32) rand() & 0xffff'ffff;
-    u32 reg = (u32) rand() % 32;
-    m_regs.r[reg] = val;
-
 
     // increment pc
     m_regs.pc += 4;
@@ -52,7 +48,7 @@ void Cpu::step()
 /*
  * Set the cpu's program counter to the specified address.
  */
-void Cpu::setPC(u32 addr)
+void Cpu::SetPC(u32 addr)
 {
     m_regs.pc = addr;
 }
@@ -60,9 +56,9 @@ void Cpu::setPC(u32 addr)
 /*
  * Update function for ImGui.
  */
-void Cpu::onActive(bool *active)
+void Cpu::OnActive(bool *active)
 {
-    const u32 pcRegion = (10 << 2);
+    const u32 pc_region = (10 << 2);
 
     if (!ImGui::Begin("CPU Debug", active)) {
         ImGui::End();
@@ -72,46 +68,45 @@ void Cpu::onActive(bool *active)
     //-------------------------------------
     // Step Buttons
     //-------------------------------------
-    if (!g_emuState.paused) {
+    if (!g_emu_state.paused) {
         if (ImGui::Button("Pause")) {
             CPU_INFO("Pausing Emulation");
             // Pause Emulation
-            g_emuState.paused = true;
+            g_emu_state.paused = true;
         }
     } else {
         if (ImGui::Button("Continue")) {
             CPU_INFO("Continuing Emulation");
             // Play Emulation
-            g_emuState.paused = false;
+            g_emu_state.paused = false;
         }
         ImGui::SameLine();
         if (ImGui::Button("Step")) {
             // Step Mode
-            g_emuState.stepInstr = true;
+            g_emu_state.step_instr = true;
         }
     }
-
     //-------------------------------------
 
-    u32 prePC = pcRegion > m_regs.pc ? 0 : m_regs.pc - pcRegion;
-    u32 postPC = m_regs.pc + pcRegion;
+    u32 prePC = pc_region > m_regs.pc ? 0 : m_regs.pc - pc_region;
+    u32 postPC = m_regs.pc + pc_region;
 
 
     //-------------------------------------
     // Instruction Disassembly
     //-------------------------------------
-    ImGuiWindowFlags dasmWindowFlags = ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse;
+    ImGuiWindowFlags dasm_window_flags = ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse;
 
     ImGui::BeginGroup();
-    ImGui::BeginChild("Instruction Disassembly", ImVec2(300,0), false, dasmWindowFlags);
+    ImGui::BeginChild("Instruction Disassembly", ImVec2(300,0), false, dasm_window_flags);
     ImGui::TextUnformatted("Instruction Disassembly");
     for (u32 addr = prePC; addr <= postPC; addr += 4) {
-        u32 instr = m_bus->read32(addr);
+        u32 instr = m_bus->Read32(addr);
         if (addr == m_regs.pc) {
-            ImGui::TextUnformatted(PSX_FMT("{:08x}  | {}", addr, Asm::dasmInstruction(instr)).data());
+            ImGui::TextUnformatted(PSX_FMT("{:08x}  | {}", addr, Asm::DasmInstruction(instr)).data());
         } else {
             ImGui::TextColored(ImVec4(0.6f,0.6f,0.6f,1), "%08x  | %s", addr, 
-                Asm::dasmInstruction(instr).data());
+                Asm::DasmInstruction(instr).data());
         }
     }
     ImGui::EndChild();
@@ -122,8 +117,7 @@ void Cpu::onActive(bool *active)
     //-------------------------------------
     // Registers
     //-------------------------------------
-    // if (ImGui::BeginChild("Registers", ImVec2(0,0), true, dasmWindowFlags)) {
-    ImGui::BeginChild("Registers", ImVec2(0,0), false, dasmWindowFlags);
+    ImGui::BeginChild("Registers", ImVec2(0,0), false, dasm_window_flags);
     ImGui::TextUnformatted("Registers");
     ImGui::BeginGroup();
         // zero
@@ -195,7 +189,7 @@ void Cpu::onActive(bool *active)
 /*
  * Return the label for this Debug module.
  */
-std::string Cpu::getModuleLabel()
+std::string Cpu::GetModuleLabel()
 {
     return "CPU";
 }

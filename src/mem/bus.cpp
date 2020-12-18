@@ -33,7 +33,7 @@ static bool priorityLT(const std::unique_ptr<ASEntry>& e1, const std::unique_ptr
     return p1 < p2;
 }
 
-void Bus::addAddressSpace(std::shared_ptr<AddressSpace> as, BusPriority p)
+void Bus::AddAddressSpace(std::shared_ptr<AddressSpace> as, BusPriority p)
 {
     BUS_INFO(PSX_FMT("Adding AddressSpace obj @{:p} to Bus with priority {}", static_cast<void*>(as.get()), p));
     // create new entry
@@ -42,26 +42,26 @@ void Bus::addAddressSpace(std::shared_ptr<AddressSpace> as, BusPriority p)
     entry->p = p;
 
     // add to list
-    m_addressSpaces.push_back(std::move(entry));
+    m_address_spaces.push_back(std::move(entry));
 
     // sort list to ensure priorities
-    std::sort(m_addressSpaces.begin(), m_addressSpaces.end(), priorityLT);
+    std::sort(m_address_spaces.begin(), m_address_spaces.end(), priorityLT);
 }
 
-std::string Bus::toString()
+std::string Bus::ToString()
 {
     std::string s("");
-    for (const auto& e : m_addressSpaces) {
+    for (const auto& e : m_address_spaces) {
         s.append(PSX_FMT("[@{:p}, {}] -> ", static_cast<void*>(e->as.get()), e->p));
     }
     return s;
 }
 
 // reads
-u8 Bus::read8(u32 addr)
+u8 Bus::Read8(u32 addr)
 {
-    for (const auto& entry : m_addressSpaces) {
-        auto [res, found] = entry->as->read8(addr);
+    for (const auto& entry : m_address_spaces) {
+        auto [res, found] = entry->as->Read8(addr);
         if (found) {
             return res.res8;
         }
@@ -71,10 +71,10 @@ u8 Bus::read8(u32 addr)
     return 0;
 }
 
-u16 Bus::read16(u32 addr)
+u16 Bus::Read16(u32 addr)
 {
-    for (const auto& entry : m_addressSpaces) {
-        auto [res, found] = entry->as->read16(addr);
+    for (const auto& entry : m_address_spaces) {
+        auto [res, found] = entry->as->Read16(addr);
         if (found) {
             return res.res16;
         }
@@ -84,10 +84,10 @@ u16 Bus::read16(u32 addr)
     return 0;
 }
 
-u32 Bus::read32(u32 addr)
+u32 Bus::Read32(u32 addr)
 {
-    for (const auto& entry : m_addressSpaces) {
-        auto [res, found] = entry->as->read32(addr);
+    for (const auto& entry : m_address_spaces) {
+        auto [res, found] = entry->as->Read32(addr);
         if (found) {
             return res.res32;
         }
@@ -99,28 +99,28 @@ u32 Bus::read32(u32 addr)
 
 
 // writes
-void Bus::write8(u8 data, u32 addr)
+void Bus::Write8(u8 data, u32 addr)
 {
-    for (const auto& entry : m_addressSpaces) {
-        if (entry->as->write8(data, addr)) {
+    for (const auto& entry : m_address_spaces) {
+        if (entry->as->Write8(data, addr)) {
             return;
         }
     }
 }
 
-void Bus::write16(u16 data, u32 addr)
+void Bus::Write16(u16 data, u32 addr)
 {
-    for (const auto& entry : m_addressSpaces) {
-        if (entry->as->write16(data, addr)) {
+    for (const auto& entry : m_address_spaces) {
+        if (entry->as->Write16(data, addr)) {
             return;
         }
     }
 }
 
-void Bus::write32(u32 data, u32 addr)
+void Bus::Write32(u32 data, u32 addr)
 {
-    for (const auto& entry : m_addressSpaces) {
-        if (entry->as->write32(data, addr)) {
+    for (const auto& entry : m_address_spaces) {
+        if (entry->as->Write32(data, addr)) {
             return;
         }
     }

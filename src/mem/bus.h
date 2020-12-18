@@ -30,14 +30,14 @@ public:
     virtual ~AddressSpace();
 
     // reads
-    virtual ASResult read8(u32 addr) = 0;
-    virtual ASResult read16(u32 addr) = 0;
-    virtual ASResult read32(u32 addr) = 0;
+    virtual ASResult Read8(u32 addr) = 0;
+    virtual ASResult Read16(u32 addr) = 0;
+    virtual ASResult Read32(u32 addr) = 0;
 
     // writes
-    virtual bool write8(u8 data, u32 addr) = 0;
-    virtual bool write16(u16 data, u32 addr) = 0;
-    virtual bool write32(u32 data, u32 addr) = 0;
+    virtual bool Write8(u8 data, u32 addr) = 0;
+    virtual bool Write16(u16 data, u32 addr) = 0;
+    virtual bool Write32(u32 data, u32 addr) = 0;
 };
 
 
@@ -56,20 +56,20 @@ struct ASEntry {
 
 class Bus {
 private:
-    std::vector<std::unique_ptr<ASEntry>> m_addressSpaces;
+    std::vector<std::unique_ptr<ASEntry>> m_address_spaces;
 
 public:
-    void addAddressSpace(std::shared_ptr<AddressSpace> as, BusPriority p);
-    std::string toString();
+    void AddAddressSpace(std::shared_ptr<AddressSpace> as, BusPriority p);
+    std::string ToString();
     
     // reads
-    u8 read8(u32 addr);
-    u16 read16(u32 addr);
-    u32 read32(u32 addr);
+    u8 Read8(u32 addr);
+    u16 Read16(u32 addr);
+    u32 Read32(u32 addr);
 
     // writes
-    void write8(u8 data, u32 addr);
-    void write16(u16 data, u32 addr);
-    void write32(u32 data, u32 addr);
+    void Write8(u8 data, u32 addr);
+    void Write16(u16 data, u32 addr);
+    void Write32(u32 data, u32 addr);
 };
 

@@ -21,17 +21,17 @@ namespace psxlog {
         Error,
     };
 
-    void init(std::ostream& ofile, bool logging_enabled);
-    void log(const std::string& label, const std::string& msg, psxlog::MsgType t);
-    void ilog(const std::string& label, const std::string& msg);
-    void wlog(const std::string& label, const std::string& msg);
-    void elog(const std::string& label, const std::string& msg);
+    void Init(std::ostream& ofile, bool logging_enabled);
+    void Log(const std::string& label, const std::string& msg, psxlog::MsgType t);
+    void ILog(const std::string& label, const std::string& msg);
+    void WLog(const std::string& label, const std::string& msg);
+    void ELog(const std::string& label, const std::string& msg);
 }
 
 #ifdef PSX_LOGGING
-#define PSXLOG_INFO(label, msg) psxlog::ilog(label, msg)
-#define PSXLOG_WARN(label, msg) psxlog::wlog(label, msg)
-#define PSXLOG_ERROR(label, msg) psxlog::elog(label, msg)
+#define PSXLOG_INFO(label, msg) psxlog::ILog(label, msg)
+#define PSXLOG_WARN(label, msg) psxlog::WLog(label, msg)
+#define PSXLOG_ERROR(label, msg) psxlog::ELog(label, msg)
 #else
 #define PSXLOG_INFO(label, msg)
 #define PSXLOG_WARN(label, msg)

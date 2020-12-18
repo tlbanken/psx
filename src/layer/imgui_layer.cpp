@@ -69,22 +69,22 @@ ImGuiLayer::~ImGuiLayer()
  * Handles updating everything ImGui side of things. Should be called in the main
  * emulation loop.
  */
-void ImGuiLayer::onUpdate()
+void ImGuiLayer::OnUpdate()
 {
     newFrame();
 
     // Call Modules if currently active
-    for (auto& entry : m_modEntries) {
+    for (auto& entry : m_mod_entries) {
         if (entry.active) {
-            entry.module->onActive(&entry.active);
+            entry.module->OnActive(&entry.active);
         }
     }
 
     // Main Menu Bar
     if (ImGui::BeginMainMenuBar()) {
         if (ImGui::BeginMenu("Debug")) {
-            for (auto& e : m_modEntries) {
-                ImGui::MenuItem(e.module->getModuleLabel().data(), NULL, &e.active);
+            for (auto& e : m_mod_entries) {
+                ImGui::MenuItem(e.module->GetModuleLabel().data(), NULL, &e.active);
             }
             ImGui::EndMenu();
         }
@@ -101,7 +101,7 @@ void ImGuiLayer::onUpdate()
  * Checks if the ImGui needs to terminate. This most common case being if the
  * window is closed.
  */
-bool ImGuiLayer::shouldStop()
+bool ImGuiLayer::ShouldStop()
 {
     return glfwWindowShouldClose(m_window);
 }
@@ -109,11 +109,11 @@ bool ImGuiLayer::shouldStop()
 /*
  * Add a ImGui Debug Module which will be show up in the "Debug" main menu tab.
  */
-void ImGuiLayer::addDbgModule(std::shared_ptr<ImGuiLayer::DbgModule> module)
+void ImGuiLayer::AddDbgModule(std::shared_ptr<ImGuiLayer::DbgModule> module)
 {
-    IMGUILAYER_INFO(PSX_FMT("Adding debug module [{}]", module->getModuleLabel()));
+    IMGUILAYER_INFO(PSX_FMT("Adding debug module [{}]", module->GetModuleLabel()));
     DbgModEntry entry{module, false};
-    m_modEntries.push_back(entry);
+    m_mod_entries.push_back(entry);
 }
 
 

@@ -27,16 +27,16 @@ static std::ofstream testout;
 
 int main()
 {
-    psxlog::init(std::cerr, true);
+    psxlog::Init(std::cerr, true);
 
     std::cout << PSX_FANCYTITLE(PSX_FMT("{}-Tests v{}", PROJECT_NAME, PROJECT_VER));
     TMAIN_INFO("Starting Memory Tests");
     // call memory tests
-    psxtest::memTests();
+    psxtest::MemTests();
 
     // call asm/dasm tests
     TMAIN_INFO("Starting Asm/Dasm Tests");
-    psxtest::asmTests();
+    psxtest::AsmDasmTests();
 
     return 0;
 }

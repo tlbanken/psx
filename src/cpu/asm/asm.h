@@ -19,11 +19,12 @@ namespace Asm {
         u8 op;
         union {
             u8 rt;
-            u8 bcondzOp; // bcondz instructions
+            u8 bcondz_op; // bcondz instructions
+            u8 cop_branch_op; // cop instruction
         };
         union {
             u8 rs;
-            u8 copOp; // cop instructions
+            u8 cop_op; // cop instructions
         };
 
         // i-type
@@ -33,10 +34,7 @@ namespace Asm {
         u32 target;
 
         // r-type
-        union {
-            u8 rd;
-            u8 copBranchOp; // cop instruction
-        };
+        u8 rd;
         u8 shamt;
         u8 funct;
 
@@ -44,8 +42,8 @@ namespace Asm {
         u32 imm25;
     };
 
-    Instruction decodeRawInstr(u32 rawInstr);
-    std::string dasmInstruction(u32 rawInstr);
-    u32 asmInstruction(const std::string& strInstr);
+    Instruction DecodeRawInstr(u32 raw_instr);
+    std::string DasmInstruction(u32 raw_instr);
+    u32 AsmInstruction(const std::string& str_instr);
 }
 

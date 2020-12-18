@@ -54,13 +54,13 @@ static std::string getCurrentTimestamp()
 }
 
 namespace psxlog {
-    void init(std::ostream& ofile, bool loggingEnabled)
+    void Init(std::ostream& ofile, bool loggingEnabled)
     {
         s_logOn = loggingEnabled;
         logStream(ofile);
     }
 
-    void log(const std::string& label, const std::string& msg, psxlog::MsgType t)
+    void Log(const std::string& label, const std::string& msg, psxlog::MsgType t)
     {
         // don't do anything if no logging
         if (!s_logOn) {
@@ -101,19 +101,19 @@ namespace psxlog {
     }
 
     // Logs that omit the type
-    void ilog(const std::string& label, const std::string& msg)
+    void ILog(const std::string& label, const std::string& msg)
     {
-        psxlog::log(label, msg, psxlog::MsgType::Info);
+        psxlog::Log(label, msg, psxlog::MsgType::Info);
     }
 
-    void wlog(const std::string& label, const std::string& msg)
+    void WLog(const std::string& label, const std::string& msg)
     {
-        psxlog::log(label, msg, psxlog::MsgType::Warning);
+        psxlog::Log(label, msg, psxlog::MsgType::Warning);
     }
 
-    void elog(const std::string& label, const std::string& msg)
+    void ELog(const std::string& label, const std::string& msg)
     {
-        psxlog::log(label, msg, psxlog::MsgType::Error);
+        psxlog::Log(label, msg, psxlog::MsgType::Error);
     }
 }
 

@@ -10,5 +10,5 @@
 #pragma once
 
 namespace psxtest {
-    void memTests();
+    void MemTests();
 }

@@ -15,7 +15,12 @@
 #include "util/psxlog.h"
 #include "cpu/asm/asm.h"
 
-#define LOG_DASM(instr) PSXLOG_INFO("Test-Dasm", PSX_FMT("0x{:08x} -> [{}]", instr, Asm::dasmInstruction(instr)))
+#define LOG_DASM(instr) PSXLOG_INFO("Test-Dasm", PSX_FMT("0x{:08x} -> [{}]", instr, Asm::DasmInstruction(instr)))
+#define LOG_ASM(instr) PSXLOG_INFO("Test-Asm", PSX_FMT("[{}] -> 0x{:08x}", instr, Asm::AsmInstruction(instr)))
+#define LOG_COMBO(instr) {\
+    u32 _i = Asm::AsmInstruction(instr);\
+    std::string _si = Asm::DasmInstruction(_i);\
+    PSXLOG_INFO("Test-Combo", PSX_FMT("[{}] -> 0x{:08x} -> [{}]", instr, _i, _si));}
 
 static void dasmTests()
 {
@@ -71,11 +76,58 @@ static void dasmTests()
     LOG_DASM(instr);
 }
 
+static void asmTests()
+{
+    /*
+    3c048000 -> lui $4,0x8000
+    34844000 -> ori $4,$4,0x4000
+    3c05b400 -> lui $5,0xb400
+    34a503f8 -> ori $5,$5,0x3f8
+    80860000 -> lb $6,0($4)
+    10c00005 -> beq $6,$0,0x8000102c
+    00000000 -> sll $0,$0,0x0
+    a0a60000 -> sb $6,0($5)
+    24840001 -> addiu $4,$4,1
+    08000404 -> j 0x80001010
+    00000000 -> sll $0,$0,0x0
+    3c05bfbf -> lui $5,0xbfbf
+    34a50004 -> ori $5,$5,0x4
+    3c060000 -> lui $6,0x0
+    34c6002a -> ori $6,$6,0x2a
+    a0a60000 -> sb $6,0($5)
+    */
+    PSXLOG_INFO("Test-Asm/Dasm", "Starting Assembler Tests");
+    LOG_ASM("lui    R4 0x8000");
+    LOG_ASM("OrI R4 R4 0x4000");
+    LOG_ASM("LUI   R5 0xb400");
+    LOG_ASM("Ori    R5 R5 0x3f8");
+    LOG_ASM("LB     R6 0 R4");
+    LOG_ASM("BEQ    R6 R0 5");
+    LOG_ASM("sll R0 R0 0x0");
+    LOG_ASM("sb R6 0 R5");
+    LOG_ASM("addiu R4 R4 1");
+    LOG_ASM("j      0x1010");
+    LOG_ASM("sll    R0 R0 0x0");
+    LOG_ASM("LUI    R5 0xbfbf");
+    LOG_ASM("OrI    R5 R5 0x04");
+    LOG_ASM("ORI    R6 R6 0x2a");
+    LOG_ASM("sb     R6 0 R5");
+}
+
+static void comboTests()
+{
+    PSXLOG_INFO("Test-Asm/Dasm", "Starting Combo Tests");
+    LOG_COMBO("SLL   R0 R0 0");
+    LOG_COMBO("ADD   R2 R0 R1");
+}
+
 namespace psxtest {
-    void asmTests()
+    void AsmDasmTests()
     {
         std::cout << PSX_FANCYTITLE("ASM/DASM TESTS");
-        PSXLOG_INFO("Test-Asm/Dasm", "Starting Disassemble tests");
+        PSXLOG_INFO("Test-Asm/Dasm", "Starting Disassembler tests");
         dasmTests();
+        asmTests();
+        comboTests();
     }
 }

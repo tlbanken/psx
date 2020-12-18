@@ -18,11 +18,11 @@
 class Psx {
 private:
     std::shared_ptr<Bus> m_bus;
-    ImGuiLayer m_imguiLayer;
+    ImGuiLayer m_imgui_layer;
     std::shared_ptr<Cpu> m_cpu;
 
 public:
     Psx();
 
-    void run();
+    void Run();
 };

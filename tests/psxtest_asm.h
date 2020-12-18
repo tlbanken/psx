@@ -10,6 +10,6 @@
 #pragma once
 
 namespace psxtest {
-    void asmTests();
+    void AsmDasmTests();
 }
 

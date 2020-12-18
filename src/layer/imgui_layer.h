@@ -22,8 +22,8 @@ public:
     protected:
         virtual ~DbgModule();
     public:
-        virtual std::string getModuleLabel() = 0;
-        virtual void onActive(bool *active) = 0;
+        virtual std::string GetModuleLabel() = 0;
+        virtual void OnActive(bool *active) = 0;
     };
 
     enum class Style {
@@ -35,9 +35,9 @@ public:
     ImGuiLayer(ImGuiLayer::Style style);
     ~ImGuiLayer();
 
-    void addDbgModule(std::shared_ptr<ImGuiLayer::DbgModule> module);
-    void onUpdate();
-    bool shouldStop();
+    void AddDbgModule(std::shared_ptr<ImGuiLayer::DbgModule> module);
+    void OnUpdate();
+    bool ShouldStop();
 
 private:
     struct DbgModEntry {
@@ -46,7 +46,7 @@ private:
     };
 
     GLFWwindow *m_window = nullptr;
-    std::vector<DbgModEntry> m_modEntries;
+    std::vector<DbgModEntry> m_mod_entries;
 
     void init();
     void newFrame();

@@ -15,16 +15,16 @@
 #include "layer/imgui_layer.h"
 
 
-class Cpu : public ImGuiLayer::DbgModule {
+class Cpu final : public ImGuiLayer::DbgModule {
 public:
     Cpu(std::shared_ptr<Bus> bus);
 
-    void step();
-    void setPC(u32 addr);
+    void Step();
+    void SetPC(u32 addr);
 
     // DbgModule Functions
-    void onActive(bool *active);
-    std::string getModuleLabel();
+    void OnActive(bool *active);
+    std::string GetModuleLabel();
 private:
     typedef void (*opfunc)(const Asm::Instruction& instr);
 

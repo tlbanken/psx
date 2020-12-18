@@ -25,7 +25,7 @@
 #define PSX_ERROR(msg) PSXLOG_ERROR("PSX", msg)
 
 Psx::Psx()
-    : m_imguiLayer(ImGuiLayer::Style::Dark)
+    : m_imgui_layer(ImGuiLayer::Style::Dark)
 {
     PSX_INFO("Initializing the PSX");
 
@@ -36,42 +36,39 @@ Psx::Psx()
     std::shared_ptr<Ram> ram(new Ram());
 
     // add to bus and imgui
-    m_bus->addAddressSpace(ram, BusPriority::First);
-    m_imguiLayer.addDbgModule(ram);
+    m_bus->AddAddressSpace(ram, BusPriority::First);
+    m_imgui_layer.AddDbgModule(ram);
 
     PSX_INFO("Initializing CPU");
     m_cpu = std::shared_ptr<Cpu>(new Cpu(m_bus));
 
     // add to imgui
-    m_imguiLayer.addDbgModule(m_cpu);
+    m_imgui_layer.AddDbgModule(m_cpu);
 }
 
 /*
  * Main emulation loop. Only returns on Quit or Exception.
  */
-void Psx::run()
+void Psx::Run()
 {
-    g_emuState.paused = true;
-    u32 ramSize = 2 * 1024 * 1024;
-    m_cpu->setPC(0x0000'0000);
-    while (!m_imguiLayer.shouldStop()) {
+    g_emu_state.paused = true;
+    u32 pc = 0x0000'0100;
+    m_cpu->SetPC(pc);
+    // write a little test program @ 0x0000'0100
+    m_bus->Write32(Asm::AsmInstruction("ADDI    R1 R0 23"), pc);
+    pc += 4;
+    m_bus->Write32(Asm::AsmInstruction("ADD     R2 R0 R1"), pc);
+    pc += 4;
+    while (!m_imgui_layer.ShouldStop()) {
         // gui update
-        m_imguiLayer.onUpdate();
-
-        // TEST some random writes
-        u32 addr = (u32) rand() % ramSize;
-        u32 addr1 = (u32) rand() % (100 << 4);
-        u8 data = (u8) rand() % 256;
-        m_bus->write8(data, addr);
-        m_bus->write8(data, addr1);
+        m_imgui_layer.OnUpdate();
 
         // cpu update
-        if (!g_emuState.paused || g_emuState.stepInstr) {
-            m_cpu->step();
+        if (!g_emu_state.paused || g_emu_state.step_instr) {
+            m_cpu->Step();
         }
 
-
         // reset some state
-        g_emuState.stepInstr = false;
+        g_emu_state.step_instr = false;
     }
 }

@@ -27,17 +27,17 @@ static std::pair<u32, bool> mirrorAddr(u32 addr);
 Ram::Ram()
 {
     RAM_INFO("Initializing 2MB of System RAM");
-    m_sysRam.resize(2 * 1024 * 1024);
+    m_sysram.resize(2 * 1024 * 1024);
 }
 
 // reads
-ASResult Ram::read8(u32 addr)
+ASResult Ram::Read8(u32 addr)
 {
     u8 data = 0;
     auto [maddr, found] = mirrorAddr(addr);
     if (found) {
-        PSX_ASSERT(maddr < m_sysRam.size());
-        data = m_sysRam[maddr];
+        PSX_ASSERT(maddr < m_sysram.size());
+        data = m_sysram[maddr];
     }
 
     ASResult asres;
@@ -46,15 +46,15 @@ ASResult Ram::read8(u32 addr)
     return asres;
 }
 
-ASResult Ram::read16(u32 addr)
+ASResult Ram::Read16(u32 addr)
 {
     u16 data = 0;
     auto [maddr, found] = mirrorAddr(addr);
     if (found) {
-        PSX_ASSERT(maddr < m_sysRam.size());
+        PSX_ASSERT(maddr < m_sysram.size());
         // create 16-bit halfword in little-endian format
-        data = m_sysRam[maddr];
-        data |= static_cast<u16>(m_sysRam[maddr+1]) << 8;
+        data = m_sysram[maddr];
+        data |= static_cast<u16>(m_sysram[maddr+1]) << 8;
     }
 
     ASResult asres;
@@ -63,17 +63,17 @@ ASResult Ram::read16(u32 addr)
     return asres;
 }
 
-ASResult Ram::read32(u32 addr)
+ASResult Ram::Read32(u32 addr)
 {
     u32 data = 0;
     auto [maddr, found] = mirrorAddr(addr);
     if (found) {
-        PSX_ASSERT(maddr < m_sysRam.size());
+        PSX_ASSERT(maddr < m_sysram.size());
         // create 32-bit word in little-endian format
-        data = m_sysRam[maddr];
-        data |= static_cast<u32>(m_sysRam[maddr+1]) << 8;
-        data |= static_cast<u32>(m_sysRam[maddr+2]) << 16;
-        data |= static_cast<u32>(m_sysRam[maddr+3]) << 24;
+        data = m_sysram[maddr];
+        data |= static_cast<u32>(m_sysram[maddr+1]) << 8;
+        data |= static_cast<u32>(m_sysram[maddr+2]) << 16;
+        data |= static_cast<u32>(m_sysram[maddr+3]) << 24;
     }
 
     ASResult asres;
@@ -84,58 +84,58 @@ ASResult Ram::read32(u32 addr)
 
 
 // writes
-bool Ram::write8(u8 data, u32 addr)
+bool Ram::Write8(u8 data, u32 addr)
 {
     auto [maddr, found] = mirrorAddr(addr);
     if (found) {
-        PSX_ASSERT(maddr < m_sysRam.size());
-        m_sysRam[maddr] = data;
+        PSX_ASSERT(maddr < m_sysram.size());
+        m_sysram[maddr] = data;
     }
 
     return found;
 }
 
-bool Ram::write16(u16 data, u32 addr)
+bool Ram::Write16(u16 data, u32 addr)
 {
     auto [maddr, found] = mirrorAddr(addr);
     if (found) {
-        PSX_ASSERT(maddr < m_sysRam.size());
+        PSX_ASSERT(maddr < m_sysram.size());
         // write 16-bit halfword in little-endian format
-        m_sysRam[maddr] = static_cast<u8>(data & 0xff);
-        m_sysRam[maddr + 1] = static_cast<u8>((data >> 8) & 0xff);
+        m_sysram[maddr] = static_cast<u8>(data & 0xff);
+        m_sysram[maddr + 1] = static_cast<u8>((data >> 8) & 0xff);
     }
 
     return found;
 }
 
-bool Ram::write32(u32 data, u32 addr)
+bool Ram::Write32(u32 data, u32 addr)
 {
     auto [maddr, found] = mirrorAddr(addr);
     if (found) {
-        PSX_ASSERT(maddr < m_sysRam.size());
+        PSX_ASSERT(maddr < m_sysram.size());
         // write 32-bit word in little-endian format
-        m_sysRam[maddr] = static_cast<u8>(data & 0xff);
-        m_sysRam[maddr + 1] = static_cast<u8>((data >> 8) & 0xff);
-        m_sysRam[maddr + 2] = static_cast<u8>((data >> 16) & 0xff);
-        m_sysRam[maddr + 3] = static_cast<u8>((data >> 24) & 0xff);
+        m_sysram[maddr] = static_cast<u8>(data & 0xff);
+        m_sysram[maddr + 1] = static_cast<u8>((data >> 8) & 0xff);
+        m_sysram[maddr + 2] = static_cast<u8>((data >> 16) & 0xff);
+        m_sysram[maddr + 3] = static_cast<u8>((data >> 24) & 0xff);
     }
 
     return found;
 }
 
-std::string Ram::getModuleLabel()
+std::string Ram::GetModuleLabel()
 {
     return "RAM";
 }
 
-void Ram::onActive(bool *active)
+void Ram::OnActive(bool *active)
 {
-    static u32 startLine = 0;
-    static u32 lastLine = (u32)m_sysRam.size() >> 4;
-    static bool findTarget = false;
+    static u32 start_line = 0;
+    static u32 last_line = (u32)m_sysram.size() >> 4;
+    static bool find_target = false;
     static u32 target = 0;
 
-    const u32 numLines = 50;
+    const u32 num_lines = 50;
 
     if (!ImGui::Begin("Ram Debug", active)) {
         ImGui::End();
@@ -146,31 +146,31 @@ void Ram::onActive(bool *active)
     // Buttons for Navigation
     //----------------------------------------------------
     if (ImGui::Button("Up")) {
-        startLine = startLine == 0 ? 0 : startLine - 1;
+        start_line = start_line == 0 ? 0 : start_line - 1;
     }
     ImGui::SameLine();
     if (ImGui::Button("Up+10")) {
-        startLine = startLine < 10 ? 0 : startLine - 10;
+        start_line = start_line < 10 ? 0 : start_line - 10;
     }
     ImGui::SameLine();
     if (ImGui::Button("Down")) {
-        startLine = startLine == lastLine ? lastLine : startLine + 1;
+        start_line = start_line == last_line ? last_line : start_line + 1;
     }
     ImGui::SameLine();
     if (ImGui::Button("Down+10")) {
-        startLine = startLine >= lastLine - 10 ? lastLine : startLine + 10;
+        start_line = start_line >= last_line - 10 ? last_line : start_line + 10;
     }
     ImGui::SameLine();
     static char searchBuf[7] = "";
-    auto inputFlags = ImGuiInputTextFlags_CharsHexadecimal;
-    ImGui::InputTextWithHint("Goto Address", "Enter address (hex)", searchBuf, sizeof(searchBuf), inputFlags);
+    auto input_flags = ImGuiInputTextFlags_CharsHexadecimal;
+    ImGui::InputTextWithHint("Goto Address", "Enter address (hex)", searchBuf, sizeof(searchBuf), input_flags);
     u32 res = strToHex(searchBuf);
     if (target != res) {
-        findTarget = true;
+        find_target = true;
         target = res;
-        startLine = (target >> 4);
+        start_line = (target >> 4);
     } else {
-        findTarget = false;
+        find_target = false;
     }
     //----------------------------------------------------
 
@@ -178,14 +178,14 @@ void Ram::onActive(bool *active)
     // Hex Dump Region
     //----------------------------------------------------
     // set up hex dump
-    ImGuiWindowFlags hexDumpFlags = ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse;
-    u32 endLine = startLine + numLines;
-    if (endLine > lastLine) {
-        endLine = lastLine;
+    ImGuiWindowFlags hex_dump_flags = ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse;
+    u32 endLine = start_line + num_lines;
+    if (endLine > last_line) {
+        endLine = last_line;
     }
 
-    if (ImGui::BeginChild("Hex Dump", ImVec2(0,0), false, hexDumpFlags)) {
-        for (u32 line = startLine; line < endLine; line++) {
+    if (ImGui::BeginChild("Hex Dump", ImVec2(0,0), false, hex_dump_flags)) {
+        for (u32 line = start_line; line < endLine; line++) {
             // color the line if it is our search target
             if (line != 0 && line == (target >> 4)) {
                 ImGui::TextColored(ImVec4(0.8f,0.2f,0,1), "%s", hexDumpLine(line << 4).data());
@@ -206,8 +206,8 @@ void Ram::onActive(bool *active)
  */
 std::string Ram::hexDumpLine(u32 addr)
 {
-    /* PSX_ASSERT((size_t)addr + 16 <= m_sysRam.size()); */
-    if ((size_t)addr + 16 > m_sysRam.size()) {
+    /* PSX_ASSERT((size_t)addr + 16 <= m_sysram.size()); */
+    if ((size_t)addr + 16 > m_sysram.size()) {
         return "";
     }
 
@@ -224,18 +224,18 @@ std::string Ram::hexDumpLine(u32 addr)
             "|{:c}{:c}{:c}{:c}{:c}{:c}{:c}{:c}"
             "{:c}{:c}{:c}{:c}{:c}{:c}{:c}{:c}|"
             , addr
-            , m_sysRam[addr+0], m_sysRam[addr+1], m_sysRam[addr+2], m_sysRam[addr+3]
-            , m_sysRam[addr+4], m_sysRam[addr+5], m_sysRam[addr+6], m_sysRam[addr+7]
-            , m_sysRam[addr+8], m_sysRam[addr+9], m_sysRam[addr+10], m_sysRam[addr+11]
-            , m_sysRam[addr+12], m_sysRam[addr+13], m_sysRam[addr+14], m_sysRam[addr+15]
-            , hexDumpChar(m_sysRam[addr+0]), hexDumpChar(m_sysRam[addr+1])
-            , hexDumpChar(m_sysRam[addr+2]), hexDumpChar(m_sysRam[addr+3])
-            , hexDumpChar(m_sysRam[addr+4]), hexDumpChar(m_sysRam[addr+5])
-            , hexDumpChar(m_sysRam[addr+6]), hexDumpChar(m_sysRam[addr+7])
-            , hexDumpChar(m_sysRam[addr+8]), hexDumpChar(m_sysRam[addr+9])
-            , hexDumpChar(m_sysRam[addr+9]), hexDumpChar(m_sysRam[addr+11])
-            , hexDumpChar(m_sysRam[addr+12]), hexDumpChar(m_sysRam[addr+13])
-            , hexDumpChar(m_sysRam[addr+14]), hexDumpChar(m_sysRam[addr+15])
+            , m_sysram[addr+0], m_sysram[addr+1], m_sysram[addr+2], m_sysram[addr+3]
+            , m_sysram[addr+4], m_sysram[addr+5], m_sysram[addr+6], m_sysram[addr+7]
+            , m_sysram[addr+8], m_sysram[addr+9], m_sysram[addr+10], m_sysram[addr+11]
+            , m_sysram[addr+12], m_sysram[addr+13], m_sysram[addr+14], m_sysram[addr+15]
+            , hexDumpChar(m_sysram[addr+0]), hexDumpChar(m_sysram[addr+1])
+            , hexDumpChar(m_sysram[addr+2]), hexDumpChar(m_sysram[addr+3])
+            , hexDumpChar(m_sysram[addr+4]), hexDumpChar(m_sysram[addr+5])
+            , hexDumpChar(m_sysram[addr+6]), hexDumpChar(m_sysram[addr+7])
+            , hexDumpChar(m_sysram[addr+8]), hexDumpChar(m_sysram[addr+9])
+            , hexDumpChar(m_sysram[addr+9]), hexDumpChar(m_sysram[addr+11])
+            , hexDumpChar(m_sysram[addr+12]), hexDumpChar(m_sysram[addr+13])
+            , hexDumpChar(m_sysram[addr+14]), hexDumpChar(m_sysram[addr+15])
     );
     return dump;
 }
