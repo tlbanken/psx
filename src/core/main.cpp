@@ -46,8 +46,14 @@ int main()
         // create PSX object
         Psx psx;
         psx.Run();
-    } catch (std::exception e) {
-        std::cerr << e.what() << std::endl;
+    } catch (std::runtime_error& re) {
+        std::cerr << "Runtime error: " << re.what() << std::endl;
+        return 1;
+    } catch (std::exception& e) {
+        std::cerr << "Error Occured: " << e.what() << std::endl;
+        return 1;
+    } catch (...) {
+        std::cerr << "Unknown Fatal Failure Occured!" << std::endl;
         return 1;
     }
 

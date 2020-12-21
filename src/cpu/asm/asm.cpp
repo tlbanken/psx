@@ -749,7 +749,7 @@ namespace Asm {
             u32 rs = (u32)std::stoi(tokens.at(1).substr(1), nullptr, 0);
             raw_instr = SET_RS(raw_instr, rs);
             // imm16
-            u32 imm16 = (u32)std::stoi(tokens.at(2).substr(1), nullptr, 0);
+            u32 imm16 = (u32)std::stoi(tokens.at(2), nullptr, 0);
             raw_instr = SET_IMM16(raw_instr, imm16);
         } else {
             // Unknown instruction

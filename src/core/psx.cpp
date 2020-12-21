@@ -55,9 +55,15 @@ void Psx::Run()
     u32 pc = 0x0000'0100;
     m_cpu->SetPC(pc);
     // write a little test program @ 0x0000'0100
-    m_bus->Write32(Asm::AsmInstruction("ADDI    R1 R0 23"), pc);
+    m_bus->Write32(0x04234543, pc);
+    pc += 4;
+    m_bus->Write32(Asm::AsmInstruction("BLTZ    R2 5"), pc);
+    pc += 4;
+    m_bus->Write32(Asm::AsmInstruction("SYSCALL"), pc);
     pc += 4;
     m_bus->Write32(Asm::AsmInstruction("ADD     R2 R0 R1"), pc);
+    pc += 4;
+    m_bus->Write32(Asm::AsmInstruction("ADDI    R1 R0 23"), pc);
     pc += 4;
     while (!m_imgui_layer.ShouldStop()) {
         // gui update
