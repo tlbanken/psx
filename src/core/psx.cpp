@@ -17,6 +17,7 @@
 #include "mem/bus.h"
 #include "mem/ram.h"
 #include "cpu/cpu.h"
+#include "cpu/cop0.h"
 #include "layer/imgui_layer.h"
 #include "core/globals.h"
 
@@ -29,19 +30,24 @@ Psx::Psx()
 {
     PSX_INFO("Initializing the PSX");
 
+    // System Control Cop
+    PSX_INFO("Initializing System Control Coprocessor");
+    std::shared_ptr<SysControl> cop0(new SysControl());
+
+    // Bus
     PSX_INFO("Initializing Bus");
     m_bus = std::shared_ptr<Bus>(new Bus());
 
+    // Ram
     PSX_INFO("Initializing Ram");
     std::shared_ptr<Ram> ram(new Ram());
-
     // add to bus and imgui
     m_bus->AddAddressSpace(ram, BusPriority::First);
     m_imgui_layer.AddDbgModule(ram);
 
+    // CPU
     PSX_INFO("Initializing CPU");
-    m_cpu = std::shared_ptr<Cpu>(new Cpu(m_bus));
-
+    m_cpu = std::shared_ptr<Cpu>(new Cpu(m_bus, cop0));
     // add to imgui
     m_imgui_layer.AddDbgModule(m_cpu);
 }

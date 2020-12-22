@@ -52,7 +52,7 @@
 static const std::string prim_op_map[] = {
     /*00*/ "???",  /*01*/ "BCONDZ",/*02*/ "J",    /*03*/ "JAL",
     /*04*/ "BEQ",  /*05*/ "BNE",   /*06*/ "BLEZ", /*07*/ "BGTZ",
-    /*08*/ "ADDI", /*09*/ "ADDIU",  /*0a*/ "STLI", /*0b*/ "SLTIU",
+    /*08*/ "ADDI", /*09*/ "ADDIU",  /*0a*/ "SLTI", /*0b*/ "SLTIU",
     /*0c*/ "ANDI", /*0d*/ "ORI",   /*0e*/ "XORI", /*0f*/ "LUI",
 
     /*10*/ "COP0", /*11*/ "COP1", /*12*/ "COP2", /*13*/ "COP3",
@@ -312,12 +312,12 @@ static std::string primOpDasm(const Asm::Instruction& instr)
     case 0x0b: // SLTIU
     case 0x08: // ADDI
     case 0x0a: // SLTI
-        res = PSX_FMT("R{}, R{}, {:d}", instr.rs, instr.rt, (i16)instr.imm16);
+        res = PSX_FMT("R{}, R{}, {:d}", instr.rt, instr.rs, (i16)instr.imm16);
         break;
     case 0x0c: // ANDI
     case 0x0d: // ORI
     case 0x0e: // XORI
-        res = PSX_FMT("R{}, R{}, 0x{:04x}", instr.rs, instr.rt, instr.imm16);
+        res = PSX_FMT("R{}, R{}, 0x{:04x}", instr.rt, instr.rs, instr.imm16);
         break;
     // load imm
     case 0x0f: // LUI
@@ -478,15 +478,15 @@ static u32 primOpAsm(u32 op, const std::vector<std::string>& tokens)
     case 0x0b: // SLTIU
     case 0x08: // ADDI
     case 0x0a: // SLTI
-        // FORM: ADDIU rs, rt, imm16
-        // rs
-        PSX_ASSERT(tokens.at(1)[0] == 'R');
-        rs = (u32)std::stoi(tokens.at(1).substr(1), nullptr, 0);
-        raw_instr = SET_RS(raw_instr, rs);
+        // FORM: ADDIU rt, rs, imm16
         // rt
-        PSX_ASSERT(tokens.at(2)[0] == 'R');
-        rt = (u32)std::stoi(tokens.at(2).substr(1), nullptr, 0);
+        PSX_ASSERT(tokens.at(1)[0] == 'R');
+        rt = (u32)std::stoi(tokens.at(1).substr(1), nullptr, 0);
         raw_instr = SET_RT(raw_instr, rt);
+        // rs
+        PSX_ASSERT(tokens.at(2)[0] == 'R');
+        rs = (u32)std::stoi(tokens.at(2).substr(1), nullptr, 0);
+        raw_instr = SET_RS(raw_instr, rs);
         // imm16
         imm16 = (u32)std::stoi(tokens.at(3), nullptr, 0);
         raw_instr = SET_IMM16(raw_instr, imm16);
@@ -494,15 +494,15 @@ static u32 primOpAsm(u32 op, const std::vector<std::string>& tokens)
     case 0x0c: // ANDI
     case 0x0d: // ORI
     case 0x0e: // XORI
-        // FORM: ANDI rs, rt, imm16
-        // rs
-        PSX_ASSERT(tokens.at(1)[0] == 'R');
-        rs = (u32)std::stoi(tokens.at(1).substr(1), nullptr, 0);
-        raw_instr = SET_RS(raw_instr, rs);
+        // FORM: ANDI rt, rs, imm16
         // rt
-        PSX_ASSERT(tokens.at(2)[0] == 'R');
-        rt = (u32)std::stoi(tokens.at(2).substr(1), nullptr, 0);
+        PSX_ASSERT(tokens.at(1)[0] == 'R');
+        rt = (u32)std::stoi(tokens.at(1).substr(1), nullptr, 0);
         raw_instr = SET_RT(raw_instr, rt);
+        // rs
+        PSX_ASSERT(tokens.at(2)[0] == 'R');
+        rs = (u32)std::stoi(tokens.at(2).substr(1), nullptr, 0);
+        raw_instr = SET_RS(raw_instr, rs);
         // imm16
         imm16 = (u32)std::stoi(tokens.at(3), nullptr, 0);
         raw_instr = SET_IMM16(raw_instr, imm16);

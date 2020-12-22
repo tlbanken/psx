@@ -18,6 +18,7 @@
 
 #include "psxtest_mem.h"
 #include "psxtest_asm.h"
+#include "psxtest_cpu.h"
 
 #define TMAIN_INFO(msg) PSXLOG_INFO("Test-Main", msg)
 #define TMAIN_WARN(msg) PSXLOG_WARN("Test-Main", msg)
@@ -37,6 +38,10 @@ int main()
     // call asm/dasm tests
     TMAIN_INFO("Starting Asm/Dasm Tests");
     psxtest::AsmDasmTests();
+
+    // call cpu tests
+    TMAIN_INFO("Starting CPU Tests");
+    psxtest::CpuTests();
 
     return 0;
 }

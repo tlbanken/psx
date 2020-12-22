@@ -25,9 +25,10 @@ struct ASResult {
 };
 
 class AddressSpace {
-public:
+protected:
     // this is important to avoid -Wweak-vtables from clang
     virtual ~AddressSpace();
+public:
 
     // reads
     virtual ASResult Read8(u32 addr) = 0;

@@ -15,15 +15,20 @@
 #include "mem/bus.h"
 #include "cpu/asm/asm.h"
 #include "layer/imgui_layer.h"
+#include "cpu/cop0.h"
 
 
 class Cpu final : public ImGuiLayer::DbgModule {
 public:
-    Cpu(std::shared_ptr<Bus> bus);
+    Cpu(std::shared_ptr<Bus> bus, std::shared_ptr<SysControl> sysctrl);
 
     // functions
     void Step();
     void SetPC(u32 addr);
+    u32 GetPC();
+    u32 GetR(size_t r);
+    void ExecuteInstruction(u32 raw_instr);
+    void Reset();
 
     // DbgModule Functions
     void OnActive(bool *active);
@@ -35,6 +40,7 @@ private:
     std::map<u8, opfunc> m_bcondz_opmap;
 
     std::shared_ptr<Bus> m_bus;
+    std::shared_ptr<SysControl> m_cop0;
 
     // registers
     struct Registers {

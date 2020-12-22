@@ -117,8 +117,14 @@ static void asmTests()
 static void comboTests()
 {
     PSXLOG_INFO("Test-Asm/Dasm", "Starting Combo Tests");
-    LOG_COMBO("SLL   R0 R0 0");
-    LOG_COMBO("ADD   R2 R0 R1");
+    LOG_COMBO("ADDI R1 R0 13");
+    LOG_COMBO("ADDIU R1 R0 10");
+    LOG_COMBO("SLTI R1 R0 1");
+    LOG_COMBO("SLTIU R1 R0 1");
+    LOG_COMBO("ANDI R3 R10 0x1");
+    LOG_COMBO("ORI R2 R13 0xa2");
+    LOG_COMBO("XORI R4 R3 0xbe");
+    LOG_COMBO("LUI R2 0xbefe");
 }
 
 namespace psxtest {

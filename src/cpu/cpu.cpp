@@ -19,8 +19,8 @@
 #define CPU_ERROR(msg) PSXLOG_ERROR("CPU", msg)
 
 // simple constructor
-Cpu::Cpu(std::shared_ptr<Bus> bus)
-    : m_bus(bus)
+Cpu::Cpu(std::shared_ptr<Bus> bus, std::shared_ptr<SysControl> sysctrl)
+    : m_bus(bus), m_cop0(sysctrl)
 {
     CPU_INFO("Initializing CPU");
     buildOpMaps();
@@ -34,11 +34,8 @@ void Cpu::Step()
     // fetch instruction
     u32 raw_instr = m_bus->Read32(m_regs.pc);
 
-    // decode
-    Asm::Instruction instr = Asm::DecodeRawInstr(raw_instr);
-
     // execute
-    (this->*m_prim_opmap[instr.op])(instr);
+    ExecuteInstruction(raw_instr);
 
     // increment pc
     m_regs.pc += 4;
@@ -48,11 +45,48 @@ void Cpu::Step()
 }
 
 /*
+ * Resets the state of the CPU.
+ */
+void Cpu::Reset()
+{
+    Registers new_regs;
+    m_regs = new_regs;
+}
+
+/*
  * Set the cpu's program counter to the specified address.
  */
 void Cpu::SetPC(u32 addr)
 {
     m_regs.pc = addr;
+}
+
+/*
+ * Return the current value of the program counter.
+ */
+u32 Cpu::GetPC()
+{
+    return m_regs.pc;
+}
+
+/*
+ * Get the current value stored in Register r.
+ */
+u32 Cpu::GetR(size_t r)
+{
+    PSX_ASSERT(r < 32);
+    return m_regs.r[r];
+}
+
+/*
+ * Executes a given instruction. This will change the state of the CPU.
+ */
+void Cpu::ExecuteInstruction(u32 raw_instr)
+{
+    // decode
+    Asm::Instruction instr = Asm::DecodeRawInstr(raw_instr);
+    // execute
+    (this->*m_prim_opmap[instr.op])(instr);
 }
 
 
@@ -333,7 +367,6 @@ void Cpu::BadOp(const Asm::Instruction& instr)
 {
     CPU_WARN(PSX_FMT("Unknown CPU instruction: op[0x{:02}] funct[0x{:02}] bcondz[0x{:02x}]", instr.op, instr.funct, instr.bcondz_op));
     PSX_ASSERT(0);
-    (void) instr;
 }
 
 /*
@@ -353,53 +386,137 @@ void Cpu::Break(const Asm::Instruction& instr)
 //================================================
 // Computational Instructions
 //================================================
+
+// *** Helpers ***
+/*
+ * Sign-extends a given u16 to a u32.
+ */
+static inline u32 signExtendTo32(u16 val16)
+{
+    bool neg = (val16 & 0x8000) != 0;
+    u32 val32 = val16 | (neg ? 0xffff'0000 : 0x0000'0000);
+    return val32;
+}
+
+/*
+ * Return true if the resulting operation resulted in overflow.
+ */
+static inline bool overflowed(u32 res, u32 x, u32 y)
+{
+    return (~(x ^ y) & (x ^ y ^ res)) & 0x8000'0000;
+}
+
+/*
+ * Transform into Two's Complement (for subtraction by adding).
+ */
+static inline u32 twosComplement(u32 val)
+{
+    return ~val + 1;
+}
+
 // *** Immediate ALU Ops ***
+/*
+ * opcode = 0x08
+ * Format: ADDI rt, rs, (sign-extended)imm16
+ * Add rs to imm16 and store in rt. TRAP on Two's-complement overflow.
+ */
 void Cpu::Addi(const Asm::Instruction& instr)
 {
-    PSX_ASSERT(0);
-    (void) instr;
+    u32 signed_imm32 = signExtendTo32(instr.imm16);
+    u32 rs = m_regs.r[instr.rs];
+    u32 res = signed_imm32 + rs;
+    if (overflowed(res, signed_imm32, rs)) {
+        // TRAP!
+        Exception ex;
+        ex.type = Exception::Type::Overflow;
+        m_cop0->RaiseException(ex);
+    } else {
+        m_regs.r[instr.rt] = res;
+    }
 }
 
+/*
+ * opcode = 0x09
+ * Format: ADDIU rt, rs, (sign-extended)imm16
+ * Add rs to imm16 and store in rt. Do NOT TRAP on Two's-complement overflow.
+ */
 void Cpu::Addiu(const Asm::Instruction& instr)
 {
-    PSX_ASSERT(0);
-    (void) instr;
+    u32 signed_imm32 = signExtendTo32(instr.imm16);
+    m_regs.r[instr.rt] = signed_imm32 + m_regs.r[instr.rs];
 }
 
+/*
+ * opcode = 0x0a
+ * Format: rt, rs, (sign-extended)imm16
+ * Check if rs is less than imm16. TRAP on overflow.
+ */
 void Cpu::Slti(const Asm::Instruction& instr)
 {
-    PSX_ASSERT(0);
-    (void) instr;
+    u32 signed_imm32 = signExtendTo32(instr.imm16);
+    u32 rs = m_regs.r[instr.rs];
+    u32 twos = twosComplement(signed_imm32);
+    u32 res =  rs + twos;
+    if (overflowed(res, rs, twos)) {
+        // TRAP!
+        Exception ex;
+        ex.type = Exception::Type::Overflow;
+        m_cop0->RaiseException(ex);
+    } else {
+        m_regs.r[instr.rt] = res & 0x8000'0000 ? 1 : 0;
+    }
 }
 
+/*
+ * opcode = 0x0b
+ * Format: rt, rs, (sign-extended)imm16
+ * Check if rs is less than imm16. Do NOT TRAP on overflow.
+ */
 void Cpu::Sltiu(const Asm::Instruction& instr)
 {
-    PSX_ASSERT(0);
-    (void) instr;
+    u32 signed_imm32 = signExtendTo32(instr.imm16);
+    u32 res = m_regs.r[instr.rs] + twosComplement(signed_imm32);
+    m_regs.r[instr.rt] = res & 0x8000'0000 ? 1 : 0;
 }
 
+/*
+ * opcode = 0x0c
+ * Format: rt, rs, (zero-extended)imm16
+ * AND rs and imm16
+ */
 void Cpu::Andi(const Asm::Instruction& instr)
 {
-    PSX_ASSERT(0);
-    (void) instr;
+    m_regs.r[instr.rt] = m_regs.r[instr.rs] & instr.imm16;
 }
 
+/*
+ * opcode = 0x0d
+ * Format: rt, rs, (zero-extended)imm16
+ * OR rs and imm16
+ */
 void Cpu::Ori(const Asm::Instruction& instr)
 {
-    PSX_ASSERT(0);
-    (void) instr;
+    m_regs.r[instr.rt] = m_regs.r[instr.rs] | instr.imm16;
 }
 
+/*
+ * opcode = 0x0e
+ * Format: rt, rs, (zero-extended)imm16
+ * XOR rs and imm16
+ */
 void Cpu::Xori(const Asm::Instruction& instr)
 {
-    PSX_ASSERT(0);
-    (void) instr;
+    m_regs.r[instr.rt] = m_regs.r[instr.rs] ^ instr.imm16;
 }
 
+/*
+ * opcode = 0x0f
+ * Format: rt, (zero-extended)imm16
+ * Load imm16 into the upper 16 bits of rt.
+ */
 void Cpu::Lui(const Asm::Instruction& instr)
 {
-    PSX_ASSERT(0);
-    (void) instr;
+    m_regs.r[instr.rt] = (u32) (instr.imm16 << 16);
 }
 
 // *** Three Operand Register-Type Ops ***
