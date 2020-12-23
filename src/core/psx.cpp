@@ -30,10 +30,6 @@ Psx::Psx()
 {
     PSX_INFO("Initializing the PSX");
 
-    // System Control Cop
-    PSX_INFO("Initializing System Control Coprocessor");
-    std::shared_ptr<SysControl> cop0(new SysControl());
-
     // Bus
     PSX_INFO("Initializing Bus");
     m_bus = std::shared_ptr<Bus>(new Bus());
@@ -47,8 +43,8 @@ Psx::Psx()
 
     // CPU
     PSX_INFO("Initializing CPU");
-    m_cpu = std::shared_ptr<Cpu>(new Cpu(m_bus, cop0));
-    // add to imgui
+    m_cpu = std::shared_ptr<Cpu>(new Cpu(m_bus));
+    // add to imgui sys control cop
     m_imgui_layer.AddDbgModule(m_cpu);
 }
 

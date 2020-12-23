@@ -19,8 +19,8 @@
 #define CPU_ERROR(msg) PSXLOG_ERROR("CPU", msg)
 
 // simple constructor
-Cpu::Cpu(std::shared_ptr<Bus> bus, std::shared_ptr<SysControl> sysctrl)
-    : m_bus(bus), m_cop0(sysctrl)
+Cpu::Cpu(std::shared_ptr<Bus> bus)
+    : m_bus(bus)
 {
     CPU_INFO("Initializing CPU");
     buildOpMaps();
@@ -49,8 +49,13 @@ void Cpu::Step()
  */
 void Cpu::Reset()
 {
+    CPU_INFO("Resetting state");
+    // reset registers
     Registers new_regs;
     m_regs = new_regs;
+    // reset cop0
+    class Cop0 new_cop0;
+    m_cop0 = new_cop0;
 }
 
 /*
@@ -429,7 +434,7 @@ void Cpu::Addi(const Asm::Instruction& instr)
         // TRAP!
         Exception ex;
         ex.type = Exception::Type::Overflow;
-        m_cop0->RaiseException(ex);
+        m_cop0.RaiseException(ex);
     } else {
         m_regs.r[instr.rt] = res;
     }
@@ -461,7 +466,7 @@ void Cpu::Slti(const Asm::Instruction& instr)
         // TRAP!
         Exception ex;
         ex.type = Exception::Type::Overflow;
-        m_cop0->RaiseException(ex);
+        m_cop0.RaiseException(ex);
     } else {
         m_regs.r[instr.rt] = res & 0x8000'0000 ? 1 : 0;
     }

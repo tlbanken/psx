@@ -24,9 +24,8 @@ static void aluiTests()
 {
     TCPU_INFO("Starting ALU Immediate Tests");
     // setup hardware
-    std::shared_ptr<SysControl> cop0;
     std::shared_ptr<Bus> bus;
-    Cpu cpu(bus, cop0);
+    Cpu cpu(bus);
 
     std::string instr;
     //========================
