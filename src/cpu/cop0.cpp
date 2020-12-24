@@ -37,7 +37,7 @@ void Cpu::Cop0::RaiseException(const Exception& ex)
     m_bad_vaddr = ex.badv;
 
     // update epc
-    m_epc = m_cpu->GetPC();
+    m_epc = m_cpu.GetPC();
     if (m_cause.ex_type != Exception::Type::Interrupt && m_cause.branch_delay) {
         COP0_WARN("Branch Delay Exception! Did anything break??");
         // unsure if this is correct?
@@ -46,6 +46,17 @@ void Cpu::Cop0::RaiseException(const Exception& ex)
 
     COP0_WARN("Exception Handler not fully implemented!");
     COP0_INFO(FmtLastException());
+}
+
+/*
+ * Reset the state of the coprocessor.
+ */
+void Cpu::Cop0::Reset()
+{
+    CauseReg new_cr;
+    m_cause = new_cr;
+    m_epc = 0;
+    m_bad_vaddr = 0;
 }
 
 /*

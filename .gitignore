@@ -1,6 +1,7 @@
 .vscode
 manuals
 build
+games
 **/*.log
 **/*.dump
 extern/include/fmt/*

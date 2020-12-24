@@ -20,7 +20,7 @@
 
 // simple constructor
 Cpu::Cpu(std::shared_ptr<Bus> bus)
-    : m_bus(bus)
+    : m_bus(bus), m_cop0(*this)
 {
     CPU_INFO("Initializing CPU");
     buildOpMaps();
@@ -54,8 +54,7 @@ void Cpu::Reset()
     Registers new_regs;
     m_regs = new_regs;
     // reset cop0
-    class Cop0 new_cop0;
-    m_cop0 = new_cop0;
+    m_cop0.Reset();
 }
 
 /*
@@ -63,6 +62,7 @@ void Cpu::Reset()
  */
 void Cpu::SetPC(u32 addr)
 {
+    CPU_WARN(PSX_FMT("Forcing PC to 0x{:08x}", addr));
     m_regs.pc = addr;
 }
 
@@ -81,6 +81,16 @@ u32 Cpu::GetR(size_t r)
 {
     PSX_ASSERT(r < 32);
     return m_regs.r[r];
+}
+
+/*
+ * Set the chosen register to the chosen value.
+ */
+void Cpu::SetR(size_t r, u32 val)
+{
+    CPU_WARN(PSX_FMT("Forcing R{} to {}", r, val));
+    PSX_ASSERT(r < 32);
+    m_regs.r[r] = val;
 }
 
 /*
@@ -408,7 +418,7 @@ static inline u32 signExtendTo32(u16 val16)
  */
 static inline bool overflowed(u32 res, u32 x, u32 y)
 {
-    return (~(x ^ y) & (x ^ y ^ res)) & 0x8000'0000;
+    return (~(x ^ y) & (x ^ res)) & 0x8000'0000;
 }
 
 /*
@@ -453,7 +463,7 @@ void Cpu::Addiu(const Asm::Instruction& instr)
 
 /*
  * opcode = 0x0a
- * Format: rt, rs, (sign-extended)imm16
+ * Format: SLTI rt, rs, (sign-extended)imm16
  * Check if rs is less than imm16. TRAP on overflow.
  */
 void Cpu::Slti(const Asm::Instruction& instr)
@@ -474,7 +484,7 @@ void Cpu::Slti(const Asm::Instruction& instr)
 
 /*
  * opcode = 0x0b
- * Format: rt, rs, (sign-extended)imm16
+ * Format: SLTIU rt, rs, (sign-extended)imm16
  * Check if rs is less than imm16. Do NOT TRAP on overflow.
  */
 void Cpu::Sltiu(const Asm::Instruction& instr)
@@ -486,7 +496,7 @@ void Cpu::Sltiu(const Asm::Instruction& instr)
 
 /*
  * opcode = 0x0c
- * Format: rt, rs, (zero-extended)imm16
+ * Format: ANDI rt, rs, (zero-extended)imm16
  * AND rs and imm16
  */
 void Cpu::Andi(const Asm::Instruction& instr)
@@ -496,7 +506,7 @@ void Cpu::Andi(const Asm::Instruction& instr)
 
 /*
  * opcode = 0x0d
- * Format: rt, rs, (zero-extended)imm16
+ * Format: ORI rt, rs, (zero-extended)imm16
  * OR rs and imm16
  */
 void Cpu::Ori(const Asm::Instruction& instr)
@@ -506,7 +516,7 @@ void Cpu::Ori(const Asm::Instruction& instr)
 
 /*
  * opcode = 0x0e
- * Format: rt, rs, (zero-extended)imm16
+ * Format: XORI rt, rs, (zero-extended)imm16
  * XOR rs and imm16
  */
 void Cpu::Xori(const Asm::Instruction& instr)
@@ -516,7 +526,7 @@ void Cpu::Xori(const Asm::Instruction& instr)
 
 /*
  * opcode = 0x0f
- * Format: rt, (zero-extended)imm16
+ * Format: LUI rt, (zero-extended)imm16
  * Load imm16 into the upper 16 bits of rt.
  */
 void Cpu::Lui(const Asm::Instruction& instr)
@@ -525,64 +535,136 @@ void Cpu::Lui(const Asm::Instruction& instr)
 }
 
 // *** Three Operand Register-Type Ops ***
+/*
+ * funct = 0x20
+ * Format: ADD rd, rs, rt
+ * Add rs to rt and store in rd. TRAP on overflow.
+ */
 void Cpu::Add(const Asm::Instruction& instr)
 {
-    PSX_ASSERT(0);
-    (void) instr;
+    u32 rt = m_regs.r[instr.rt];
+    u32 rs = m_regs.r[instr.rs];
+    u32 res = rs + rt;
+    if (overflowed(res, rt, rs)) {
+        // TRAP!
+        Exception ex;
+        ex.type = Exception::Type::Overflow;
+        m_cop0.RaiseException(ex);
+    } else {
+        m_regs.r[instr.rd] = res;
+    }
 }
 
+/*
+ * funct = 0x21
+ * Format: ADDU rd, rs, rt
+ * Add rs to rt and store in rd. Do NOT TRAP on overflow.
+ */
 void Cpu::Addu(const Asm::Instruction& instr)
 {
-    PSX_ASSERT(0);
-    (void) instr;
+    m_regs.r[instr.rd] = m_regs.r[instr.rs] + m_regs.r[instr.rt];
 }
 
+/*
+ * funct = 0x22
+ * Format: SUB rd, rs, rt
+ * Sub rt from rs and store in rd. TRAP on overflow.
+ */
 void Cpu::Sub(const Asm::Instruction& instr)
 {
-    PSX_ASSERT(0);
-    (void) instr;
+    u32 rt = twosComplement(m_regs.r[instr.rt]);
+    u32 rs = m_regs.r[instr.rs];
+    u32 res = rs + rt;
+    if (overflowed(res, rt, rs)) {
+        // TRAP!
+        Exception ex;
+        ex.type = Exception::Type::Overflow;
+        m_cop0.RaiseException(ex);
+    } else {
+        m_regs.r[instr.rd] = res;
+    }
 }
 
+/*
+ * funct = 0x23
+ * Format: SUBU rd, rs, rt
+ * Sub rt from rs and store in rd. Do NOT TRAP on overflow.
+ */
 void Cpu::Subu(const Asm::Instruction& instr)
 {
-    PSX_ASSERT(0);
-    (void) instr;
+    m_regs.r[instr.rd] = m_regs.r[instr.rs] + twosComplement(m_regs.r[instr.rt]);
 }
 
+/*
+ * funct = 0x2a
+ * Format: SLT rd, rs, rt
+ * Set rd to 1 if rs less than rt. TRAP on overflow.
+ */
 void Cpu::Slt(const Asm::Instruction& instr)
 {
-    PSX_ASSERT(0);
-    (void) instr;
+    u32 rt = m_regs.r[instr.rt];
+    u32 rs = m_regs.r[instr.rs];
+    u32 twos = twosComplement(rt);
+    u32 res =  rs + twos;
+    if (overflowed(res, rs, twos)) {
+        // TRAP!
+        Exception ex;
+        ex.type = Exception::Type::Overflow;
+        m_cop0.RaiseException(ex);
+    } else {
+        m_regs.r[instr.rd] = res & 0x8000'0000 ? 1 : 0;
+    }
 }
 
+/*
+ * funct = 0x2b
+ * Format: SLTU rd, rs, rt
+ * Set rd to 1 if rs less than rt.
+ */
 void Cpu::Sltu(const Asm::Instruction& instr)
 {
-    PSX_ASSERT(0);
-    (void) instr;
+    u32 res = m_regs.r[instr.rs] + twosComplement(m_regs.r[instr.rt]);
+    m_regs.r[instr.rd] = res & 0x8000'0000 ? 1 : 0;
 }
 
+/*
+ * funct = 0x24
+ * Format: AND rd, rs, rt
+ * AND rs and rt, store in rd.
+ */
 void Cpu::And(const Asm::Instruction& instr)
 {
-    PSX_ASSERT(0);
-    (void) instr;
+    m_regs.r[instr.rd] = m_regs.r[instr.rs] & m_regs.r[instr.rt];
 }
 
+/*
+ * funct = 0x25
+ * Format: OR rd, rs, rt
+ * OR rs and rt, store in rd.
+ */
 void Cpu::Or(const Asm::Instruction& instr)
 {
-    PSX_ASSERT(0);
-    (void) instr;
+    m_regs.r[instr.rd] = m_regs.r[instr.rs] | m_regs.r[instr.rt];
 }
 
+/*
+ * funct = 0x26
+ * Format: XOR rd, rs, rt
+ * XOR rs and rt, store in rd.
+ */
 void Cpu::Xor(const Asm::Instruction& instr)
 {
-    PSX_ASSERT(0);
-    (void) instr;
+    m_regs.r[instr.rd] = m_regs.r[instr.rs] ^ m_regs.r[instr.rt];
 }
 
+/*
+ * funct = 0x27
+ * Format: NOR rd, rs, rt
+ * NOR rs and rt, store in rd.
+ */
 void Cpu::Nor(const Asm::Instruction& instr)
 {
-    PSX_ASSERT(0);
-    (void) instr;
+    m_regs.r[instr.rd] = ~(m_regs.r[instr.rs] | m_regs.r[instr.rt]);
 }
 
 // *** Shift Operations ***

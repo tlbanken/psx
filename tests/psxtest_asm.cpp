@@ -97,6 +97,7 @@ static void asmTests()
     a0a60000 -> sb $6,0($5)
     */
     PSXLOG_INFO("Test-Asm/Dasm", "Starting Assembler Tests");
+    LOG_ASM("SLT R5 R1 R0");
     LOG_ASM("lui    R4 0x8000");
     LOG_ASM("OrI R4 R4 0x4000");
     LOG_ASM("LUI   R5 0xb400");
@@ -125,6 +126,11 @@ static void comboTests()
     LOG_COMBO("ORI R2 R13 0xa2");
     LOG_COMBO("XORI R4 R3 0xbe");
     LOG_COMBO("LUI R2 0xbefe");
+    LOG_COMBO("ADD R4 R3 R1");
+    LOG_COMBO("ADDU R4 R3 R1");
+    LOG_COMBO("SUB R3 R3 R1");
+    LOG_COMBO("SUBU R4 R3 R10");
+    LOG_COMBO("SLT R5 R1 R0");
 }
 
 namespace psxtest {

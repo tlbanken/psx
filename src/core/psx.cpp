@@ -17,7 +17,6 @@
 #include "mem/bus.h"
 #include "mem/ram.h"
 #include "cpu/cpu.h"
-#include "cpu/cop0.h"
 #include "layer/imgui_layer.h"
 #include "core/globals.h"
 

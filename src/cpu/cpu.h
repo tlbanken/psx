@@ -45,6 +45,7 @@ public:
     void SetPC(u32 addr);
     u32 GetPC();
     u32 GetR(size_t r);
+    void SetR(size_t r, u32 val);
     void ExecuteInstruction(u32 raw_instr);
     void Reset();
 
@@ -79,7 +80,9 @@ private:
     // COP0
     class Cop0 {
     public:
+        Cop0(Cpu& cpu) : m_cpu(cpu){}
         void RaiseException(const Exception& ex);
+        void Reset();
         std::string FmtLastException();
     private:
         // Registers
@@ -91,9 +94,7 @@ private:
         } m_cause; // r13
         u32 m_epc = 0;
         u32 m_bad_vaddr = 0;
-
-        // cpu handle
-        std::shared_ptr<Cpu> m_cpu;
+        Cpu& m_cpu;
     } m_cop0;
     //-----------------------
 };
