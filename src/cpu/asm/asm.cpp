@@ -375,10 +375,12 @@ static std::string secOpDasm(const Asm::Instruction& instr)
     case 0x00: // SLL
     case 0x02: // SRL
     case 0x03: // SRA
+        res = PSX_FMT("R{}, R{}, {:d}", instr.rd, instr.rt, instr.shamt);
+        break;
     case 0x04: // SLLV
     case 0x06: // SRLV
     case 0x07: // SRAV
-        res = PSX_FMT("R{}, R{}, {:d}", instr.rd, instr.rt, instr.shamt);
+        res = PSX_FMT("R{}, R{}, R{}", instr.rd, instr.rs, instr.rt);
         break;
     // Jump Registers
     case 0x08: // JR
@@ -599,9 +601,6 @@ static u32 secOpAsm(u32 funct, const std::vector<std::string>& tokens)
     case 0x00: // SLL
     case 0x02: // SRL
     case 0x03: // SRA
-    case 0x04: // SLLV
-    case 0x06: // SRLV
-    case 0x07: // SRAV
         // FORM: SLL rd rt shamt
         // rd
         PSX_ASSERT(tokens.at(1)[0] == 'R');
@@ -614,6 +613,23 @@ static u32 secOpAsm(u32 funct, const std::vector<std::string>& tokens)
         // shamt
         shamt = (u32)std::stoi(tokens.at(3), nullptr, 0);
         raw_instr = SET_SHAMT(raw_instr, shamt);
+        break;
+    case 0x04: // SLLV
+    case 0x06: // SRLV
+    case 0x07: // SRAV
+        // FORM: SLL rd rt rs
+        // rd
+        PSX_ASSERT(tokens.at(1)[0] == 'R');
+        rd = (u32)std::stoi(tokens.at(1).substr(1), nullptr, 0);
+        raw_instr = SET_RD(raw_instr, rd);
+        // rt
+        PSX_ASSERT(tokens.at(2)[0] == 'R');
+        rt = (u32)std::stoi(tokens.at(2).substr(1), nullptr, 0);
+        raw_instr = SET_RT(raw_instr, rt);
+        // rs
+        PSX_ASSERT(tokens.at(3)[0] == 'R');
+        rs = (u32)std::stoi(tokens.at(3).substr(1), nullptr, 0);
+        raw_instr = SET_RS(raw_instr, rs);
         break;
     // Jump Registers
     case 0x08: // JR
@@ -657,7 +673,6 @@ static u32 secOpAsm(u32 funct, const std::vector<std::string>& tokens)
     case 0x19: // MULTU
     case 0x1a: // DIV
     case 0x1b: // DIVU
-        // res = PSX_FMT("R{}, R{}", instr.rs, instr.rt);
         // FORM: MULT rs rt
         // rs
         PSX_ASSERT(tokens.at(1)[0] == 'R');
@@ -679,7 +694,6 @@ static u32 secOpAsm(u32 funct, const std::vector<std::string>& tokens)
     case 0x27: // NOR
     case 0x2a: // SLT
     case 0x2b: // SLTU
-        // res = PSX_FMT("R{}, R{}, R{}", instr.rd, instr.rs, instr.rt);
         // FORM: ADD rd rs rt
         // rd
         PSX_ASSERT(tokens.at(1)[0] == 'R');

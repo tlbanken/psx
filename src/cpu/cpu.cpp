@@ -24,6 +24,10 @@ Cpu::Cpu(std::shared_ptr<Bus> bus)
 {
     CPU_INFO("Initializing CPU");
     buildOpMaps();
+    // Flush one instruction (nop)
+    PSX_ASSERT(m_bus.get() != nullptr);
+    Step();
+    m_regs.pc = 0xbfc0'0000; // beginning of BIOS
 }
 
 /*
@@ -31,14 +35,16 @@ Cpu::Cpu(std::shared_ptr<Bus> bus)
  */
 void Cpu::Step()
 {
-    // fetch instruction
-    u32 raw_instr = m_bus->Read32(m_regs.pc);
+    // we execute "one instruction ahead" to handle branch delays
+    u32 cur_instr = m_next_instr;
+    m_last_pc = m_regs.pc;
+
+    // fetch next instruction
+    m_next_instr = m_bus->Read32(m_regs.pc);
+    m_regs.pc += 4;
 
     // execute
-    ExecuteInstruction(raw_instr);
-
-    // increment pc
-    m_regs.pc += 4;
+    ExecuteInstruction(cur_instr);
 
     // zero register should always be zero
     m_regs.r[0] = 0;
@@ -50,11 +56,16 @@ void Cpu::Step()
 void Cpu::Reset()
 {
     CPU_INFO("Resetting state");
+    // reset cop0
+    m_cop0.Reset();
+    // reset next instr
+    m_next_instr = 0x0000'0000; // nop
+    m_last_pc = 0;
+    // Flush one instruction (nop)
+    Step();
     // reset registers
     Registers new_regs;
     m_regs = new_regs;
-    // reset cop0
-    m_cop0.Reset();
 }
 
 /*
@@ -62,8 +73,12 @@ void Cpu::Reset()
  */
 void Cpu::SetPC(u32 addr)
 {
-    CPU_WARN(PSX_FMT("Forcing PC to 0x{:08x}", addr));
+    CPU_WARN(PSX_FMT("Forcing PC to 0x{:08x}, injecting NOP for branch delay support", addr));
     m_regs.pc = addr;
+    m_next_instr = 0x0000'0000; // nop
+    m_last_pc = 0;
+    // flush nop instr
+    Step();
 }
 
 /*
@@ -148,7 +163,8 @@ void Cpu::OnActive(bool *active)
     }
     //-------------------------------------
 
-    u32 prePC = pc_region > m_regs.pc ? 0 : m_regs.pc - pc_region;
+    u32 pc = m_last_pc;
+    u32 prePC = pc_region > pc ? 0 : pc - pc_region;
     u32 postPC = m_regs.pc + pc_region;
 
 
@@ -162,8 +178,8 @@ void Cpu::OnActive(bool *active)
     ImGui::TextUnformatted("Instruction Disassembly");
     for (u32 addr = prePC; addr <= postPC; addr += 4) {
         u32 instr = m_bus->Read32(addr);
-        if (addr == m_regs.pc) {
-            ImGui::TextUnformatted(PSX_FMT("{:08x}  | {}", addr, Asm::DasmInstruction(instr)).data());
+        if (addr == pc) {
+            ImGui::TextUnformatted(PSX_FMT("{:08x}  | {}", pc, Asm::DasmInstruction(instr)).data());
         } else {
             ImGui::TextColored(ImVec4(0.6f,0.6f,0.6f,1), "%08x  | %s", addr, 
                 Asm::DasmInstruction(instr).data());
@@ -235,7 +251,7 @@ void Cpu::OnActive(bool *active)
     ImGui::BeginGroup();
         ImGui::TextUnformatted(PSX_FMT("HI = {:<26}", PSX_FMT("{0:#010x} ({0})", m_regs.hi)).data());
         ImGui::TextUnformatted(PSX_FMT("LO = {:<26}", PSX_FMT("{0:#010x} ({0})", m_regs.lo)).data());
-        ImGui::TextUnformatted(PSX_FMT("PC = 0x{:08x}", m_regs.pc).data());
+        ImGui::TextUnformatted(PSX_FMT("PC = 0x{:08x}", m_last_pc).data());
     ImGui::EndGroup();
 
     // end child
@@ -431,6 +447,7 @@ static inline u32 twosComplement(u32 val)
 
 // *** Immediate ALU Ops ***
 /*
+ * Addition Immediate
  * opcode = 0x08
  * Format: ADDI rt, rs, (sign-extended)imm16
  * Add rs to imm16 and store in rt. TRAP on Two's-complement overflow.
@@ -451,6 +468,7 @@ void Cpu::Addi(const Asm::Instruction& instr)
 }
 
 /*
+ * Addition Immediate (no trap)
  * opcode = 0x09
  * Format: ADDIU rt, rs, (sign-extended)imm16
  * Add rs to imm16 and store in rt. Do NOT TRAP on Two's-complement overflow.
@@ -462,6 +480,7 @@ void Cpu::Addiu(const Asm::Instruction& instr)
 }
 
 /*
+ * Set on Less Than Immediate
  * opcode = 0x0a
  * Format: SLTI rt, rs, (sign-extended)imm16
  * Check if rs is less than imm16. TRAP on overflow.
@@ -483,6 +502,7 @@ void Cpu::Slti(const Asm::Instruction& instr)
 }
 
 /*
+ * Set on Less Than Immediate (no trap)
  * opcode = 0x0b
  * Format: SLTIU rt, rs, (sign-extended)imm16
  * Check if rs is less than imm16. Do NOT TRAP on overflow.
@@ -495,6 +515,7 @@ void Cpu::Sltiu(const Asm::Instruction& instr)
 }
 
 /*
+ * Bitwise AND Immediate
  * opcode = 0x0c
  * Format: ANDI rt, rs, (zero-extended)imm16
  * AND rs and imm16
@@ -505,6 +526,7 @@ void Cpu::Andi(const Asm::Instruction& instr)
 }
 
 /*
+ * Bitwise OR Immediate
  * opcode = 0x0d
  * Format: ORI rt, rs, (zero-extended)imm16
  * OR rs and imm16
@@ -515,6 +537,7 @@ void Cpu::Ori(const Asm::Instruction& instr)
 }
 
 /*
+ * Bitwise XOR Immediate
  * opcode = 0x0e
  * Format: XORI rt, rs, (zero-extended)imm16
  * XOR rs and imm16
@@ -525,6 +548,7 @@ void Cpu::Xori(const Asm::Instruction& instr)
 }
 
 /*
+ * Load Upper Immediate
  * opcode = 0x0f
  * Format: LUI rt, (zero-extended)imm16
  * Load imm16 into the upper 16 bits of rt.
@@ -536,6 +560,7 @@ void Cpu::Lui(const Asm::Instruction& instr)
 
 // *** Three Operand Register-Type Ops ***
 /*
+ * Addition
  * funct = 0x20
  * Format: ADD rd, rs, rt
  * Add rs to rt and store in rd. TRAP on overflow.
@@ -556,6 +581,7 @@ void Cpu::Add(const Asm::Instruction& instr)
 }
 
 /*
+ * Addition (no trap)
  * funct = 0x21
  * Format: ADDU rd, rs, rt
  * Add rs to rt and store in rd. Do NOT TRAP on overflow.
@@ -566,6 +592,7 @@ void Cpu::Addu(const Asm::Instruction& instr)
 }
 
 /*
+ * Subtraction
  * funct = 0x22
  * Format: SUB rd, rs, rt
  * Sub rt from rs and store in rd. TRAP on overflow.
@@ -586,6 +613,7 @@ void Cpu::Sub(const Asm::Instruction& instr)
 }
 
 /*
+ * Subtraction (no trap)
  * funct = 0x23
  * Format: SUBU rd, rs, rt
  * Sub rt from rs and store in rd. Do NOT TRAP on overflow.
@@ -596,6 +624,7 @@ void Cpu::Subu(const Asm::Instruction& instr)
 }
 
 /*
+ * Set on Less Than
  * funct = 0x2a
  * Format: SLT rd, rs, rt
  * Set rd to 1 if rs less than rt. TRAP on overflow.
@@ -617,6 +646,7 @@ void Cpu::Slt(const Asm::Instruction& instr)
 }
 
 /*
+ * Set on Less Than (no trap)
  * funct = 0x2b
  * Format: SLTU rd, rs, rt
  * Set rd to 1 if rs less than rt.
@@ -628,6 +658,7 @@ void Cpu::Sltu(const Asm::Instruction& instr)
 }
 
 /*
+ * Bitwise AND
  * funct = 0x24
  * Format: AND rd, rs, rt
  * AND rs and rt, store in rd.
@@ -638,6 +669,7 @@ void Cpu::And(const Asm::Instruction& instr)
 }
 
 /*
+ * Bitwise OR
  * funct = 0x25
  * Format: OR rd, rs, rt
  * OR rs and rt, store in rd.
@@ -648,6 +680,7 @@ void Cpu::Or(const Asm::Instruction& instr)
 }
 
 /*
+ * Bitwise XOR
  * funct = 0x26
  * Format: XOR rd, rs, rt
  * XOR rs and rt, store in rd.
@@ -658,6 +691,7 @@ void Cpu::Xor(const Asm::Instruction& instr)
 }
 
 /*
+ * Bitwise NOR
  * funct = 0x27
  * Format: NOR rd, rs, rt
  * NOR rs and rt, store in rd.
@@ -668,40 +702,81 @@ void Cpu::Nor(const Asm::Instruction& instr)
 }
 
 // *** Shift Operations ***
+/*
+ * Shift Left Logical
+ * funct = 0x00
+ * Format: SLL rd, rt, shamt
+ * Shift rt left by shamt, inserting zeroes into low order bits. Store in rd.
+ */
 void Cpu::Sll(const Asm::Instruction& instr)
 {
-    PSX_ASSERT(0);
-    (void) instr;
+    m_regs.r[instr.rd] = m_regs.r[instr.rt] << instr.shamt;
 }
 
+/*
+ * Shift Right Logical
+ * funct = 0x02
+ * Format: SRL rd, rt, shamt
+ * Shift rt right by shamt, inserting zeroes into high order bits. Store in rd.
+ */
 void Cpu::Srl(const Asm::Instruction& instr)
 {
-    PSX_ASSERT(0);
-    (void) instr;
+    m_regs.r[instr.rd] = m_regs.r[instr.rt] >> instr.shamt;
 }
 
+/*
+ * Shift Right Arithmetic
+ * funct = 0x03
+ * Format: SRA rd, rt, shamt
+ * Shift rt right by shamt, keeping sign of highest order bit. Store in rd.
+ */
 void Cpu::Sra(const Asm::Instruction& instr)
 {
-    PSX_ASSERT(0);
-    (void) instr;
+    bool msb = (m_regs.r[instr.rt] & 0x8000'0000) != 0;
+    u32 upper_bits = (0xffff'ffff << (32 - instr.shamt));
+    m_regs.r[instr.rd] = m_regs.r[instr.rt] >> instr.shamt;
+    if (msb) {
+        m_regs.r[instr.rd] |= upper_bits;
+    }
 }
 
+/*
+ * Shift Left Logical Variable
+ * funct = 0x04
+ * Format: SLLV rd, rt, rs
+ * Shift rt left by rs, inserting zeroes into low order bits. Store in rd.
+ */
 void Cpu::Sllv(const Asm::Instruction& instr)
 {
-    PSX_ASSERT(0);
-    (void) instr;
+    m_regs.r[instr.rd] = m_regs.r[instr.rt] << m_regs.r[instr.rs];
 }
 
+/*
+ * Shift Right Logical Variable
+ * funct = 0x06
+ * Format: SRLV rd, rt, rs
+ * Shift rt Right by rs, inserting zeroes into high order bits. Store in rd.
+ */
 void Cpu::Srlv(const Asm::Instruction& instr)
 {
-    PSX_ASSERT(0);
-    (void) instr;
+    m_regs.r[instr.rd] = m_regs.r[instr.rt] >> m_regs.r[instr.rs];
 }
 
+/*
+ * Shift Right Arithmetic Variable
+ * funct = 0x07
+ * Format: SRAV rd, rt, rs
+ * Shift rt Right by rs, keeping sign of highest order bit. Store in rd.
+ */
 void Cpu::Srav(const Asm::Instruction& instr)
 {
-    PSX_ASSERT(0);
-    (void) instr;
+    bool msb = (m_regs.r[instr.rt] & 0x8000'0000) != 0;
+    u32 rs = m_regs.r[instr.rs] & 0x1f; // only 5 lsb
+    u32 upper_bits = (0xffff'ffff << (32 - rs));
+    m_regs.r[instr.rd] = m_regs.r[instr.rt] >> rs;
+    if (msb) {
+        m_regs.r[instr.rd] |= upper_bits;
+    }
 }
 
 // *** Multiply and Divide Operations ***

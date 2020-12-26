@@ -59,6 +59,8 @@ private:
     std::map<u8, opfunc> m_bcondz_opmap;
 
     std::shared_ptr<Bus> m_bus;
+    u32 m_next_instr = 0;
+    u32 m_last_pc = 0;
 
     // registers
     struct Registers {

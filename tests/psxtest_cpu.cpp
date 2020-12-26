@@ -23,7 +23,7 @@ static void aluiTests()
 {
     TCPU_INFO("Starting ALU Immediate Tests");
     // setup hardware
-    std::shared_ptr<Bus> bus;
+    std::shared_ptr<Bus> bus(new Bus());
     Cpu cpu(bus);
 
     std::string instr;
@@ -192,7 +192,7 @@ static void alurTests()
 {
     TCPU_INFO("Starting ALU R-Type Instruction Tests");
     // setup hardware
-    std::shared_ptr<Bus> bus;
+    std::shared_ptr<Bus> bus(new Bus);
     Cpu cpu(bus);
     
     std::string instr;
@@ -410,11 +410,142 @@ static void alurTests()
     assert(cpu.GetR(4) == 0xffff'ff00);
 }
 
+static void shiftTests()
+{
+    TCPU_INFO("Starting Shift Tests");
+    std::string instr;
+    // setup hardware
+    std::shared_ptr<Bus> bus(new Bus);
+    Cpu cpu(bus);
+
+    //========================
+    // SLL
+    //========================
+    cpu.Reset();
+    cpu.SetR(1, 1);
+    instr = "SLL R2, R1, 1";
+    TCPU_INFO(instr);
+    cpu.ExecuteInstruction(Asm::AsmInstruction(instr));
+    assert(cpu.GetR(2) == 2);
+    instr = "SLL R3, R2, 2";
+    TCPU_INFO(instr);
+    cpu.ExecuteInstruction(Asm::AsmInstruction(instr));
+    assert(cpu.GetR(3) == 8);
+    instr = "SLL R4, R3, 0";
+    TCPU_INFO(instr);
+    cpu.ExecuteInstruction(Asm::AsmInstruction(instr));
+    assert(cpu.GetR(4) == 8);
+
+    //========================
+    // SRL
+    //========================
+    cpu.Reset();
+    cpu.SetR(1, 8);
+    instr = "SRL R2, R1, 1";
+    TCPU_INFO(instr);
+    cpu.ExecuteInstruction(Asm::AsmInstruction(instr));
+    assert(cpu.GetR(2) == 4);
+    instr = "SRL R3, R2, 2";
+    TCPU_INFO(instr);
+    cpu.ExecuteInstruction(Asm::AsmInstruction(instr));
+    assert(cpu.GetR(3) == 1);
+    cpu.SetR(4, 0x8000'0000);
+    instr = "SRL R5, R4, 16";
+    TCPU_INFO(instr);
+    cpu.ExecuteInstruction(Asm::AsmInstruction(instr));
+    assert(cpu.GetR(5) == 0x0000'8000);
+
+    //========================
+    // SRA
+    //========================
+    cpu.Reset();
+    cpu.SetR(1, 8);
+    instr = "SRA R2, R1, 1";
+    TCPU_INFO(instr);
+    cpu.ExecuteInstruction(Asm::AsmInstruction(instr));
+    assert(cpu.GetR(2) == 4);
+    instr = "SRA R3, R2, 2";
+    TCPU_INFO(instr);
+    cpu.ExecuteInstruction(Asm::AsmInstruction(instr));
+    assert(cpu.GetR(3) == 1);
+    cpu.SetR(4, 0x8000'0000);
+    instr = "SRA R5, R4, 16";
+    TCPU_INFO(instr);
+    cpu.ExecuteInstruction(Asm::AsmInstruction(instr));
+    assert(cpu.GetR(5) == 0xffff'8000);
+
+    //========================
+    // SLLV
+    //========================
+    cpu.Reset();
+    cpu.SetR(1, 1);
+    cpu.SetR(10, 1);
+    instr = "SLLV R2, R1, R10";
+    TCPU_INFO(instr);
+    cpu.ExecuteInstruction(Asm::AsmInstruction(instr));
+    assert(cpu.GetR(2) == 2);
+    cpu.SetR(10, 2);
+    instr = "SLLV R3, R2, R10";
+    TCPU_INFO(instr);
+    cpu.ExecuteInstruction(Asm::AsmInstruction(instr));
+    assert(cpu.GetR(3) == 8);
+    cpu.SetR(10, 0);
+    instr = "SLLV R4, R3, R10";
+    TCPU_INFO(instr);
+    cpu.ExecuteInstruction(Asm::AsmInstruction(instr));
+    assert(cpu.GetR(4) == 8);
+
+    //========================
+    // SRLV
+    //========================
+    cpu.Reset();
+    cpu.SetR(1, 8);
+    cpu.SetR(10, 1);
+    instr = "SRLV R2, R1, R10";
+    TCPU_INFO(instr);
+    cpu.ExecuteInstruction(Asm::AsmInstruction(instr));
+    assert(cpu.GetR(2) == 4);
+    cpu.SetR(10, 2);
+    instr = "SRLV R3, R2, R10";
+    TCPU_INFO(instr);
+    cpu.ExecuteInstruction(Asm::AsmInstruction(instr));
+    assert(cpu.GetR(3) == 1);
+    cpu.SetR(4, 0x8000'0000);
+    cpu.SetR(10, 16);
+    instr = "SRLV R5, R4, R10";
+    TCPU_INFO(instr);
+    cpu.ExecuteInstruction(Asm::AsmInstruction(instr));
+    assert(cpu.GetR(5) == 0x0000'8000);
+
+    //========================
+    // SRAV
+    //========================
+    cpu.Reset();
+    cpu.SetR(1, 8);
+    cpu.SetR(10, 1);
+    instr = "SRAV R2, R1, R10";
+    TCPU_INFO(instr);
+    cpu.ExecuteInstruction(Asm::AsmInstruction(instr));
+    assert(cpu.GetR(2) == 4);
+    cpu.SetR(10, 2);
+    instr = "SRAV R3, R2, R10";
+    TCPU_INFO(instr);
+    cpu.ExecuteInstruction(Asm::AsmInstruction(instr));
+    assert(cpu.GetR(3) == 1);
+    cpu.SetR(4, 0x8000'0000);
+    cpu.SetR(10, 16);
+    instr = "SRAV R5, R4, R10";
+    TCPU_INFO(instr);
+    cpu.ExecuteInstruction(Asm::AsmInstruction(instr));
+    assert(cpu.GetR(5) == 0xffff'8000);
+}
+
 namespace psxtest {
     void CpuTests()
     {
         std::cout << PSX_FANCYTITLE("CPU TESTS");
         aluiTests();
         alurTests();
+        shiftTests();
     }
 }

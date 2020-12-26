@@ -54,11 +54,8 @@ void Psx::Run()
 {
     g_emu_state.paused = true;
     u32 pc = 0x0000'0100;
-    m_cpu->SetPC(pc);
     // write a little test program @ 0x0000'0100
-    m_bus->Write32(0x04234543, pc);
-    pc += 4;
-    m_bus->Write32(Asm::AsmInstruction("BLTZ    R2 5"), pc);
+    m_bus->Write32(Asm::AsmInstruction("ADDI    R2 R0 5"), pc);
     pc += 4;
     m_bus->Write32(Asm::AsmInstruction("SYSCALL"), pc);
     pc += 4;
@@ -66,6 +63,7 @@ void Psx::Run()
     pc += 4;
     m_bus->Write32(Asm::AsmInstruction("ADDI    R1 R0 23"), pc);
     pc += 4;
+    m_cpu->SetPC(0x100); // must set after writes
     while (!m_imgui_layer.ShouldStop()) {
         // gui update
         m_imgui_layer.OnUpdate();
