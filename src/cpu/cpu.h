@@ -46,6 +46,10 @@ public:
     u32 GetPC();
     u32 GetR(size_t r);
     void SetR(size_t r, u32 val);
+    u32 GetHI();
+    void SetHI(u32 val);
+    u32 GetLO();
+    void SetLO(u32 val);
     void ExecuteInstruction(u32 raw_instr);
     void Reset();
 
@@ -66,8 +70,8 @@ private:
     struct Registers {
         // special
         u32 pc = 0xbfc0'0000; // beginning of BIOS
-        u64 hi = 0;
-        u64 lo = 0;
+        u32 hi = 0;
+        u32 lo = 0;
         // general purpose
         u32 r[32] = {0};
     }m_regs;

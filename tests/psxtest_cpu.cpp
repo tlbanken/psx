@@ -21,7 +21,7 @@
 
 static void aluiTests()
 {
-    TCPU_INFO("Starting ALU Immediate Tests");
+    TCPU_INFO("** Starting ALU Immediate Tests");
     // setup hardware
     std::shared_ptr<Bus> bus(new Bus());
     Cpu cpu(bus);
@@ -190,7 +190,7 @@ static void aluiTests()
 
 static void alurTests()
 {
-    TCPU_INFO("Starting ALU R-Type Instruction Tests");
+    TCPU_INFO("** Starting ALU R-Type Instruction Tests");
     // setup hardware
     std::shared_ptr<Bus> bus(new Bus);
     Cpu cpu(bus);
@@ -412,7 +412,7 @@ static void alurTests()
 
 static void shiftTests()
 {
-    TCPU_INFO("Starting Shift Tests");
+    TCPU_INFO("** Starting Shift Tests");
     std::string instr;
     // setup hardware
     std::shared_ptr<Bus> bus(new Bus);
@@ -540,6 +540,186 @@ static void shiftTests()
     assert(cpu.GetR(5) == 0xffff'8000);
 }
 
+void hiloTests()
+{
+    TCPU_INFO("** Starting HiLo Tests");
+    std::string instr;
+    // setup hardware
+    std::shared_ptr<Bus> bus(new Bus);
+    Cpu cpu(bus);
+    u64 res = 0;
+
+    //========================
+    // MULT
+    //========================
+    cpu.Reset();
+    cpu.SetR(1, 10);
+    cpu.SetR(2, 3);
+    instr = "MULT R1, R2";
+    TCPU_INFO(instr);
+    cpu.ExecuteInstruction(Asm::AsmInstruction(instr));
+    res = (static_cast<u64>(cpu.GetHI()) << 32) | cpu.GetLO();
+    assert(res == 30);
+    cpu.SetR(1, 0xffff'ffff); // -1
+    cpu.SetR(2, 3);
+    instr = "MULT R1, R2";
+    TCPU_INFO(instr);
+    cpu.ExecuteInstruction(Asm::AsmInstruction(instr));
+    res = (static_cast<u64>(cpu.GetHI()) << 32) | cpu.GetLO();
+    assert(res == 0xffff'ffff'ffff'fffd); // -3
+    instr = "MULT R0, R2";
+    TCPU_INFO(instr);
+    cpu.ExecuteInstruction(Asm::AsmInstruction(instr));
+    res = (static_cast<u64>(cpu.GetHI()) << 32) | cpu.GetLO();
+    assert(res == 0);
+
+    //========================
+    // MULTU
+    //========================
+    cpu.Reset();
+    cpu.SetR(1, 10);
+    cpu.SetR(2, 3);
+    instr = "MULTU R1, R2";
+    TCPU_INFO(instr);
+    cpu.ExecuteInstruction(Asm::AsmInstruction(instr));
+    res = (static_cast<u64>(cpu.GetHI()) << 32) | cpu.GetLO();
+    assert(res == 30);
+    cpu.SetR(1, 0xffff'ffff);
+    cpu.SetR(2, 3);
+    instr = "MULTU R1, R2";
+    TCPU_INFO(instr);
+    cpu.ExecuteInstruction(Asm::AsmInstruction(instr));
+    res = (static_cast<u64>(cpu.GetHI()) << 32) | cpu.GetLO();
+    assert(res == 0x0000'0002'ffff'fffd); // since unsigned, NOT -3
+    instr = "MULTU R0, R2";
+    TCPU_INFO(instr);
+    cpu.ExecuteInstruction(Asm::AsmInstruction(instr));
+    res = (static_cast<u64>(cpu.GetHI()) << 32) | cpu.GetLO();
+    assert(res == 0);
+
+    //========================
+    // DIV
+    //========================
+    cpu.Reset();
+    cpu.SetR(1, 24);
+    cpu.SetR(2, 6);
+    instr = "DIV R1, R2";
+    TCPU_INFO(instr);
+    cpu.ExecuteInstruction(Asm::AsmInstruction(instr));
+    assert(cpu.GetLO() == 4); // quotient
+    assert(cpu.GetHI() == 0); // remainder
+    cpu.SetR(1, 23);
+    cpu.SetR(2, 6);
+    instr = "DIV R1, R2";
+    TCPU_INFO(instr);
+    cpu.ExecuteInstruction(Asm::AsmInstruction(instr));
+    assert(cpu.GetLO() == 3); // quotient
+    assert(cpu.GetHI() == 5); // remainder
+    cpu.SetR(1, 23);
+    cpu.SetR(2, 29);
+    instr = "DIV R1, R2";
+    TCPU_INFO(instr);
+    cpu.ExecuteInstruction(Asm::AsmInstruction(instr));
+    assert(cpu.GetLO() == 0); // quotient
+    assert(cpu.GetHI() == 23); // remainder
+    cpu.SetR(1, (u32)-4);
+    cpu.SetR(2, (u32)2);
+    instr = "DIV R1, R2";
+    TCPU_INFO(instr);
+    cpu.ExecuteInstruction(Asm::AsmInstruction(instr));
+    assert(cpu.GetLO() == (u32)-2); // quotient
+    assert(cpu.GetHI() == 0); // remainder
+    // Divide positive num by 0
+    cpu.SetR(1, 1);
+    instr = "DIV R1, R0";
+    TCPU_INFO(instr);
+    cpu.ExecuteInstruction(Asm::AsmInstruction(instr));
+    assert(cpu.GetLO() == (u32)-1); // quotient
+    assert(cpu.GetHI() == cpu.GetR(1)); // remainder
+    // Divide negative num by 0
+    cpu.SetR(1, (u32) -1);
+    instr = "DIV R1, R0";
+    TCPU_INFO(instr);
+    cpu.ExecuteInstruction(Asm::AsmInstruction(instr));
+    assert(cpu.GetLO() == 0x1); // quotient
+    assert(cpu.GetHI() == cpu.GetR(1)); // remainder
+    // 0x8000'0000 / -1
+    cpu.SetR(1, 0x8000'0000);
+    cpu.SetR(2, (u32)-1);
+    instr = "DIV R1, R2";
+    TCPU_INFO(instr);
+    cpu.ExecuteInstruction(Asm::AsmInstruction(instr));
+    assert(cpu.GetLO() == 0x8000'0000); // quotient
+    assert(cpu.GetHI() == 0); // remainder
+
+    //========================
+    // DIVU
+    //========================
+    cpu.Reset();
+    cpu.SetR(1, 24);
+    cpu.SetR(2, 6);
+    instr = "DIVU R1, R2";
+    TCPU_INFO(instr);
+    cpu.ExecuteInstruction(Asm::AsmInstruction(instr));
+    assert(cpu.GetLO() == 4); // quotient
+    assert(cpu.GetHI() == 0); // remainder
+    cpu.SetR(1, 23);
+    cpu.SetR(2, 6);
+    instr = "DIVU R1, R2";
+    TCPU_INFO(instr);
+    cpu.ExecuteInstruction(Asm::AsmInstruction(instr));
+    assert(cpu.GetLO() == 3); // quotient
+    assert(cpu.GetHI() == 5); // remainder
+    cpu.SetR(1, 23);
+    cpu.SetR(2, 29);
+    instr = "DIVU R1, R2";
+    TCPU_INFO(instr);
+    cpu.ExecuteInstruction(Asm::AsmInstruction(instr));
+    assert(cpu.GetLO() == 0); // quotient
+    assert(cpu.GetHI() == 23); // remainder
+    cpu.SetR(1, (u32)-4);
+    cpu.SetR(2, (u32)2);
+    instr = "DIVU R1, R2";
+    TCPU_INFO(instr);
+    cpu.ExecuteInstruction(Asm::AsmInstruction(instr));
+    assert(cpu.GetLO() == (u32)-4 >> 1); // quotient
+    assert(cpu.GetHI() == 0); // remainder
+    // Divide positive num by 0
+    cpu.SetR(1, 1);
+    instr = "DIVU R1, R0";
+    TCPU_INFO(instr);
+    cpu.ExecuteInstruction(Asm::AsmInstruction(instr));
+    assert(cpu.GetLO() == (u32)-1); // quotient
+    assert(cpu.GetHI() == cpu.GetR(1)); // remainder
+
+    //========================
+    // Move HI/LO
+    //========================
+    cpu.Reset();
+    // move to
+    cpu.SetR(1, 10);
+    instr = "MTHI R1";
+    TCPU_INFO(instr);
+    cpu.ExecuteInstruction(Asm::AsmInstruction(instr));
+    assert(cpu.GetHI() == cpu.GetR(1));
+    cpu.SetR(1, 132);
+    instr = "MTLO R1";
+    TCPU_INFO(instr);
+    cpu.ExecuteInstruction(Asm::AsmInstruction(instr));
+    assert(cpu.GetLO() == cpu.GetR(1));
+    // move from
+    cpu.SetHI(100);
+    instr = "MFHI R1";
+    TCPU_INFO(instr);
+    cpu.ExecuteInstruction(Asm::AsmInstruction(instr));
+    assert(cpu.GetHI() == cpu.GetR(1));
+    cpu.SetLO(9123);
+    instr = "MFLO R1";
+    TCPU_INFO(instr);
+    cpu.ExecuteInstruction(Asm::AsmInstruction(instr));
+    assert(cpu.GetLO() == cpu.GetR(1));
+}
+
 namespace psxtest {
     void CpuTests()
     {
@@ -547,5 +727,6 @@ namespace psxtest {
         aluiTests();
         alurTests();
         shiftTests();
+        hiloTests();
     }
 }

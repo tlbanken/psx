@@ -109,6 +109,40 @@ void Cpu::SetR(size_t r, u32 val)
 }
 
 /*
+ * Return the current value of the HI register
+ */
+u32 Cpu::GetHI()
+{
+    return m_regs.hi;
+}
+
+/*
+ * Set the HI register to the given value.
+ */
+void Cpu::SetHI(u32 val)
+{
+    CPU_WARN(PSX_FMT("Forcing HI to {}", val));
+    m_regs.hi = val;
+}
+
+/*
+ * Return the current value of the LO register
+ */
+u32 Cpu::GetLO()
+{
+    return m_regs.lo;
+}
+
+/*
+ * Set the LO register to the given value.
+ */
+void Cpu::SetLO(u32 val)
+{
+    CPU_WARN(PSX_FMT("Forcing LO to {}", val));
+    m_regs.lo = val;
+}
+
+/*
  * Executes a given instruction. This will change the state of the CPU.
  */
 void Cpu::ExecuteInstruction(u32 raw_instr)
@@ -780,52 +814,139 @@ void Cpu::Srav(const Asm::Instruction& instr)
 }
 
 // *** Multiply and Divide Operations ***
+// ** Helpers **
+static inline u64 signExtendTo64(u32 val)
+{
+    u64 upper_bits = val & 0x8000'0000 ? 0xffff'ffff'0000'0000 : 0x0;
+    return static_cast<u64>(val) | upper_bits;
+}
+
+/*
+ * Multiply
+ * funct = 0x18
+ * Format: MULT rs, rt
+ * Multiply rs and rt together as signed values and store 64 bit result 
+ * into HI/LO registers.
+ */
 void Cpu::Mult(const Asm::Instruction& instr)
 {
-    PSX_ASSERT(0);
-    (void) instr;
+    i64 rs64 = static_cast<i64>(signExtendTo64(m_regs.r[instr.rs]));
+    i64 rt64 = static_cast<i64>(signExtendTo64(m_regs.r[instr.rt]));
+    i64 res = rs64 * rt64;
+    m_regs.hi = (res >> 32) & 0xffff'ffff;
+    m_regs.lo = res & 0xffff'ffff;
 }
 
+/*
+ * Multiply Unsigned
+ * funct = 0x19
+ * Format: MULTU rs, rt
+ * Multiply rs and rt together as unsigned values and store 64 bit result 
+ * into HI/LO registers.
+ */
 void Cpu::Multu(const Asm::Instruction& instr)
 {
-    PSX_ASSERT(0);
-    (void) instr;
+    u64 rs64 = static_cast<u64>(m_regs.r[instr.rs]);
+    u64 rt64 = static_cast<u64>(m_regs.r[instr.rt]);
+    u64 res = rs64 * rt64;
+    m_regs.hi = (res >> 32) & 0xffff'ffff;
+    m_regs.lo = res & 0xffff'ffff;
 }
 
+/*
+ * Division
+ * funct = 0x1a
+ * Format: DIV rs, rt
+ * Divide rs by rt as signed values and store quotient in LO and remainder in HI.
+ */
 void Cpu::Div(const Asm::Instruction& instr)
 {
-    PSX_ASSERT(0);
-    (void) instr;
+    i32 rs = static_cast<i32>(m_regs.r[instr.rs]);
+    i32 rt = static_cast<i32>(m_regs.r[instr.rt]);
+    if (rt != 0 && (rt != -1 && static_cast<u32>(rt) != 0x8000'0000)) {
+        // normal case
+        m_regs.hi = static_cast<u32>(rs % rt);
+        m_regs.lo = static_cast<u32>(rs / rt);
+    } else if (rt == 0) {
+        // divide by zero special case
+        m_regs.hi = static_cast<u32>(rs);
+        if (rs >= 0) {
+            m_regs.lo = static_cast<u32>(-1);
+        } else {
+            m_regs.lo = static_cast<u32>(1);
+        }
+    } else if (rt == -1 && static_cast<u32>(rs) == 0x8000'0000) {
+        // special case
+        m_regs.hi = 0;
+        m_regs.lo = 0x8000'0000;
+    } else {
+        // should not get here
+        assert(0);
+    }
 }
 
+/*
+ * Division Unsigned
+ * funct = 0x1b
+ * Format: DIVU rs, rt
+ * Divide rs by rt as unsigned values and store quotient in LO and remainder in HI.
+ */
 void Cpu::Divu(const Asm::Instruction& instr)
 {
-    PSX_ASSERT(0);
-    (void) instr;
+    u32 rs = m_regs.r[instr.rs];
+    u32 rt = m_regs.r[instr.rt];
+    if (rt != 0) {
+        // normal case
+        m_regs.hi = static_cast<u32>(rs % rt);
+        m_regs.lo = static_cast<u32>(rs / rt);
+    } else {
+        m_regs.hi = static_cast<u32>(rs);
+        m_regs.lo = 0xffff'ffff;
+    }
 }
 
+/*
+ * Move From HI
+ * funct = 0x10
+ * Format: MFHI rd
+ * Move contents of Register HI to rd.
+ */
 void Cpu::Mfhi(const Asm::Instruction& instr)
 {
-    PSX_ASSERT(0);
-    (void) instr;
+    m_regs.r[instr.rd] = m_regs.hi;
 }
 
+/*
+ * Move From LO
+ * funct = 0x12
+ * Format: MFLO rd
+ * Move contents of Register LO to rd.
+ */
 void Cpu::Mflo(const Asm::Instruction& instr)
 {
-    PSX_ASSERT(0);
-    (void) instr;
+    m_regs.r[instr.rd] = m_regs.lo;
 }
 
+/*
+ * Move To HI
+ * funct = 0x11
+ * Format: MTHI rd
+ * Move contents of rd to Register HI
+ */
 void Cpu::Mthi(const Asm::Instruction& instr)
 {
-    PSX_ASSERT(0);
-    (void) instr;
+    m_regs.hi = m_regs.r[instr.rd];
 }
 
+/*
+ * Move To LO
+ * funct = 0x13
+ * Format: MTLO rd
+ * Move contents of rd to Register LO
+ */
 void Cpu::Mtlo(const Asm::Instruction& instr)
 {
-    PSX_ASSERT(0);
-    (void) instr;
+    m_regs.lo = m_regs.r[instr.rd];
 }
 
 //================================================

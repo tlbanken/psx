@@ -33,7 +33,7 @@ int main()
     std::cout << PSX_FANCYTITLE(PSX_FMT("{}-Tests v{}", PROJECT_NAME, PROJECT_VER));
     TMAIN_INFO("Starting Memory Tests");
     // call memory tests
-    psxtest::MemTests();
+    // psxtest::MemTests();
 
     // call asm/dasm tests
     TMAIN_INFO("Starting Asm/Dasm Tests");
