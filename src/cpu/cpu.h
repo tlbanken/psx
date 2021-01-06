@@ -50,14 +50,14 @@ public:
     void SetHI(u32 val);
     u32 GetLO();
     void SetLO(u32 val);
-    void ExecuteInstruction(u32 raw_instr);
+    u8 ExecuteInstruction(u32 raw_instr);
     void Reset();
 
     // DbgModule Functions
     void OnActive(bool *active);
     std::string GetModuleLabel();
 private:
-    typedef void (Cpu::*opfunc)(const Asm::Instruction&);
+    using opfunc = u8 (Cpu::*)(const Asm::Instruction&);
     opfunc m_prim_opmap[0x40] = {0};
     opfunc m_sec_opmap[0x40] = {0};
     std::map<u8, opfunc> m_bcondz_opmap;
@@ -75,6 +75,13 @@ private:
         // general purpose
         u32 r[32] = {0};
     }m_regs;
+    // load delay slot
+    struct LoadDelaySlot {
+        u8  reg = 0;
+        u32 val = 0;
+        bool is_primed = false;  // current instruction is a load
+        bool was_primed = false; // prev instruction was a load
+    } m_lds;
 
     // helpers
     void buildOpMaps();

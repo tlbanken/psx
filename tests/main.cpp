@@ -24,16 +24,14 @@
 #define TMAIN_WARN(msg) PSXLOG_WARN("Test-Main", msg)
 #define TMAIN_ERROR(msg) PSXLOG_ERROR("Test-Main", msg)
 
-static std::ofstream testout;
-
 int main()
 {
-    psxlog::Init(std::cerr, true);
+    psxlog::Init(std::cout, true);
 
     std::cout << PSX_FANCYTITLE(PSX_FMT("{}-Tests v{}", PROJECT_NAME, PROJECT_VER));
     TMAIN_INFO("Starting Memory Tests");
     // call memory tests
-    // psxtest::MemTests();
+    psxtest::MemTests();
 
     // call asm/dasm tests
     TMAIN_INFO("Starting Asm/Dasm Tests");

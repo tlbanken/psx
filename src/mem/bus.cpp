@@ -48,6 +48,14 @@ void Bus::AddAddressSpace(std::shared_ptr<AddressSpace> as, BusPriority p)
     std::sort(m_address_spaces.begin(), m_address_spaces.end(), priorityLT);
 }
 
+void Bus::Reset()
+{
+    BUS_INFO("Resetting all Address Spaces");
+    for (const auto& entry : m_address_spaces) {
+        entry->as->Reset();
+    }
+}
+
 std::string Bus::ToString()
 {
     std::string s("");

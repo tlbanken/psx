@@ -20,7 +20,7 @@
 #define LOG_COMBO(instr) {\
     u32 _i = Asm::AsmInstruction(instr);\
     std::string _si = Asm::DasmInstruction(_i);\
-    PSXLOG_INFO("Test-Combo", PSX_FMT("[{}] -> 0x{:08x} -> [{}]", instr, _i, _si));}
+    PSXLOG_INFO("Test-Combo", PSX_FMT("[{:<20}] -> 0x{:08x} -> [{}]", instr, _i, _si));}
 
 static void dasmTests()
 {
@@ -131,6 +131,17 @@ static void comboTests()
     LOG_COMBO("SUB R3 R3 R1");
     LOG_COMBO("SUBU R4 R3 R10");
     LOG_COMBO("SLT R5 R1 R0");
+    LOG_COMBO("MULT R1 R0");
+    LOG_COMBO("MULTU R1 R0");
+    LOG_COMBO("DIV R1 R0");
+    LOG_COMBO("DIVU R1 R0");
+    LOG_COMBO("LB R1 -1 R0");
+    LOG_COMBO("LBU R1 32 R0");
+    LOG_COMBO("LH R1 32 R0");
+    LOG_COMBO("LHU R4 32 R2");
+    LOG_COMBO("LW R4 32 R2");
+    LOG_COMBO("LWR R4 -2 R2");
+    LOG_COMBO("LWL R10 32 R2");
 }
 
 namespace psxtest {

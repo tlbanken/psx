@@ -2,6 +2,7 @@
 manuals
 build
 games
+*.user
 **/*.log
 **/*.dump
 extern/include/fmt/*

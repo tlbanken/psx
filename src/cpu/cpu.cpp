@@ -7,8 +7,6 @@
  * CPU for the PSX. The Playstation uses a R3000A MIPS processor.
  */
 
-#include <random>
-
 #include "imgui/imgui.h"
 
 #include "cpu/cpu.h"
@@ -43,8 +41,20 @@ void Cpu::Step()
     m_next_instr = m_bus->Read32(m_regs.pc);
     m_regs.pc += 4;
 
+    // if previous instruction was a load, the load delay will be primed.
+    // we need to check this here just in case the next instruction will
+    // re-prime the load delay slot.
+    m_lds.was_primed = m_lds.is_primed;
+    m_lds.is_primed = false;
+
     // execute
-    ExecuteInstruction(cur_instr);
+    u8 modified_reg = ExecuteInstruction(cur_instr);
+
+    // race condition: if instruction writes to same register in load
+    // delay slot, the instruction wins over the load.
+    if (m_lds.was_primed && modified_reg != m_lds.reg) {
+        m_regs.r[m_lds.reg] = m_lds.val;
+    }
 
     // zero register should always be zero
     m_regs.r[0] = 0;
@@ -61,6 +71,7 @@ void Cpu::Reset()
     // reset next instr
     m_next_instr = 0x0000'0000; // nop
     m_last_pc = 0;
+    m_lds = {0, 0, false, false};
     // Flush one instruction (nop)
     Step();
     // reset registers
@@ -145,12 +156,12 @@ void Cpu::SetLO(u32 val)
 /*
  * Executes a given instruction. This will change the state of the CPU.
  */
-void Cpu::ExecuteInstruction(u32 raw_instr)
+u8 Cpu::ExecuteInstruction(u32 raw_instr)
 {
     // decode
     Asm::Instruction instr = Asm::DecodeRawInstr(raw_instr);
     // execute
-    (this->*m_prim_opmap[instr.op])(instr);
+    return (this->*m_prim_opmap[instr.op])(instr);
 }
 
 
@@ -399,9 +410,9 @@ void Cpu::buildOpMaps()
  * Use Instruction.funct as the new op code. Most of these instructions are
  * ALU R-Type instructions.
  */
-void Cpu::Special(const Asm::Instruction& instr)
+u8 Cpu::Special(const Asm::Instruction& instr)
 {
-    (this->*m_sec_opmap[instr.funct])(instr);
+    return (this->*m_sec_opmap[instr.funct])(instr);
 }
 
 /*
@@ -409,15 +420,15 @@ void Cpu::Special(const Asm::Instruction& instr)
  * Use Instruction.bcondz_op as new op code. These instructions are branch compare
  * with zero register.
  */
-void Cpu::Bcondz(const Asm::Instruction& instr)
+u8 Cpu::Bcondz(const Asm::Instruction& instr)
 {
     // check if in map
     auto iter = m_bcondz_opmap.find(instr.bcondz_op);
     if (iter != m_bcondz_opmap.end()) {
         // found!
-        (this->*iter->second)(instr);
+        return (this->*iter->second)(instr);
     } else {
-        BadOp(instr);
+        return BadOp(instr);
     }
 }
 
@@ -428,24 +439,27 @@ void Cpu::Bcondz(const Asm::Instruction& instr)
 /*
  * Unknown Instruction. Triggers a "Reserved Instruction Exception" (excode = 0x0a)
  */
-void Cpu::BadOp(const Asm::Instruction& instr)
+u8 Cpu::BadOp(const Asm::Instruction& instr)
 {
     CPU_WARN(PSX_FMT("Unknown CPU instruction: op[0x{:02}] funct[0x{:02}] bcondz[0x{:02x}]", instr.op, instr.funct, instr.bcondz_op));
     PSX_ASSERT(0);
+    return 0;
 }
 
 /*
  */
-void Cpu::Syscall(const Asm::Instruction& instr)
+u8 Cpu::Syscall(const Asm::Instruction& instr)
 {
     PSX_ASSERT(0);
     (void) instr;
+    return 0;
 }
 
-void Cpu::Break(const Asm::Instruction& instr)
+u8 Cpu::Break(const Asm::Instruction& instr)
 {
     PSX_ASSERT(0);
     (void) instr;
+    return 0;
 }
 
 //================================================
@@ -486,7 +500,7 @@ static inline u32 twosComplement(u32 val)
  * Format: ADDI rt, rs, (sign-extended)imm16
  * Add rs to imm16 and store in rt. TRAP on Two's-complement overflow.
  */
-void Cpu::Addi(const Asm::Instruction& instr)
+u8 Cpu::Addi(const Asm::Instruction& instr)
 {
     u32 signed_imm32 = signExtendTo32(instr.imm16);
     u32 rs = m_regs.r[instr.rs];
@@ -496,8 +510,10 @@ void Cpu::Addi(const Asm::Instruction& instr)
         Exception ex;
         ex.type = Exception::Type::Overflow;
         m_cop0.RaiseException(ex);
+        return 0; // no modification
     } else {
         m_regs.r[instr.rt] = res;
+        return instr.rt;
     }
 }
 
@@ -507,10 +523,11 @@ void Cpu::Addi(const Asm::Instruction& instr)
  * Format: ADDIU rt, rs, (sign-extended)imm16
  * Add rs to imm16 and store in rt. Do NOT TRAP on Two's-complement overflow.
  */
-void Cpu::Addiu(const Asm::Instruction& instr)
+u8 Cpu::Addiu(const Asm::Instruction& instr)
 {
     u32 signed_imm32 = signExtendTo32(instr.imm16);
     m_regs.r[instr.rt] = signed_imm32 + m_regs.r[instr.rs];
+    return instr.rt;
 }
 
 /*
@@ -519,7 +536,7 @@ void Cpu::Addiu(const Asm::Instruction& instr)
  * Format: SLTI rt, rs, (sign-extended)imm16
  * Check if rs is less than imm16. TRAP on overflow.
  */
-void Cpu::Slti(const Asm::Instruction& instr)
+u8 Cpu::Slti(const Asm::Instruction& instr)
 {
     u32 signed_imm32 = signExtendTo32(instr.imm16);
     u32 rs = m_regs.r[instr.rs];
@@ -530,8 +547,10 @@ void Cpu::Slti(const Asm::Instruction& instr)
         Exception ex;
         ex.type = Exception::Type::Overflow;
         m_cop0.RaiseException(ex);
+        return 0; // no modification
     } else {
         m_regs.r[instr.rt] = res & 0x8000'0000 ? 1 : 0;
+        return instr.rt;
     }
 }
 
@@ -541,11 +560,12 @@ void Cpu::Slti(const Asm::Instruction& instr)
  * Format: SLTIU rt, rs, (sign-extended)imm16
  * Check if rs is less than imm16. Do NOT TRAP on overflow.
  */
-void Cpu::Sltiu(const Asm::Instruction& instr)
+u8 Cpu::Sltiu(const Asm::Instruction& instr)
 {
     u32 signed_imm32 = signExtendTo32(instr.imm16);
     u32 res = m_regs.r[instr.rs] + twosComplement(signed_imm32);
     m_regs.r[instr.rt] = res & 0x8000'0000 ? 1 : 0;
+    return instr.rt;
 }
 
 /*
@@ -554,9 +574,10 @@ void Cpu::Sltiu(const Asm::Instruction& instr)
  * Format: ANDI rt, rs, (zero-extended)imm16
  * AND rs and imm16
  */
-void Cpu::Andi(const Asm::Instruction& instr)
+u8 Cpu::Andi(const Asm::Instruction& instr)
 {
     m_regs.r[instr.rt] = m_regs.r[instr.rs] & instr.imm16;
+    return instr.rt;
 }
 
 /*
@@ -565,9 +586,10 @@ void Cpu::Andi(const Asm::Instruction& instr)
  * Format: ORI rt, rs, (zero-extended)imm16
  * OR rs and imm16
  */
-void Cpu::Ori(const Asm::Instruction& instr)
+u8 Cpu::Ori(const Asm::Instruction& instr)
 {
     m_regs.r[instr.rt] = m_regs.r[instr.rs] | instr.imm16;
+    return instr.rt;
 }
 
 /*
@@ -576,9 +598,10 @@ void Cpu::Ori(const Asm::Instruction& instr)
  * Format: XORI rt, rs, (zero-extended)imm16
  * XOR rs and imm16
  */
-void Cpu::Xori(const Asm::Instruction& instr)
+u8 Cpu::Xori(const Asm::Instruction& instr)
 {
     m_regs.r[instr.rt] = m_regs.r[instr.rs] ^ instr.imm16;
+    return instr.rt;
 }
 
 /*
@@ -587,9 +610,10 @@ void Cpu::Xori(const Asm::Instruction& instr)
  * Format: LUI rt, (zero-extended)imm16
  * Load imm16 into the upper 16 bits of rt.
  */
-void Cpu::Lui(const Asm::Instruction& instr)
+u8 Cpu::Lui(const Asm::Instruction& instr)
 {
     m_regs.r[instr.rt] = (u32) (instr.imm16 << 16);
+    return instr.rt;
 }
 
 // *** Three Operand Register-Type Ops ***
@@ -599,7 +623,7 @@ void Cpu::Lui(const Asm::Instruction& instr)
  * Format: ADD rd, rs, rt
  * Add rs to rt and store in rd. TRAP on overflow.
  */
-void Cpu::Add(const Asm::Instruction& instr)
+u8 Cpu::Add(const Asm::Instruction& instr)
 {
     u32 rt = m_regs.r[instr.rt];
     u32 rs = m_regs.r[instr.rs];
@@ -609,8 +633,10 @@ void Cpu::Add(const Asm::Instruction& instr)
         Exception ex;
         ex.type = Exception::Type::Overflow;
         m_cop0.RaiseException(ex);
+        return 0;
     } else {
         m_regs.r[instr.rd] = res;
+        return instr.rd;
     }
 }
 
@@ -620,9 +646,10 @@ void Cpu::Add(const Asm::Instruction& instr)
  * Format: ADDU rd, rs, rt
  * Add rs to rt and store in rd. Do NOT TRAP on overflow.
  */
-void Cpu::Addu(const Asm::Instruction& instr)
+u8 Cpu::Addu(const Asm::Instruction& instr)
 {
     m_regs.r[instr.rd] = m_regs.r[instr.rs] + m_regs.r[instr.rt];
+    return instr.rd;
 }
 
 /*
@@ -631,7 +658,7 @@ void Cpu::Addu(const Asm::Instruction& instr)
  * Format: SUB rd, rs, rt
  * Sub rt from rs and store in rd. TRAP on overflow.
  */
-void Cpu::Sub(const Asm::Instruction& instr)
+u8 Cpu::Sub(const Asm::Instruction& instr)
 {
     u32 rt = twosComplement(m_regs.r[instr.rt]);
     u32 rs = m_regs.r[instr.rs];
@@ -641,8 +668,10 @@ void Cpu::Sub(const Asm::Instruction& instr)
         Exception ex;
         ex.type = Exception::Type::Overflow;
         m_cop0.RaiseException(ex);
+        return 0; // no modification
     } else {
         m_regs.r[instr.rd] = res;
+        return instr.rd;
     }
 }
 
@@ -652,9 +681,10 @@ void Cpu::Sub(const Asm::Instruction& instr)
  * Format: SUBU rd, rs, rt
  * Sub rt from rs and store in rd. Do NOT TRAP on overflow.
  */
-void Cpu::Subu(const Asm::Instruction& instr)
+u8 Cpu::Subu(const Asm::Instruction& instr)
 {
     m_regs.r[instr.rd] = m_regs.r[instr.rs] + twosComplement(m_regs.r[instr.rt]);
+    return instr.rd;
 }
 
 /*
@@ -663,7 +693,7 @@ void Cpu::Subu(const Asm::Instruction& instr)
  * Format: SLT rd, rs, rt
  * Set rd to 1 if rs less than rt. TRAP on overflow.
  */
-void Cpu::Slt(const Asm::Instruction& instr)
+u8 Cpu::Slt(const Asm::Instruction& instr)
 {
     u32 rt = m_regs.r[instr.rt];
     u32 rs = m_regs.r[instr.rs];
@@ -674,8 +704,10 @@ void Cpu::Slt(const Asm::Instruction& instr)
         Exception ex;
         ex.type = Exception::Type::Overflow;
         m_cop0.RaiseException(ex);
+        return 0; // no modification
     } else {
         m_regs.r[instr.rd] = res & 0x8000'0000 ? 1 : 0;
+        return instr.rd;
     }
 }
 
@@ -685,10 +717,11 @@ void Cpu::Slt(const Asm::Instruction& instr)
  * Format: SLTU rd, rs, rt
  * Set rd to 1 if rs less than rt.
  */
-void Cpu::Sltu(const Asm::Instruction& instr)
+u8 Cpu::Sltu(const Asm::Instruction& instr)
 {
     u32 res = m_regs.r[instr.rs] + twosComplement(m_regs.r[instr.rt]);
     m_regs.r[instr.rd] = res & 0x8000'0000 ? 1 : 0;
+    return instr.rd;
 }
 
 /*
@@ -697,9 +730,10 @@ void Cpu::Sltu(const Asm::Instruction& instr)
  * Format: AND rd, rs, rt
  * AND rs and rt, store in rd.
  */
-void Cpu::And(const Asm::Instruction& instr)
+u8 Cpu::And(const Asm::Instruction& instr)
 {
     m_regs.r[instr.rd] = m_regs.r[instr.rs] & m_regs.r[instr.rt];
+    return instr.rd;
 }
 
 /*
@@ -708,9 +742,10 @@ void Cpu::And(const Asm::Instruction& instr)
  * Format: OR rd, rs, rt
  * OR rs and rt, store in rd.
  */
-void Cpu::Or(const Asm::Instruction& instr)
+u8 Cpu::Or(const Asm::Instruction& instr)
 {
     m_regs.r[instr.rd] = m_regs.r[instr.rs] | m_regs.r[instr.rt];
+    return instr.rd;
 }
 
 /*
@@ -719,9 +754,10 @@ void Cpu::Or(const Asm::Instruction& instr)
  * Format: XOR rd, rs, rt
  * XOR rs and rt, store in rd.
  */
-void Cpu::Xor(const Asm::Instruction& instr)
+u8 Cpu::Xor(const Asm::Instruction& instr)
 {
     m_regs.r[instr.rd] = m_regs.r[instr.rs] ^ m_regs.r[instr.rt];
+    return instr.rd;
 }
 
 /*
@@ -730,9 +766,10 @@ void Cpu::Xor(const Asm::Instruction& instr)
  * Format: NOR rd, rs, rt
  * NOR rs and rt, store in rd.
  */
-void Cpu::Nor(const Asm::Instruction& instr)
+u8 Cpu::Nor(const Asm::Instruction& instr)
 {
     m_regs.r[instr.rd] = ~(m_regs.r[instr.rs] | m_regs.r[instr.rt]);
+    return instr.rd;
 }
 
 // *** Shift Operations ***
@@ -742,9 +779,10 @@ void Cpu::Nor(const Asm::Instruction& instr)
  * Format: SLL rd, rt, shamt
  * Shift rt left by shamt, inserting zeroes into low order bits. Store in rd.
  */
-void Cpu::Sll(const Asm::Instruction& instr)
+u8 Cpu::Sll(const Asm::Instruction& instr)
 {
     m_regs.r[instr.rd] = m_regs.r[instr.rt] << instr.shamt;
+    return instr.rd;
 }
 
 /*
@@ -753,9 +791,10 @@ void Cpu::Sll(const Asm::Instruction& instr)
  * Format: SRL rd, rt, shamt
  * Shift rt right by shamt, inserting zeroes into high order bits. Store in rd.
  */
-void Cpu::Srl(const Asm::Instruction& instr)
+u8 Cpu::Srl(const Asm::Instruction& instr)
 {
     m_regs.r[instr.rd] = m_regs.r[instr.rt] >> instr.shamt;
+    return instr.rd;
 }
 
 /*
@@ -764,7 +803,7 @@ void Cpu::Srl(const Asm::Instruction& instr)
  * Format: SRA rd, rt, shamt
  * Shift rt right by shamt, keeping sign of highest order bit. Store in rd.
  */
-void Cpu::Sra(const Asm::Instruction& instr)
+u8 Cpu::Sra(const Asm::Instruction& instr)
 {
     bool msb = (m_regs.r[instr.rt] & 0x8000'0000) != 0;
     u32 upper_bits = (0xffff'ffff << (32 - instr.shamt));
@@ -772,6 +811,7 @@ void Cpu::Sra(const Asm::Instruction& instr)
     if (msb) {
         m_regs.r[instr.rd] |= upper_bits;
     }
+    return instr.rd;
 }
 
 /*
@@ -780,9 +820,10 @@ void Cpu::Sra(const Asm::Instruction& instr)
  * Format: SLLV rd, rt, rs
  * Shift rt left by rs, inserting zeroes into low order bits. Store in rd.
  */
-void Cpu::Sllv(const Asm::Instruction& instr)
+u8 Cpu::Sllv(const Asm::Instruction& instr)
 {
     m_regs.r[instr.rd] = m_regs.r[instr.rt] << m_regs.r[instr.rs];
+    return instr.rd;
 }
 
 /*
@@ -791,9 +832,10 @@ void Cpu::Sllv(const Asm::Instruction& instr)
  * Format: SRLV rd, rt, rs
  * Shift rt Right by rs, inserting zeroes into high order bits. Store in rd.
  */
-void Cpu::Srlv(const Asm::Instruction& instr)
+u8 Cpu::Srlv(const Asm::Instruction& instr)
 {
     m_regs.r[instr.rd] = m_regs.r[instr.rt] >> m_regs.r[instr.rs];
+    return instr.rd;
 }
 
 /*
@@ -802,7 +844,7 @@ void Cpu::Srlv(const Asm::Instruction& instr)
  * Format: SRAV rd, rt, rs
  * Shift rt Right by rs, keeping sign of highest order bit. Store in rd.
  */
-void Cpu::Srav(const Asm::Instruction& instr)
+u8 Cpu::Srav(const Asm::Instruction& instr)
 {
     bool msb = (m_regs.r[instr.rt] & 0x8000'0000) != 0;
     u32 rs = m_regs.r[instr.rs] & 0x1f; // only 5 lsb
@@ -811,6 +853,7 @@ void Cpu::Srav(const Asm::Instruction& instr)
     if (msb) {
         m_regs.r[instr.rd] |= upper_bits;
     }
+    return instr.rd;
 }
 
 // *** Multiply and Divide Operations ***
@@ -828,13 +871,14 @@ static inline u64 signExtendTo64(u32 val)
  * Multiply rs and rt together as signed values and store 64 bit result 
  * into HI/LO registers.
  */
-void Cpu::Mult(const Asm::Instruction& instr)
+u8 Cpu::Mult(const Asm::Instruction& instr)
 {
     i64 rs64 = static_cast<i64>(signExtendTo64(m_regs.r[instr.rs]));
     i64 rt64 = static_cast<i64>(signExtendTo64(m_regs.r[instr.rt]));
     i64 res = rs64 * rt64;
     m_regs.hi = (res >> 32) & 0xffff'ffff;
     m_regs.lo = res & 0xffff'ffff;
+    return 0;
 }
 
 /*
@@ -844,13 +888,14 @@ void Cpu::Mult(const Asm::Instruction& instr)
  * Multiply rs and rt together as unsigned values and store 64 bit result 
  * into HI/LO registers.
  */
-void Cpu::Multu(const Asm::Instruction& instr)
+u8 Cpu::Multu(const Asm::Instruction& instr)
 {
     u64 rs64 = static_cast<u64>(m_regs.r[instr.rs]);
     u64 rt64 = static_cast<u64>(m_regs.r[instr.rt]);
     u64 res = rs64 * rt64;
     m_regs.hi = (res >> 32) & 0xffff'ffff;
     m_regs.lo = res & 0xffff'ffff;
+    return 0;
 }
 
 /*
@@ -859,7 +904,7 @@ void Cpu::Multu(const Asm::Instruction& instr)
  * Format: DIV rs, rt
  * Divide rs by rt as signed values and store quotient in LO and remainder in HI.
  */
-void Cpu::Div(const Asm::Instruction& instr)
+u8 Cpu::Div(const Asm::Instruction& instr)
 {
     i32 rs = static_cast<i32>(m_regs.r[instr.rs]);
     i32 rt = static_cast<i32>(m_regs.r[instr.rt]);
@@ -883,6 +928,7 @@ void Cpu::Div(const Asm::Instruction& instr)
         // should not get here
         assert(0);
     }
+    return 0;
 }
 
 /*
@@ -891,7 +937,7 @@ void Cpu::Div(const Asm::Instruction& instr)
  * Format: DIVU rs, rt
  * Divide rs by rt as unsigned values and store quotient in LO and remainder in HI.
  */
-void Cpu::Divu(const Asm::Instruction& instr)
+u8 Cpu::Divu(const Asm::Instruction& instr)
 {
     u32 rs = m_regs.r[instr.rs];
     u32 rt = m_regs.r[instr.rt];
@@ -903,6 +949,7 @@ void Cpu::Divu(const Asm::Instruction& instr)
         m_regs.hi = static_cast<u32>(rs);
         m_regs.lo = 0xffff'ffff;
     }
+    return 0;
 }
 
 /*
@@ -911,9 +958,10 @@ void Cpu::Divu(const Asm::Instruction& instr)
  * Format: MFHI rd
  * Move contents of Register HI to rd.
  */
-void Cpu::Mfhi(const Asm::Instruction& instr)
+u8 Cpu::Mfhi(const Asm::Instruction& instr)
 {
     m_regs.r[instr.rd] = m_regs.hi;
+    return 0;
 }
 
 /*
@@ -922,9 +970,10 @@ void Cpu::Mfhi(const Asm::Instruction& instr)
  * Format: MFLO rd
  * Move contents of Register LO to rd.
  */
-void Cpu::Mflo(const Asm::Instruction& instr)
+u8 Cpu::Mflo(const Asm::Instruction& instr)
 {
     m_regs.r[instr.rd] = m_regs.lo;
+    return 0;
 }
 
 /*
@@ -933,9 +982,10 @@ void Cpu::Mflo(const Asm::Instruction& instr)
  * Format: MTHI rd
  * Move contents of rd to Register HI
  */
-void Cpu::Mthi(const Asm::Instruction& instr)
+u8 Cpu::Mthi(const Asm::Instruction& instr)
 {
     m_regs.hi = m_regs.r[instr.rd];
+    return 0;
 }
 
 /*
@@ -944,241 +994,386 @@ void Cpu::Mthi(const Asm::Instruction& instr)
  * Format: MTLO rd
  * Move contents of rd to Register LO
  */
-void Cpu::Mtlo(const Asm::Instruction& instr)
+u8 Cpu::Mtlo(const Asm::Instruction& instr)
 {
     m_regs.lo = m_regs.r[instr.rd];
+    return 0;
 }
 
 //================================================
 // Load and Store Instructions
 //================================================
+// *** Helpers ***
+static inline u32 signExtendTo32(u8 val)
+{
+    u32 upper_bits = val & 0x80 ? 0xffff'ff00 : 0x0000'0000;
+    return static_cast<u32>(val) | upper_bits;
+}
+
 // *** Load ***
-void Cpu::Lb(const Asm::Instruction& instr)
+
+/*
+ * Load Byte
+ * op = 0x20
+ * Format: LB rt, imm(rs)
+ * Load byte from address at imm + rs and store into rt (sign extended).
+ */
+u8 Cpu::Lb(const Asm::Instruction& instr)
 {
-    PSX_ASSERT(0);
-    (void) instr;
+    u32 addr = signExtendTo32(instr.imm16) + m_regs.r[instr.rs];
+    u8 byte = m_bus->Read8(addr);
+    // Load Delay
+    m_lds.is_primed = true;
+    m_lds.reg = instr.rt;
+    m_lds.val = signExtendTo32(byte);
+    return 0;
 }
 
-void Cpu::Lbu(const Asm::Instruction& instr)
+/*
+ * Load Byte Unsigned
+ * op = 0x24
+ * Format: LBU rt, imm(rs)
+ * Load byte from address at imm + rs and store into rt (zero extended).
+ */
+u8 Cpu::Lbu(const Asm::Instruction& instr)
 {
-    PSX_ASSERT(0);
-    (void) instr;
+    u32 addr = signExtendTo32(instr.imm16) + m_regs.r[instr.rs];
+    u8 byte = m_bus->Read8(addr);
+    // Load Delay!
+    m_lds.is_primed = true;
+    m_lds.reg = instr.rt;
+    m_lds.val = static_cast<u32>(byte);
+    return 0;
 }
 
-void Cpu::Lh(const Asm::Instruction& instr)
+/*
+ * Load Halfword
+ * op = 0x21
+ * Format: LH rt, imm(rs)
+ * Load halfword from address at imm + rs and store into rt (sign extended).
+ */
+u8 Cpu::Lh(const Asm::Instruction& instr)
 {
-    PSX_ASSERT(0);
-    (void) instr;
+    u32 addr = signExtendTo32(instr.imm16) + m_regs.r[instr.rs];
+    // check alignment, needs to be 2-aligned
+    if (addr & 0x1) {
+        Cpu::Exception e;
+        e.type = Cpu::Exception::Type::AddrErrLoad;
+        m_cop0.RaiseException(e);
+    } else {
+        u16 halfword = m_bus->Read16(addr);
+        // Load Delay!
+        m_lds.is_primed = true;
+        m_lds.reg = instr.rt;
+        m_lds.val = signExtendTo32(halfword);
+    }
+    return 0;
 }
 
-void Cpu::Lhu(const Asm::Instruction& instr)
+/*
+ * Load Halfword Unsigned
+ * op = 0x25
+ * Format: LHU rt, imm(rs)
+ * Load halfword from address at imm + rs and store into rt (zero extended).
+ */
+u8 Cpu::Lhu(const Asm::Instruction& instr)
 {
-    PSX_ASSERT(0);
-    (void) instr;
+    u32 addr = signExtendTo32(instr.imm16) + m_regs.r[instr.rs];
+    // check alignment, needs to be 2-aligned
+    if (addr & 0x1) {
+        Cpu::Exception e;
+        e.type = Cpu::Exception::Type::AddrErrLoad;
+        m_cop0.RaiseException(e);
+    } else {
+        u16 halfword = m_bus->Read16(addr);
+        // Load Delay!
+        m_lds.is_primed = true;
+        m_lds.reg = instr.rt;
+        m_lds.val = static_cast<u32>(halfword);
+    }
+    return 0;
 }
 
-void Cpu::Lw(const Asm::Instruction& instr)
+/*
+ * Load Word
+ * op = 0x23
+ * Format: LW rt, imm(rs)
+ * Load word from address at imm + rs and store into rt.
+ */
+u8 Cpu::Lw(const Asm::Instruction& instr)
 {
-    PSX_ASSERT(0);
-    (void) instr;
+    u32 addr = signExtendTo32(instr.imm16) + m_regs.r[instr.rs];
+    // check alignment, needs to be 4-aligned
+    if (addr & 0x3) {
+        Cpu::Exception e;
+        e.type = Cpu::Exception::Type::AddrErrLoad;
+        m_cop0.RaiseException(e);
+    } else {
+        // Load Delay!
+        m_lds.is_primed = true;
+        m_lds.reg = instr.rt;
+        m_lds.val = m_bus->Read32(addr);
+    }
+    return 0;
 }
 
-void Cpu::Lwl(const Asm::Instruction& instr)
+/*
+ * Load Word Left
+ * op = 0x22
+ * Format: LWL rt, imm(rs)
+ * Merge unaligned data (up to word boundary) into the MSB of the target register.
+ */
+u8 Cpu::Lwl(const Asm::Instruction& instr)
 {
-    PSX_ASSERT(0);
-    (void) instr;
+    u32 addr = signExtendTo32(instr.imm16) + m_regs.r[instr.rs];
+    u32 shift_to_align = (addr & 0x3) << 3; // mult by 8
+    // read from 4-aligned addr
+    u32 data = m_bus->Read32(addr & ~0x3u);
+    // if the previous instruction was a load instruction, we need to grab the value
+    // from the load delay slot.
+    u32 rt = m_lds.was_primed && m_lds.reg == instr.rt ? m_lds.val : m_regs.r[instr.rt];
+    m_lds.val = (rt & (0x00ff'ffff >> shift_to_align))
+              | (data << (24 - shift_to_align));
+    m_lds.reg = instr.rt;
+    m_lds.is_primed = true;
+    return 0;
 }
 
-void Cpu::Lwr(const Asm::Instruction& instr)
+/*
+ * Load Word Right
+ * op = 0x26
+ * Format: LWR rt, imm(rs)
+ * Merge unaligned data (down to word boundary) into LSB of the target register.
+ */
+u8 Cpu::Lwr(const Asm::Instruction& instr)
 {
-    PSX_ASSERT(0);
-    (void) instr;
+    u32 addr = signExtendTo32(instr.imm16) + m_regs.r[instr.rs];
+    u32 shift_to_align = (addr & 0x3) << 3; // mult by 8
+    // read from 4-aligned addr
+    u32 data = m_bus->Read32(addr & ~0x3u);
+    // if the previous instruction was a load instruction, we need to grab the value
+    // from the load delay slot.
+    u32 rt = m_lds.was_primed && m_lds.reg == instr.rt ? m_lds.val : m_regs.r[instr.rt];
+    u32 reg_mask = 0xffff'ff00 << (24 - shift_to_align);
+    m_lds.val = (rt & reg_mask) | (data >> shift_to_align);
+    m_lds.reg = instr.rt;
+    m_lds.is_primed = true;
+    return 0;
 }
 
 // *** Store ***
-void Cpu::Sb(const Asm::Instruction& instr)
+u8 Cpu::Sb(const Asm::Instruction& instr)
 {
     PSX_ASSERT(0);
     (void) instr;
+    return 0;
 }
 
-void Cpu::Sh(const Asm::Instruction& instr)
+u8 Cpu::Sh(const Asm::Instruction& instr)
 {
     PSX_ASSERT(0);
     (void) instr;
+    return 0;
 }
 
-void Cpu::Sw(const Asm::Instruction& instr)
+u8 Cpu::Sw(const Asm::Instruction& instr)
 {
     PSX_ASSERT(0);
     (void) instr;
+    return 0;
 }
 
-void Cpu::Swl(const Asm::Instruction& instr)
+u8 Cpu::Swl(const Asm::Instruction& instr)
 {
     PSX_ASSERT(0);
     (void) instr;
+    return 0;
 }
 
-void Cpu::Swr(const Asm::Instruction& instr)
+u8 Cpu::Swr(const Asm::Instruction& instr)
 {
     PSX_ASSERT(0);
     (void) instr;
+    return 0;
 }
 
 //================================================
 // Jump and Branch Instructions
 //================================================
 // *** Jump instructions ***
-void Cpu::J(const Asm::Instruction& instr)
+u8 Cpu::J(const Asm::Instruction& instr)
 {
     PSX_ASSERT(0);
     (void) instr;
+    return 0;
 }
 
-void Cpu::Jal(const Asm::Instruction& instr)
+u8 Cpu::Jal(const Asm::Instruction& instr)
 {
     PSX_ASSERT(0);
     (void) instr;
+    return 0;
 }
 
-void Cpu::Jr(const Asm::Instruction& instr)
+u8 Cpu::Jr(const Asm::Instruction& instr)
 {
     PSX_ASSERT(0);
     (void) instr;
+    return 0;
 }
 
-void Cpu::Jalr(const Asm::Instruction& instr)
+u8 Cpu::Jalr(const Asm::Instruction& instr)
 {
     PSX_ASSERT(0);
     (void) instr;
+    return 0;
 }
 
 // *** Branch instructions ***
-void Cpu::Beq(const Asm::Instruction& instr)
+u8 Cpu::Beq(const Asm::Instruction& instr)
 {
     PSX_ASSERT(0);
     (void) instr;
+    return 0;
 }
 
-void Cpu::Bne(const Asm::Instruction& instr)
+u8 Cpu::Bne(const Asm::Instruction& instr)
 {
     PSX_ASSERT(0);
     (void) instr;
+    return 0;
 }
 
-void Cpu::Blez(const Asm::Instruction& instr)
+u8 Cpu::Blez(const Asm::Instruction& instr)
 {
     PSX_ASSERT(0);
     (void) instr;
+    return 0;
 }
 
-void Cpu::Bgtz(const Asm::Instruction& instr)
+u8 Cpu::Bgtz(const Asm::Instruction& instr)
 {
     PSX_ASSERT(0);
     (void) instr;
+    return 0;
 }
 
 // *** bcondz ***
-void Cpu::Bltz(const Asm::Instruction& instr)
+u8 Cpu::Bltz(const Asm::Instruction& instr)
 {
     PSX_ASSERT(0);
     (void) instr;
+    return 0;
 }
 
-void Cpu::Bgez(const Asm::Instruction& instr)
+u8 Cpu::Bgez(const Asm::Instruction& instr)
 {
     PSX_ASSERT(0);
     (void) instr;
+    return 0;
 }
 
-void Cpu::Bltzal(const Asm::Instruction& instr)
+u8 Cpu::Bltzal(const Asm::Instruction& instr)
 {
     PSX_ASSERT(0);
     (void) instr;
+    return 0;
 }
 
-void Cpu::Bgezal(const Asm::Instruction& instr)
+u8 Cpu::Bgezal(const Asm::Instruction& instr)
 {
     PSX_ASSERT(0);
     (void) instr;
+    return 0;
 }
 
 //================================================
 // Co-Processor Instructions
 //================================================
 // *** Cop General ***
-void Cpu::Cop0(const Asm::Instruction& instr)
+u8 Cpu::Cop0(const Asm::Instruction& instr)
 {
     PSX_ASSERT(0);
     (void) instr;
+    return 0;
 }
 
-void Cpu::Cop1(const Asm::Instruction& instr)
+u8 Cpu::Cop1(const Asm::Instruction& instr)
 {
     PSX_ASSERT(0);
     (void) instr;
+    return 0;
 }
 
-void Cpu::Cop2(const Asm::Instruction& instr)
+u8 Cpu::Cop2(const Asm::Instruction& instr)
 {
     PSX_ASSERT(0);
     (void) instr;
+    return 0;
 }
 
-void Cpu::Cop3(const Asm::Instruction& instr)
+u8 Cpu::Cop3(const Asm::Instruction& instr)
 {
     PSX_ASSERT(0);
     (void) instr;
+    return 0;
 }
 
 // *** Cop Loads ***
-void Cpu::LwC0(const Asm::Instruction& instr)
+u8 Cpu::LwC0(const Asm::Instruction& instr)
 {
     PSX_ASSERT(0);
     (void) instr;
+    return 0;
 }
 
-void Cpu::LwC1(const Asm::Instruction& instr)
+u8 Cpu::LwC1(const Asm::Instruction& instr)
 {
     PSX_ASSERT(0);
     (void) instr;
+    return 0;
 }
 
-void Cpu::LwC2(const Asm::Instruction& instr)
+u8 Cpu::LwC2(const Asm::Instruction& instr)
 {
     PSX_ASSERT(0);
     (void) instr;
+    return 0;
 }
 
-void Cpu::LwC3(const Asm::Instruction& instr)
+u8 Cpu::LwC3(const Asm::Instruction& instr)
 {
     PSX_ASSERT(0);
     (void) instr;
+    return 0;
 }
 
 // *** Cop Store ***
-void Cpu::SwC0(const Asm::Instruction& instr)
+u8 Cpu::SwC0(const Asm::Instruction& instr)
 {
     PSX_ASSERT(0);
     (void) instr;
+    return 0;
 }
 
-void Cpu::SwC1(const Asm::Instruction& instr)
+u8 Cpu::SwC1(const Asm::Instruction& instr)
 {
     PSX_ASSERT(0);
     (void) instr;
+    return 0;
 }
 
-void Cpu::SwC2(const Asm::Instruction& instr)
+u8 Cpu::SwC2(const Asm::Instruction& instr)
 {
     PSX_ASSERT(0);
     (void) instr;
+    return 0;
 }
 
-void Cpu::SwC3(const Asm::Instruction& instr)
+u8 Cpu::SwC3(const Asm::Instruction& instr)
 {
     PSX_ASSERT(0);
     (void) instr;
+    return 0;
 }
 

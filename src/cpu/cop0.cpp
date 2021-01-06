@@ -37,7 +37,7 @@ void Cpu::Cop0::RaiseException(const Exception& ex)
     m_bad_vaddr = ex.badv;
 
     // update epc
-    m_epc = m_cpu.GetPC();
+    m_epc = m_cpu.GetPC() - 4; // pc has already incremented
     if (m_cause.ex_type != Exception::Type::Interrupt && m_cause.branch_delay) {
         COP0_WARN("Branch Delay Exception! Did anything break??");
         // unsure if this is correct?

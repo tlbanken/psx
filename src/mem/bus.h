@@ -39,6 +39,9 @@ public:
     virtual bool Write8(u8 data, u32 addr) = 0;
     virtual bool Write16(u16 data, u32 addr) = 0;
     virtual bool Write32(u32 data, u32 addr) = 0;
+
+    // Reset
+    virtual void Reset() = 0;
 };
 
 
@@ -62,6 +65,7 @@ private:
 public:
     void AddAddressSpace(std::shared_ptr<AddressSpace> as, BusPriority p);
     std::string ToString();
+    void Reset();
     
     // reads
     u8 Read8(u32 addr);

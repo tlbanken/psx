@@ -30,6 +30,14 @@ Ram::Ram()
     m_sysram.resize(2 * 1024 * 1024);
 }
 
+void Ram::Reset()
+{
+    RAM_INFO("Resetting RAM. Zeroing out memory.");
+    for (auto& byte : m_sysram) {
+        byte = 0x00;
+    }
+}
+
 // reads
 ASResult Ram::Read8(u32 addr)
 {

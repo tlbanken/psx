@@ -98,6 +98,7 @@ namespace psxlog {
             o << fmt::format(fg(color), "{}", let);
         }
         o << fmt::format(" {:<15} {}\n", label, msg);
+        o.flush();
     }
 
     // Logs that omit the type
