@@ -1162,38 +1162,100 @@ u8 Cpu::Lwr(const Asm::Instruction& instr)
 }
 
 // *** Store ***
+/*
+ * Store Byte
+ * op = 0x28
+ * Format: SB rt, imm(rs)
+ * Store the least significant byte in rt at address imm + base.
+ */
 u8 Cpu::Sb(const Asm::Instruction& instr)
 {
-    PSX_ASSERT(0);
-    (void) instr;
+    u32 addr = signExtendTo32(instr.imm16) + m_regs.r[instr.rs];
+    u8 rt = m_regs.r[instr.rt] & 0xff;
+    m_bus->Write8(rt, addr);
     return 0;
 }
 
+/*
+ * Store Halfword
+ * op = 0x29
+ * Format: SH rt, imm(rs)
+ * Store the least significant halfword in rt at address imm + base.
+ */
 u8 Cpu::Sh(const Asm::Instruction& instr)
 {
-    PSX_ASSERT(0);
-    (void) instr;
+    u32 addr = signExtendTo32(instr.imm16) + m_regs.r[instr.rs];
+    // check if 2-aligned
+    if (addr & 0x1) {
+        // not aligned, throw exception
+        Cpu::Exception e;
+        e.type = Cpu::Exception::Type::AddrErrStore;
+        m_cop0.RaiseException(e);
+    } else {
+        u16 rt = m_regs.r[instr.rt] & 0xffff;
+        m_bus->Write16(rt, addr);
+    }
     return 0;
 }
 
+/*
+ * Store Word
+ * op = 0x2b
+ * Format: SW rt, imm(rs)
+ * Store the word in rt at address imm + base.
+ */
 u8 Cpu::Sw(const Asm::Instruction& instr)
 {
-    PSX_ASSERT(0);
-    (void) instr;
+    u32 addr = signExtendTo32(instr.imm16) + m_regs.r[instr.rs];
+    if (addr & 0x3) {
+        // not aligned, throw exception
+        Cpu::Exception e;
+        e.type = Cpu::Exception::Type::AddrErrStore;
+        m_cop0.RaiseException(e);
+    } else {
+        u32 rt = m_regs.r[instr.rt];
+        m_bus->Write32(rt, addr);
+    }
     return 0;
 }
 
+/*
+ * Store Word Left
+ * op = 0x2a
+ * Format: SWL rt, imm(rs)
+ * Merge the word stored in rt into the unaligned address down to the word
+ * boundary.
+ */
 u8 Cpu::Swl(const Asm::Instruction& instr)
 {
-    PSX_ASSERT(0);
-    (void) instr;
+    u32 addr = signExtendTo32(instr.imm16) + m_regs.r[instr.rs];
+    u32 shift_to_align = (addr & 0x3) << 3; // mult by 8
+    // read from 4-aligned addr
+    u32 old_data = m_bus->Read32(addr & ~0x3u);
+    u32 rt = m_regs.r[instr.rt];
+    u32 mask = (0xffff'ff00 << shift_to_align);
+    u32 new_data = (old_data & mask) | (rt >> (24 - shift_to_align));
+    m_bus->Write32(new_data, addr & ~0x3u);
     return 0;
 }
 
+/*
+ * Store Word Right
+ * op = 0x2e
+ * Format: SWR rt, imm(rs)
+ * Merge the word stored in rt into the unaligned address up to the word
+ * boundary.
+ */
 u8 Cpu::Swr(const Asm::Instruction& instr)
 {
-    PSX_ASSERT(0);
-    (void) instr;
+    u32 addr = signExtendTo32(instr.imm16) + m_regs.r[instr.rs];
+    u32 shift_to_align = (addr & 0x3) << 3; // mult by 8
+    // read from 4-aligned addr
+    u32 old_data = m_bus->Read32(addr & ~0x3u);
+    u32 rt = m_regs.r[instr.rt];
+    u32 mask = (0x00ff'ffff >> (24 - shift_to_align));
+    u32 new_data = (old_data & mask) | (rt << shift_to_align);
+    m_bus->Write32(new_data, addr & ~0x3u);
     return 0;
 }
 

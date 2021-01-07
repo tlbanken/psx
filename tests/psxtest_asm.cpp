@@ -142,6 +142,11 @@ static void comboTests()
     LOG_COMBO("LW R4 32 R2");
     LOG_COMBO("LWR R4 -2 R2");
     LOG_COMBO("LWL R10 32 R2");
+    LOG_COMBO("SB R1 -1 R0");
+    LOG_COMBO("SH R1 2 R0");
+    LOG_COMBO("SW R6 89 R12");
+    LOG_COMBO("SWR R14 -29 R7");
+    LOG_COMBO("SWL R1 132 R20");
 }
 
 namespace psxtest {

@@ -907,6 +907,111 @@ static void loadDelayTests()
     assert(cpu.GetR(20) == 0xdead'beef);
 }
 
+static void storeTests()
+{
+    TCPU_INFO("** Starting Store Instruction Tests");
+    std::string instr;
+    // setup hardware
+    std::shared_ptr<Bus> bus(new Bus);
+    std::shared_ptr<Ram> ram(new Ram);
+    bus->AddAddressSpace(ram, BusPriority::First);
+    Cpu cpu(bus);
+
+    //========================
+    // SB
+    //========================
+    cpu.Reset();
+    cpu.SetR(1, 125);
+    EXE_INSTR("SB R1 0 R0");
+    assert(bus->Read8(0x0000'0000) == 125);
+    EXE_INSTR("SB R1 5 R0");
+    assert(bus->Read8(0x0000'0005) == 125);
+    cpu.SetR(2, 12);
+    EXE_INSTR("SB R1 -5 R2");
+    assert(bus->Read8(0x0000'0007) == 125);
+
+    //========================
+    // SH
+    //========================
+    cpu.Reset();
+    bus->Reset();
+    cpu.SetR(1, 1234);
+    EXE_INSTR("SH R1 0 R0");
+    assert(bus->Read16(0x0000'0000) == 1234);
+    EXE_INSTR("SH R1 4 R0");
+    assert(bus->Read16(0x0000'0004) == 1234);
+    cpu.SetR(2, 12);
+    EXE_INSTR("SH R1 -2 R2");
+    assert(bus->Read16(0x0000'000a) == 1234);
+    // test unaligned store
+    cpu.SetR(2, 0x11);
+    EXE_INSTR("SH R1 0 R2");
+    assert(bus->Read16(0x0000'0011) == 0);
+
+    //========================
+    // SW
+    //========================
+    cpu.Reset();
+    bus->Reset();
+    cpu.SetR(1, 0x1234'1234);
+    EXE_INSTR("SW R1 0 R0");
+    assert(bus->Read32(0x0000'0000) == 0x1234'1234);
+    EXE_INSTR("SW R1 4 R0");
+    assert(bus->Read32(0x0000'0004) == 0x1234'1234);
+    cpu.SetR(2, 10);
+    EXE_INSTR("SW R1 -2 R2");
+    assert(bus->Read32(0x0000'0008) == 0x1234'1234);
+    // test unaligned store
+    cpu.SetR(2, 0x100);
+    EXE_INSTR("SW R1 1 R2");
+    assert(bus->Read32(0x0000'0101) == 0);
+    EXE_INSTR("SW R1 2 R2");
+    assert(bus->Read32(0x0000'0102) == 0);
+    EXE_INSTR("SW R1 3 R2");
+    assert(bus->Read32(0x0000'0103) == 0);
+
+    //========================
+    // SWL
+    //========================
+    cpu.Reset();
+    bus->Reset();
+    cpu.SetR(1, 0xdead'beef);
+    EXE_INSTR("SWL R1 0 R0");
+    assert(bus->Read32(0) == 0x0000'00de);
+    EXE_INSTR("SWL R1 5 R0");
+    assert(bus->Read32(4) == 0x0000'dead);
+    EXE_INSTR("SWL R1 10 R0");
+    assert(bus->Read32(8) == 0x00de'adbe);
+    EXE_INSTR("SWL R1 15 R0");
+    assert(bus->Read32(12) == 0xdead'beef);
+
+    //========================
+    // SWR
+    //========================
+    cpu.Reset();
+    bus->Reset();
+    cpu.SetR(1, 0xdead'beef);
+    EXE_INSTR("SWR R1 0 R0");
+    assert(bus->Read32(0) == 0xdead'beef);
+    EXE_INSTR("SWR R1 5 R0");
+    assert(bus->Read32(4) == 0xadbe'ef00);
+    EXE_INSTR("SWR R1 10 R0");
+    assert(bus->Read32(8) == 0xbeef'0000);
+    EXE_INSTR("SWR R1 15 R0");
+    assert(bus->Read32(12) == 0xef00'0000);
+
+    //========================
+    // SWL + SWR
+    //========================
+    cpu.Reset();
+    bus->Reset();
+    cpu.SetR(10, 13);
+    cpu.SetR(1, 0xdead'beef);
+    EXE_INSTR("SWL R1 3 R10");
+    EXE_INSTR("SWR R1 0 R10");
+    assert(bus->Read32(13) == 0xdead'beef);
+}
+
 namespace psxtest {
     void CpuTests()
     {
@@ -917,5 +1022,6 @@ namespace psxtest {
         hiloTests();
         loadTests();
         loadDelayTests();
+        storeTests();
     }
 }

@@ -3,6 +3,7 @@ manuals
 build
 games
 *.user
+*.kdev4
 **/*.log
 **/*.dump
 extern/include/fmt/*
