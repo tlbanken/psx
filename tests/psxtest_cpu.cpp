@@ -45,7 +45,7 @@
 
 static void aluiTests()
 {
-    TCPU_INFO("** Starting ALU Immediate Tests");
+    TCPU_INFO("** Starting ALU Immediate Tests -----------------------");
     // setup hardware
     std::shared_ptr<Bus> bus(new Bus());
     Cpu cpu(bus);
@@ -186,7 +186,7 @@ static void aluiTests()
 
 static void alurTests()
 {
-    TCPU_INFO("** Starting ALU R-Type Instruction Tests");
+    TCPU_INFO("** Starting ALU R-Type Instruction Tests --------------");
     // setup hardware
     std::shared_ptr<Bus> bus(new Bus);
     Cpu cpu(bus);
@@ -377,7 +377,7 @@ static void alurTests()
 
 static void shiftTests()
 {
-    TCPU_INFO("** Starting Shift Tests");
+    TCPU_INFO("** Starting Shift Tests -------------------------------");
     std::string instr;
     // setup hardware
     std::shared_ptr<Bus> bus(new Bus);
@@ -489,7 +489,7 @@ static void shiftTests()
 
 void hiloTests()
 {
-    TCPU_INFO("** Starting HiLo Tests");
+    TCPU_INFO("** Starting HiLo Tests --------------------------------");
     std::string instr;
     // setup hardware
     std::shared_ptr<Bus> bus(new Bus);
@@ -647,7 +647,7 @@ void hiloTests()
 
 static void loadTests()
 {
-    TCPU_INFO("** Starting LOAD Tests");
+    TCPU_INFO("** Starting LOAD Tests --------------------------------");
     std::string instr;
     // setup hardware
     std::shared_ptr<Bus> bus(new Bus);
@@ -818,7 +818,7 @@ static void loadTests()
 
 static void loadDelayTests()
 {
-    TCPU_INFO("** Starting Load-Delay Tests");
+    TCPU_INFO("** Starting Load-Delay Tests --------------------------");
     std::string instr;
     // setup hardware
     std::shared_ptr<Bus> bus(new Bus);
@@ -909,7 +909,7 @@ static void loadDelayTests()
 
 static void storeTests()
 {
-    TCPU_INFO("** Starting Store Instruction Tests");
+    TCPU_INFO("** Starting Store Instruction Tests -------------------");
     std::string instr;
     // setup hardware
     std::shared_ptr<Bus> bus(new Bus);
@@ -1012,6 +1012,68 @@ static void storeTests()
     assert(bus->Read32(13) == 0xdead'beef);
 }
 
+static void jumpTests()
+{
+    TCPU_INFO("** Starting Jump Instruction Tests --------------------");
+    std::string instr;
+    // setup hardware
+    std::shared_ptr<Bus> bus(new Bus);
+    std::shared_ptr<Ram> ram(new Ram);
+    bus->AddAddressSpace(ram, BusPriority::First);
+    Cpu cpu(bus);
+
+    //========================
+    // J
+    //========================
+    cpu.Reset();
+    cpu.SetPC(0);
+    EXE_INSTR("J 0x100");
+    assert(cpu.GetPC() == 0x100);
+    cpu.SetPC(0xb000'3003);
+    EXE_INSTR("J 0x100");
+    assert(cpu.GetPC() == 0xb000'0100);
+
+    //========================
+    // JAL
+    //========================
+    cpu.Reset();
+    cpu.SetPC(0);
+    EXE_INSTR("JAL 0x100");
+    assert(cpu.GetPC() == 0x100);
+    assert(cpu.GetR(31) == 0x8);
+    cpu.SetPC(0xb000'3000);
+    EXE_INSTR("JAL 0x100");
+    assert(cpu.GetPC() == 0xb000'0100);
+    assert(cpu.GetR(31) == 0xb000'3008);
+
+    //========================
+    // JR
+    //========================
+    cpu.Reset();
+    cpu.SetPC(0);
+    cpu.SetR(1, 0x100);
+    EXE_INSTR("JR R1");
+    assert(cpu.GetPC() == 0x100);
+    cpu.SetPC(0xb000'3003);
+    EXE_INSTR("JR R1");
+    assert(cpu.GetPC() == 0x0000'0100);
+
+    //========================
+    // JALR
+    //========================
+    cpu.Reset();
+    cpu.SetPC(0);
+    cpu.SetR(1, 0x100);
+    cpu.SetR(2, 0xbe3);
+    EXE_INSTR("JALR R1 R2");
+    assert(cpu.GetPC() == 0x100);
+    assert(cpu.GetR(31) == 0xbe3);
+    cpu.SetPC(0xb000'3000);
+    EXE_INSTR("JALR R1 R2");
+    assert(cpu.GetPC() == 0x100);
+    assert(cpu.GetR(31) == 0xbe3);
+}
+
 namespace psxtest {
     void CpuTests()
     {
@@ -1023,5 +1085,6 @@ namespace psxtest {
         loadTests();
         loadDelayTests();
         storeTests();
+        jumpTests();
     }
 }

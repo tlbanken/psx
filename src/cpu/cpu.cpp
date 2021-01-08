@@ -1263,31 +1263,57 @@ u8 Cpu::Swr(const Asm::Instruction& instr)
 // Jump and Branch Instructions
 //================================================
 // *** Jump instructions ***
+/*
+ * Jump
+ * op = 0x02
+ * Format: J target
+ * Shift target left by 2 and combine with high 4 bits of PC to form new PC.
+ */
 u8 Cpu::J(const Asm::Instruction& instr)
 {
-    PSX_ASSERT(0);
-    (void) instr;
+    u32 target = instr.target << 2;
+    target |= (m_regs.pc & 0xf000'0000);
+    m_regs.pc = target;
     return 0;
 }
 
+/*
+ * Jump and Link
+ * op = 0x03
+ * Format: JAL target
+ * Jump to Target and store instruction following delay into R31.
+ */
 u8 Cpu::Jal(const Asm::Instruction& instr)
 {
-    PSX_ASSERT(0);
-    (void) instr;
-    return 0;
+    u32 target = instr.target << 2;
+    target |= (m_regs.pc & 0xf000'0000);
+    m_regs.r[31] = m_regs.pc + 4; // return addr
+    m_regs.pc = target;
+    return 31;
 }
 
+/*
+ * Jump Register
+ * funct = 0x08
+ * Format: JR rs
+ * Jump to the address stored in rs.
+ */
 u8 Cpu::Jr(const Asm::Instruction& instr)
 {
-    PSX_ASSERT(0);
-    (void) instr;
+    m_regs.pc = m_regs.r[instr.rs];
     return 0;
 }
 
+/*
+ * Jump Register and Link
+ * funct = 0x09
+ * Format: JRAL rs, rd
+ * Jump to the address stored in rs.
+ */
 u8 Cpu::Jalr(const Asm::Instruction& instr)
 {
-    PSX_ASSERT(0);
-    (void) instr;
+    m_regs.pc = m_regs.r[instr.rs];
+    m_regs.r[31] = m_regs.r[instr.rd];
     return 0;
 }
 

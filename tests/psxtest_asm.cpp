@@ -147,6 +147,10 @@ static void comboTests()
     LOG_COMBO("SW R6 89 R12");
     LOG_COMBO("SWR R14 -29 R7");
     LOG_COMBO("SWL R1 132 R20");
+    LOG_COMBO("J 0x1230");
+    LOG_COMBO("JAL 0x1324");
+    LOG_COMBO("JR R2");
+    LOG_COMBO("JALR R1 R2");
 }
 
 namespace psxtest {
