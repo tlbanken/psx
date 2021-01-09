@@ -34,7 +34,6 @@ public:
             Overflow      = 0x0c,
         } type;
         u32 badv = 0;
-        bool on_branch = false; // set if exception occurs on branch instr
         u8 cop_num = 0;
     };
 
@@ -52,6 +51,7 @@ public:
     void SetLO(u32 val);
     u8 ExecuteInstruction(u32 raw_instr);
     void Reset();
+    bool InBranchDelaySlot();
 
     // DbgModule Functions
     void OnActive(bool *active);
@@ -63,13 +63,12 @@ private:
     std::map<u8, opfunc> m_bcondz_opmap;
 
     std::shared_ptr<Bus> m_bus;
-    u32 m_next_instr = 0;
-    u32 m_last_pc = 0;
 
     // registers
     struct Registers {
         // special
         u32 pc = 0xbfc0'0000; // beginning of BIOS
+//        u32 next_pc = pc + 4; // handle branch delays
         u32 hi = 0;
         u32 lo = 0;
         // general purpose
@@ -81,7 +80,14 @@ private:
         u32 val = 0;
         bool is_primed = false;  // current instruction is a load
         bool was_primed = false; // prev instruction was a load
-    } m_lds;
+    }m_lds;
+    // branch delay slot
+    struct BranchDelaySlot {
+        bool is_primed = false;
+        bool was_primed = false;
+        bool take_branch = false;
+        u32 pc; // the pc to load after executing delay
+    }m_bds;
 
     // helpers
     void buildOpMaps();

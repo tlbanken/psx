@@ -30,18 +30,17 @@ void Cpu::Cop0::RaiseException(const Exception& ex)
 {
     // update cause register
     m_cause.ex_type = ex.type;
-    m_cause.branch_delay = ex.on_branch;
+    m_cause.branch_delay = m_cpu.InBranchDelaySlot();
     m_cause.cop_num = ex.cop_num;
 
     // update badv
     m_bad_vaddr = ex.badv;
 
     // update epc
-    m_epc = m_cpu.GetPC() - 4; // pc has already incremented
+    m_epc = m_cpu.GetPC() + 4; // pc has already incremented
     if (m_cause.ex_type != Exception::Type::Interrupt && m_cause.branch_delay) {
         COP0_WARN("Branch Delay Exception! Did anything break??");
-        // unsure if this is correct?
-        m_epc += 4;
+        m_epc -= 4;
     }
 
     COP0_WARN("Exception Handler not fully implemented!");
@@ -53,8 +52,7 @@ void Cpu::Cop0::RaiseException(const Exception& ex)
  */
 void Cpu::Cop0::Reset()
 {
-    CauseReg new_cr;
-    m_cause = new_cr;
+    m_cause = {};
     m_epc = 0;
     m_bad_vaddr = 0;
 }

@@ -22,10 +22,8 @@ Cpu::Cpu(std::shared_ptr<Bus> bus)
 {
     CPU_INFO("Initializing CPU");
     buildOpMaps();
-    // Flush one instruction (nop)
     PSX_ASSERT(m_bus.get() != nullptr);
-    Step();
-    m_regs.pc = 0xbfc0'0000; // beginning of BIOS
+    Reset();
 }
 
 /*
@@ -33,13 +31,16 @@ Cpu::Cpu(std::shared_ptr<Bus> bus)
  */
 void Cpu::Step()
 {
-    // we execute "one instruction ahead" to handle branch delays
-    u32 cur_instr = m_next_instr;
-    m_last_pc = m_regs.pc;
-
     // fetch next instruction
-    m_next_instr = m_bus->Read32(m_regs.pc);
-    m_regs.pc += 4;
+    u32 cur_instr = m_bus->Read32(m_regs.pc);
+
+    // check if last instruction was a branch/jump
+    m_bds.was_primed = m_bds.is_primed;
+    m_bds.is_primed = false;
+    bool take_branch = m_bds.take_branch;
+    m_bds.take_branch = false;
+    u32 baddr = m_bds.pc;
+
 
     // if previous instruction was a load, the load delay will be primed.
     // we need to check this here just in case the next instruction will
@@ -49,6 +50,9 @@ void Cpu::Step()
 
     // execute
     u8 modified_reg = ExecuteInstruction(cur_instr);
+
+    // update pc (dependent on branch)
+    m_regs.pc = take_branch ? baddr : m_regs.pc + 4;
 
     // race condition: if instruction writes to same register in load
     // delay slot, the instruction wins over the load.
@@ -68,12 +72,9 @@ void Cpu::Reset()
     CPU_INFO("Resetting state");
     // reset cop0
     m_cop0.Reset();
-    // reset next instr
-    m_next_instr = 0x0000'0000; // nop
-    m_last_pc = 0;
-    m_lds = {0, 0, false, false};
-    // Flush one instruction (nop)
-    Step();
+    // reset branch/load slots
+    m_lds = {};
+    m_bds = {};
     // reset registers
     Registers new_regs;
     m_regs = new_regs;
@@ -84,12 +85,10 @@ void Cpu::Reset()
  */
 void Cpu::SetPC(u32 addr)
 {
-    CPU_WARN(PSX_FMT("Forcing PC to 0x{:08x}, injecting NOP for branch delay support", addr));
+    CPU_WARN(PSX_FMT("Forcing PC to 0x{:08x}", addr));
     m_regs.pc = addr;
-    m_next_instr = 0x0000'0000; // nop
-    m_last_pc = 0;
-    // flush nop instr
-    Step();
+//    m_regs.next_pc = addr + 4;
+    m_bds = {};
 }
 
 /*
@@ -164,6 +163,13 @@ u8 Cpu::ExecuteInstruction(u32 raw_instr)
     return (this->*m_prim_opmap[instr.op])(instr);
 }
 
+/*
+ * Returns true if the current instruction is executing in the branch delay slot.
+ */
+bool Cpu::InBranchDelaySlot()
+{
+    return m_bds.is_primed;
+}
 
 /*
  * Update function for ImGui.
@@ -208,7 +214,7 @@ void Cpu::OnActive(bool *active)
     }
     //-------------------------------------
 
-    u32 pc = m_last_pc;
+    u32 pc = m_regs.pc;
     u32 prePC = pc_region > pc ? 0 : pc - pc_region;
     u32 postPC = m_regs.pc + pc_region;
 
@@ -296,7 +302,7 @@ void Cpu::OnActive(bool *active)
     ImGui::BeginGroup();
         ImGui::TextUnformatted(PSX_FMT("HI = {:<26}", PSX_FMT("{0:#010x} ({0})", m_regs.hi)).data());
         ImGui::TextUnformatted(PSX_FMT("LO = {:<26}", PSX_FMT("{0:#010x} ({0})", m_regs.lo)).data());
-        ImGui::TextUnformatted(PSX_FMT("PC = 0x{:08x}", m_last_pc).data());
+        ImGui::TextUnformatted(PSX_FMT("PC = 0x{:08x}", m_regs.pc).data());
     ImGui::EndGroup();
 
     // end child
@@ -1273,7 +1279,9 @@ u8 Cpu::J(const Asm::Instruction& instr)
 {
     u32 target = instr.target << 2;
     target |= (m_regs.pc & 0xf000'0000);
-    m_regs.pc = target;
+    m_bds.pc = target;
+    m_bds.is_primed = true;
+    m_bds.take_branch = true;
     return 0;
 }
 
@@ -1287,8 +1295,10 @@ u8 Cpu::Jal(const Asm::Instruction& instr)
 {
     u32 target = instr.target << 2;
     target |= (m_regs.pc & 0xf000'0000);
-    m_regs.r[31] = m_regs.pc + 4; // return addr
-    m_regs.pc = target;
+    m_regs.r[31] = m_regs.pc + 8; // return addr
+    m_bds.pc = target;
+    m_bds.is_primed = true;
+    m_bds.take_branch = true;
     return 31;
 }
 
@@ -1300,7 +1310,18 @@ u8 Cpu::Jal(const Asm::Instruction& instr)
  */
 u8 Cpu::Jr(const Asm::Instruction& instr)
 {
-    m_regs.pc = m_regs.r[instr.rs];
+    u32 target = m_regs.r[instr.rs];
+    // check 4-alignment
+    if (target & 0x3) {
+        Cpu::Exception e;
+        e.type = Cpu::Exception::Type::AddrErrLoad;
+        e.badv = target;
+        m_cop0.RaiseException(e);
+    } else {
+        m_bds.pc = target;
+        m_bds.take_branch = true;
+    }
+    m_bds.is_primed = true;
     return 0;
 }
 
@@ -1312,66 +1333,165 @@ u8 Cpu::Jr(const Asm::Instruction& instr)
  */
 u8 Cpu::Jalr(const Asm::Instruction& instr)
 {
-    m_regs.pc = m_regs.r[instr.rs];
-    m_regs.r[31] = m_regs.r[instr.rd];
+    u32 target = m_regs.r[instr.rs];
+    // check 4-alignment
+    if (target & 0x3) {
+        Cpu::Exception e;
+        e.type = Cpu::Exception::Type::AddrErrLoad;
+        e.badv = target;
+        m_cop0.RaiseException(e);
+    } else {
+        m_bds.pc = target;
+        m_regs.r[31] = m_regs.r[instr.rd];
+        m_bds.take_branch = true;
+    }
+    m_bds.is_primed = true;
     return 0;
 }
 
 // *** Branch instructions ***
+/*
+ * Branch if Equal
+ * op = 0x04
+ * Format: BEQ rs, rt, offset
+ * Branch to pc + offset if rs equals rt.
+ */
 u8 Cpu::Beq(const Asm::Instruction& instr)
 {
-    PSX_ASSERT(0);
-    (void) instr;
+    if (m_regs.r[instr.rs] == m_regs.r[instr.rt]) {
+        m_bds.take_branch = true;
+        u32 offset = signExtendTo32(instr.imm16) << 2;
+        m_bds.pc = m_regs.pc + offset;
+    }
+    m_bds.is_primed = true;
     return 0;
 }
 
+/*
+ * Branch if Not Equal
+ * op = 0x05
+ * Format: BNE rs, rt, offset
+ * Branch to pc + offset if rs does not equals rt.
+ */
 u8 Cpu::Bne(const Asm::Instruction& instr)
 {
-    PSX_ASSERT(0);
-    (void) instr;
+    if (m_regs.r[instr.rs] != m_regs.r[instr.rt]) {
+        u32 offset = signExtendTo32(instr.imm16) << 2;
+        m_bds.pc = m_regs.pc + offset;
+        m_bds.take_branch = true;
+    }
+    m_bds.is_primed = true;
     return 0;
 }
 
+/*
+ * Branch if less than or equal to zero.
+ * op = 0x06
+ * Format: BLEZ rs, offset
+ * Branch to pc + offset if rs greater than zero.
+ */
 u8 Cpu::Blez(const Asm::Instruction& instr)
 {
-    PSX_ASSERT(0);
-    (void) instr;
+    i32 rs = static_cast<i32>(m_regs.r[instr.rs]);
+    if (rs <= 0) {
+        m_bds.take_branch = true;
+        u32 offset = signExtendTo32(instr.imm16) << 2;
+        m_bds.pc = m_regs.pc + offset;
+    }
+    m_bds.is_primed = true;
     return 0;
 }
 
+/*
+ * Branch if greater than 0
+ * op = 0x07
+ * Format: BGTZ rs, offset
+ * Branch to pc + offset if rs greater than zero.
+ */
 u8 Cpu::Bgtz(const Asm::Instruction& instr)
 {
-    PSX_ASSERT(0);
-    (void) instr;
+    i32 rs = static_cast<i32>(m_regs.r[instr.rs]);
+    if (rs > 0) {
+        m_bds.take_branch = true;
+        u32 offset = signExtendTo32(instr.imm16) << 2;
+        m_bds.pc = m_regs.pc + offset;
+    }
+    m_bds.is_primed = true;
     return 0;
 }
 
 // *** bcondz ***
+/*
+ * Branch if less than 0
+ * bcondz = 0x00
+ * Format: BLTZ rs, offset
+ * Branch to pc + offset if rs less than zero.
+ */
 u8 Cpu::Bltz(const Asm::Instruction& instr)
 {
-    PSX_ASSERT(0);
-    (void) instr;
+    i32 rs = static_cast<i32>(m_regs.r[instr.rs]);
+    if (rs < 0) {
+        m_bds.take_branch = true;
+        u32 offset = signExtendTo32(instr.imm16) << 2;
+        m_bds.pc = m_regs.pc + offset;
+    }
+    m_bds.is_primed = true;
     return 0;
 }
 
+/*
+ * Branch if greater than or equal to 0
+ * bcondz = 0x01
+ * Format: BGEZ rs, offset
+ * Branch to pc + offset if rs greater than or equal to zero.
+ */
 u8 Cpu::Bgez(const Asm::Instruction& instr)
 {
-    PSX_ASSERT(0);
-    (void) instr;
+    i32 rs = static_cast<i32>(m_regs.r[instr.rs]);
+    if (rs >= 0) {
+        m_bds.take_branch = true;
+        u32 offset = signExtendTo32(instr.imm16) << 2;
+        m_bds.pc = m_regs.pc + offset;
+    }
+    m_bds.is_primed = true;
     return 0;
 }
 
+/*
+ * Branch if less then zero and link
+ * bcondz = 0x10
+ * Format: BLTZAL rs, offset
+ * Branch to pc + offset if rs less than zero and link.
+ */
 u8 Cpu::Bltzal(const Asm::Instruction& instr)
 {
-    PSX_ASSERT(0);
-    (void) instr;
+    i32 rs = static_cast<i32>(m_regs.r[instr.rs]);
+    if (rs < 0) {
+        m_bds.take_branch = true;
+        u32 offset = signExtendTo32(instr.imm16) << 2;
+        m_bds.pc = m_regs.pc + offset;
+        m_regs.r[31] = m_regs.pc + 8;
+    }
+    m_bds.is_primed = true;
     return 0;
 }
 
+/*
+ * Branch if greater or equal to zero and link
+ * bcondz = 0x10
+ * Format: BGEZAL rs, offset
+ * Branch to pc + offset if rs greater or equal to zero and link.
+ */
 u8 Cpu::Bgezal(const Asm::Instruction& instr)
 {
-    PSX_ASSERT(0);
-    (void) instr;
+    i32 rs = static_cast<i32>(m_regs.r[instr.rs]);
+    if (rs >= 0) {
+        m_bds.take_branch = true;
+        u32 offset = signExtendTo32(instr.imm16) << 2;
+        m_bds.pc = m_regs.pc + offset;
+        m_regs.r[31] = m_regs.pc + 8;
+    }
+    m_bds.is_primed = true;
     return 0;
 }
 

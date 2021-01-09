@@ -35,12 +35,17 @@
 #define EXE_TWO_INSTRS(i1, i2) \
 {\
     TCPU_INFO(PSX_FMT("{} -> {}", i1, i2));\
-    bus->Write32(Asm::AsmInstruction(i1), 0x100);\
-    bus->Write32(Asm::AsmInstruction(i2), 0x104);\
-    cpu.SetPC(0x100);\
+    bus->Write32(Asm::AsmInstruction(i1), 0x1000);\
+    bus->Write32(Asm::AsmInstruction(i2), 0x1004);\
+    cpu.SetPC(0x1000);\
     cpu.Step();\
     cpu.Step();\
 }
+
+#define EXE_BD_INSTR(i) \
+    EXE_INSTR(i);\
+    cpu.Step();
+
 
 
 static void aluiTests()
@@ -910,7 +915,6 @@ static void loadDelayTests()
 static void storeTests()
 {
     TCPU_INFO("** Starting Store Instruction Tests -------------------");
-    std::string instr;
     // setup hardware
     std::shared_ptr<Bus> bus(new Bus);
     std::shared_ptr<Ram> ram(new Ram);
@@ -1015,7 +1019,6 @@ static void storeTests()
 static void jumpTests()
 {
     TCPU_INFO("** Starting Jump Instruction Tests --------------------");
-    std::string instr;
     // setup hardware
     std::shared_ptr<Bus> bus(new Bus);
     std::shared_ptr<Ram> ram(new Ram);
@@ -1026,52 +1029,287 @@ static void jumpTests()
     // J
     //========================
     cpu.Reset();
+    bus->Reset();
     cpu.SetPC(0);
-    EXE_INSTR("J 0x100");
+    EXE_BD_INSTR("J 0x100");
     assert(cpu.GetPC() == 0x100);
     cpu.SetPC(0xb000'3003);
-    EXE_INSTR("J 0x100");
+    EXE_BD_INSTR("J 0x100");
     assert(cpu.GetPC() == 0xb000'0100);
+    cpu.SetPC(0);
+    // test branch delay
+    EXE_TWO_INSTRS("J 0x100", "ADDI R10 R0 11");
+    assert(cpu.GetPC() == 0x100);
+    assert(cpu.GetR(10) == 11);
 
     //========================
     // JAL
     //========================
     cpu.Reset();
+    bus->Reset();
     cpu.SetPC(0);
-    EXE_INSTR("JAL 0x100");
+    EXE_BD_INSTR("JAL 0x100");
     assert(cpu.GetPC() == 0x100);
     assert(cpu.GetR(31) == 0x8);
     cpu.SetPC(0xb000'3000);
-    EXE_INSTR("JAL 0x100");
+    EXE_BD_INSTR("JAL 0x100");
     assert(cpu.GetPC() == 0xb000'0100);
     assert(cpu.GetR(31) == 0xb000'3008);
+    // test branch delay
+    EXE_TWO_INSTRS("JAL 0x100", "ADDI R10 R0 11");
+    assert(cpu.GetPC() == 0x100);
+    assert(cpu.GetR(10) == 11);
 
     //========================
     // JR
     //========================
     cpu.Reset();
+    bus->Reset();
     cpu.SetPC(0);
     cpu.SetR(1, 0x100);
-    EXE_INSTR("JR R1");
+    EXE_BD_INSTR("JR R1");
     assert(cpu.GetPC() == 0x100);
     cpu.SetPC(0xb000'3003);
-    EXE_INSTR("JR R1");
+    EXE_BD_INSTR("JR R1");
     assert(cpu.GetPC() == 0x0000'0100);
+    // test branch delay
+    EXE_TWO_INSTRS("JR R1", "ADDI R10 R0 11");
+    assert(cpu.GetPC() == 0x100);
+    assert(cpu.GetR(10) == 11);
 
     //========================
     // JALR
     //========================
     cpu.Reset();
+    bus->Reset();
     cpu.SetPC(0);
     cpu.SetR(1, 0x100);
-    cpu.SetR(2, 0xbe3);
-    EXE_INSTR("JALR R1 R2");
+    cpu.SetR(2, 0xbe0);
+    EXE_BD_INSTR("JALR R1 R2");
     assert(cpu.GetPC() == 0x100);
-    assert(cpu.GetR(31) == 0xbe3);
+    assert(cpu.GetR(31) == 0xbe0);
     cpu.SetPC(0xb000'3000);
-    EXE_INSTR("JALR R1 R2");
+    EXE_BD_INSTR("JALR R1 R2");
     assert(cpu.GetPC() == 0x100);
-    assert(cpu.GetR(31) == 0xbe3);
+    assert(cpu.GetR(31) == 0xbe0);
+    // test branch delay
+    EXE_TWO_INSTRS("JALR R1 R2", "ADDI R10 R0 11");
+    assert(cpu.GetPC() == 0x100);
+    assert(cpu.GetR(10) == 11);
+}
+
+static void branchTests()
+{
+    TCPU_INFO("** Starting Branch Instruction Tests ------------------");
+    // setup hardware
+    std::shared_ptr<Bus> bus(new Bus);
+    std::shared_ptr<Ram> ram(new Ram);
+    bus->AddAddressSpace(ram, BusPriority::First);
+    Cpu cpu(bus);
+
+    //========================
+    // BEQ
+    //========================
+    cpu.Reset();
+    cpu.SetR(1, 10);
+    cpu.SetPC(0x100);
+    EXE_BD_INSTR("BEQ R1 R1 2");
+    assert(cpu.GetPC() == 0x108);
+    cpu.SetPC(0x100);
+    EXE_BD_INSTR("BEQ R1 R1 -1");
+    assert(cpu.GetPC() == 0x0fc);
+    cpu.SetPC(0x100);
+    EXE_BD_INSTR("BEQ R1 R0 2");
+    assert(cpu.GetPC() == 0x104);
+    // test branch delay
+    EXE_TWO_INSTRS("BEQ R1 R1 4", "ADDI R10 R0 11");
+    assert(cpu.GetPC() == 0x1010);
+    assert(cpu.GetR(10) == 11);
+
+    //========================
+    // BNE
+    //========================
+    cpu.Reset();
+    cpu.SetR(1, 10);
+    cpu.SetPC(0x100);
+    EXE_BD_INSTR("BNE R1 R0 2");
+    assert(cpu.GetPC() == 0x108);
+    cpu.SetPC(0x100);
+    EXE_BD_INSTR("BNE R1 R0 -1");
+    assert(cpu.GetPC() == 0x0fc);
+    cpu.SetPC(0x100);
+    EXE_BD_INSTR("BNE R1 R1 2");
+    assert(cpu.GetPC() == 0x104);
+    // test branch delay
+    EXE_TWO_INSTRS("BNE R1 R0 4", "ADDI R10 R0 11");
+    assert(cpu.GetPC() == 0x1010);
+    assert(cpu.GetR(10) == 11);
+
+    //========================
+    // BLEZ
+    //========================
+    cpu.Reset();
+    cpu.SetR(1, 0xffff'ffff);
+    cpu.SetPC(0x100);
+    EXE_BD_INSTR("BLEZ R1 2");
+    assert(cpu.GetPC() == 0x108);
+    cpu.SetR(1, 0);
+    cpu.SetPC(0x100);
+    EXE_BD_INSTR("BLEZ R1 -1");
+    assert(cpu.GetPC() == 0x0fc);
+    cpu.SetR(1, 1);
+    cpu.SetPC(0x100);
+    EXE_BD_INSTR("BLEZ R1 2");
+    assert(cpu.GetPC() == 0x104);
+    // test branch delay
+    EXE_TWO_INSTRS("BLEZ R0 4", "ADDI R10 R0 11");
+    assert(cpu.GetPC() == 0x1010);
+    assert(cpu.GetR(10) == 11);
+
+    //========================
+    // BGTZ
+    //========================
+    cpu.Reset();
+    cpu.SetR(1, 10);
+    cpu.SetPC(0x100);
+    EXE_BD_INSTR("BGTZ R1 2");
+    assert(cpu.GetPC() == 0x108);
+    cpu.SetPC(0x100);
+    EXE_BD_INSTR("BGTZ R1 -1");
+    assert(cpu.GetPC() == 0x0fc);
+    cpu.SetR(1, 0);
+    cpu.SetPC(0x100);
+    EXE_BD_INSTR("BGTZ R1 2");
+    assert(cpu.GetPC() == 0x104);
+    cpu.SetR(1, (u32)-1);
+    cpu.SetPC(0x100);
+    EXE_BD_INSTR("BGTZ R1 2");
+    assert(cpu.GetPC() == 0x104);
+    // test branch delay
+    cpu.SetR(1, 1);
+    EXE_TWO_INSTRS("BGTZ R1 4", "ADDI R10 R0 11");
+    assert(cpu.GetPC() == 0x1010);
+    assert(cpu.GetR(10) == 11);
+
+    //========================
+    // BLTZ
+    //========================
+    cpu.Reset();
+    cpu.SetR(1, (u32)-10);
+    cpu.SetPC(0x100);
+    EXE_BD_INSTR("BLTZ R1 2");
+    assert(cpu.GetPC() == 0x108);
+    cpu.SetPC(0x100);
+    EXE_BD_INSTR("BLTZ R1 -1");
+    assert(cpu.GetPC() == 0x0fc);
+    cpu.SetR(1, 0);
+    cpu.SetPC(0x100);
+    EXE_BD_INSTR("BLTZ R1 2");
+    assert(cpu.GetPC() == 0x104);
+    cpu.SetR(1, 1);
+    cpu.SetPC(0x100);
+    EXE_BD_INSTR("BLTZ R1 2");
+    assert(cpu.GetPC() == 0x104);
+    // test branch delay
+    cpu.SetR(1, (u32)-1);
+    EXE_TWO_INSTRS("BLTZ R1 4", "ADDI R10 R0 11");
+    assert(cpu.GetPC() == 0x1010);
+    assert(cpu.GetR(10) == 11);
+
+    //========================
+    // BGEZ
+    //========================
+    cpu.Reset();
+    cpu.SetR(1, 10);
+    cpu.SetPC(0x100);
+    EXE_BD_INSTR("BGEZ R1 2");
+    assert(cpu.GetPC() == 0x108);
+    cpu.SetPC(0x100);
+    EXE_BD_INSTR("BGEZ R1 -1");
+    assert(cpu.GetPC() == 0x0fc);
+    cpu.SetR(1, 0);
+    cpu.SetPC(0x100);
+    EXE_BD_INSTR("BGEZ R1 2");
+    assert(cpu.GetPC() == 0x108);
+    cpu.SetR(1, (u32)-1);
+    cpu.SetPC(0x100);
+    EXE_BD_INSTR("BGEZ R1 2");
+    assert(cpu.GetPC() == 0x104);
+    // test branch delay
+    cpu.SetR(1, 1);
+    EXE_TWO_INSTRS("BGEZ R1 4", "ADDI R10 R0 11");
+    assert(cpu.GetPC() == 0x1010);
+    assert(cpu.GetR(10) == 11);
+
+    //========================
+    // BLTZAL
+    //========================
+    cpu.Reset();
+    cpu.SetR(1, (u32)-1);
+    cpu.SetR(31, 0);
+    cpu.SetPC(0x100);
+    EXE_BD_INSTR("BLTZAL R1 4");
+    assert(cpu.GetPC() == 0x110);
+    assert(cpu.GetR(31) == 0x108);
+    cpu.SetR(31, 0);
+    cpu.SetPC(0x100);
+    EXE_BD_INSTR("BLTZAL R1 -1");
+    assert(cpu.GetPC() == 0x0fc);
+    assert(cpu.GetR(31) == 0x108);
+    cpu.SetR(31, 0);
+    cpu.SetR(1, 0);
+    cpu.SetPC(0x100);
+    EXE_BD_INSTR("BLTZAL R1 4");
+    assert(cpu.GetPC() == 0x104);
+    assert(cpu.GetR(31) == 0);
+    cpu.SetR(31, 0);
+    cpu.SetR(1, 1);
+    cpu.SetPC(0x100);
+    EXE_BD_INSTR("BLTZAL R1 4");
+    assert(cpu.GetPC() == 0x104);
+    assert(cpu.GetR(31) == 0);
+    // test branch delay
+    cpu.SetR(31, 0);
+    cpu.SetR(1, (u32)-1);
+    EXE_TWO_INSTRS("BLTZAL R1 4", "ADDI R10 R0 11");
+    assert(cpu.GetPC() == 0x1010);
+    assert(cpu.GetR(10) == 11);
+    assert(cpu.GetR(31) == 0x1008);
+
+    //========================
+    // BGEZAL
+    //========================
+    cpu.Reset();
+    cpu.SetR(1, 10);
+    cpu.SetR(31, 0);
+    cpu.SetPC(0x100);
+    EXE_BD_INSTR("BGEZAL R1 4");
+    assert(cpu.GetPC() == 0x110);
+    assert(cpu.GetR(31) == 0x108);
+    cpu.SetR(31, 0);
+    cpu.SetPC(0x100);
+    EXE_BD_INSTR("BGEZAL R1 -1");
+    assert(cpu.GetPC() == 0x0fc);
+    assert(cpu.GetR(31) == 0x108);
+    cpu.SetR(31, 0);
+    cpu.SetR(1, 0);
+    cpu.SetPC(0x100);
+    EXE_BD_INSTR("BGEZAL R1 4");
+    assert(cpu.GetPC() == 0x110);
+    assert(cpu.GetR(31) == 0x108);
+    cpu.SetR(31, 0);
+    cpu.SetR(1, (u32)-1);
+    cpu.SetPC(0x100);
+    EXE_BD_INSTR("BGEZAL R1 4");
+    assert(cpu.GetPC() == 0x104);
+    assert(cpu.GetR(31) == 0);
+    // test branch delay
+    cpu.SetR(31, 0);
+    cpu.SetR(1, 1);
+    EXE_TWO_INSTRS("BGEZAL R1 4", "ADDI R10 R0 11");
+    assert(cpu.GetPC() == 0x1010);
+    assert(cpu.GetR(10) == 11);
+    assert(cpu.GetR(31) == 0x1008);
 }
 
 namespace psxtest {
@@ -1086,5 +1324,6 @@ namespace psxtest {
         loadDelayTests();
         storeTests();
         jumpTests();
+        branchTests();
     }
 }
