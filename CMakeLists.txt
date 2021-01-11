@@ -3,8 +3,9 @@ cmake_minimum_required(VERSION 3.18)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-project(PSX VERSION 0.0.1)
+project(PSX VERSION 0.0.2)
 
+set(CMAKE_BUILD_TYPE Debug)
 
 # Pedantic compile flags for gcc, clang, msvc
 if (CMAKE_CXX_COMPILER_ID MATCHES "GNU")
@@ -37,12 +38,17 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${PEDANTIC_COMPILE_FLAGS} ${ADDR_SANITIZ
 
 # Generate Compile Commands for Language server
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
-file(COPY "${PROJECT_SOURCE_DIR}/build/compile_commands.json" DESTINATION "${PROJECT_SOURCE_DIR}")
-
+# file(COPY "${PROJECT_SOURCE_DIR}/build/compile_commands.json" DESTINATION "${PROJECT_SOURCE_DIR}")
 
 # define exe
 add_executable(psx)
 add_executable(psx-test)
+
+add_custom_command(
+        TARGET psx POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy
+                ${CMAKE_CURRENT_BINARY_DIR}/compile_commands.json
+                ${PROJECT_SOURCE_DIR}/compile_commands.json)
 
 # Subdirs
 add_subdirectory("${PROJECT_SOURCE_DIR}/src")

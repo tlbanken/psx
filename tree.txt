@@ -1,4 +1,8 @@
 src
+├── bios
+│   ├── bios.cpp
+│   ├── bios.h
+│   └── CMakeLists.txt
 ├── CMakeLists.txt
 ├── core
 │   ├── CMakeLists.txt
@@ -27,6 +31,8 @@ src
 │   ├── bus.cpp
 │   ├── bus.h
 │   ├── CMakeLists.txt
+│   ├── memctrl.cpp
+│   ├── memctrl.h
 │   ├── ram.cpp
 │   └── ram.h
 └── util
@@ -35,6 +41,7 @@ src
     ├── psxlog.h
     └── psxutil.h
 scripts
+├── cmake_clean_build.sh
 ├── set_clang.env
 ├── set_gcc.env
 └── update_tree.sh
@@ -72,4 +79,4 @@ tests
 ├── psxtest_mem.cpp
 └── psxtest_mem.h
 
-10 directories, 59 files
+11 directories, 65 files

@@ -117,7 +117,7 @@ static void ramTests()
     u16 write16 = 0x3ab2;
     u16 read16 = 0;
     TMEM_INFO("Testing Sequencial Access R16/W16");
-    for (u32 addr = 0; addr < 0x0020'0000; addr += 2) {
+    for (u32 addr = 0; addr < 0x0020'0000 - 2; addr += 2) {
         bus.Write16(write16, addr);
         read16 = bus.Read16(addr); // KUSEG
         assert(read16 == write16);
@@ -131,7 +131,7 @@ static void ramTests()
     u32 write32 = 0x892a'b1ce;
     u32 read32 = 0;
     TMEM_INFO("Testing Sequencial Access R32/W32");
-    for (u32 addr = 0; addr < 0x0020'0000; addr += 4) {
+    for (u32 addr = 0; addr < 0x0020'0000 - 4; addr += 4) {
         bus.Write32(write32, addr);
         read32 = bus.Read32(addr); // KUSEG
         assert(read32 == write32);

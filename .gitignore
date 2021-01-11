@@ -9,3 +9,4 @@ games
 extern/include/fmt/*
 extern/include/imgui/*
 compile_commands.json
+bios/*

@@ -15,13 +15,6 @@
 #include <memory>
 #include <string>
 
-#include "fmt/core.h"
-#include "imgui/imgui.h"
-#include "imgui/imgui_impl_glfw.h"
-#include "imgui/imgui_impl_opengl3.h"
-#include "glad/glad.h"
-#include "glfw/glfw3.h" // Important: include glfw AFTER glad
-
 #include "util/psxlog.h"
 #include "util/psxutil.h"
 #include "core/psx.h"
@@ -42,9 +35,12 @@ int main()
     // print project name and version
     std::cout << PSX_FANCYTITLE(PSX_FMT("{} v{}", PROJECT_NAME, PROJECT_VER));
 
+    std::string bios_path;
+    bios_path.append(PROJECT_ROOT_PATH);
+    bios_path.append("/bios/SCPH1001.BIN");
     try {
         // create PSX object
-        Psx psx;
+        Psx psx(bios_path);
         psx.Run();
     } catch (std::runtime_error& re) {
         std::cerr << "Runtime error: " << re.what() << std::endl;

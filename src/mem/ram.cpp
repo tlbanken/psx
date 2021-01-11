@@ -59,7 +59,7 @@ ASResult Ram::Read16(u32 addr)
     u16 data = 0;
     auto [maddr, found] = mirrorAddr(addr);
     if (found) {
-        PSX_ASSERT(maddr < m_sysram.size());
+        PSX_ASSERT(maddr < m_sysram.size() - 2);
         // create 16-bit halfword in little-endian format
         data = m_sysram[maddr];
         data |= static_cast<u16>(m_sysram[maddr+1]) << 8;
@@ -76,7 +76,7 @@ ASResult Ram::Read32(u32 addr)
     u32 data = 0;
     auto [maddr, found] = mirrorAddr(addr);
     if (found) {
-        PSX_ASSERT(maddr < m_sysram.size());
+        PSX_ASSERT(maddr < m_sysram.size() - 4);
         // create 32-bit word in little-endian format
         data = m_sysram[maddr];
         data |= static_cast<u32>(m_sysram[maddr+1]) << 8;
@@ -107,7 +107,7 @@ bool Ram::Write16(u16 data, u32 addr)
 {
     auto [maddr, found] = mirrorAddr(addr);
     if (found) {
-        PSX_ASSERT(maddr < m_sysram.size());
+        PSX_ASSERT(maddr < m_sysram.size() - 2);
         // write 16-bit halfword in little-endian format
         m_sysram[maddr] = static_cast<u8>(data & 0xff);
         m_sysram[maddr + 1] = static_cast<u8>((data >> 8) & 0xff);
@@ -120,7 +120,7 @@ bool Ram::Write32(u32 data, u32 addr)
 {
     auto [maddr, found] = mirrorAddr(addr);
     if (found) {
-        PSX_ASSERT(maddr < m_sysram.size());
+        PSX_ASSERT(maddr < m_sysram.size() - 4);
         // write 32-bit word in little-endian format
         m_sysram[maddr] = static_cast<u8>(data & 0xff);
         m_sysram[maddr + 1] = static_cast<u8>((data >> 8) & 0xff);

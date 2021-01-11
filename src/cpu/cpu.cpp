@@ -228,11 +228,11 @@ void Cpu::OnActive(bool *active)
     ImGui::BeginChild("Instruction Disassembly", ImVec2(300,0), false, dasm_window_flags);
     ImGui::TextUnformatted("Instruction Disassembly");
     for (u32 addr = prePC; addr <= postPC; addr += 4) {
-        u32 instr = m_bus->Read32(addr);
+        u32 instr = m_bus->Read32(addr, Bus::RWVerbosity::Quiet);
         if (addr == pc) {
-            ImGui::TextUnformatted(PSX_FMT("{:08x}  | {}", pc, Asm::DasmInstruction(instr)).data());
+            ImGui::TextUnformatted(PSX_FMT("{:08x} [{:08x}]  | {}", pc, instr, Asm::DasmInstruction(instr)).data());
         } else {
-            ImGui::TextColored(ImVec4(0.6f,0.6f,0.6f,1), "%08x  | %s", addr, 
+            ImGui::TextColored(ImVec4(0.6f,0.6f,0.6f,1), "%08x [%08x]  | %s", addr, instr,
                 Asm::DasmInstruction(instr).data());
         }
     }

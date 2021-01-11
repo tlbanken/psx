@@ -20,7 +20,6 @@
 
 #include "util/psxlog.h"
 
-
 // shorter type names (signed)
 typedef int64_t i64;
 typedef int32_t i32;

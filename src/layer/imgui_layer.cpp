@@ -145,6 +145,7 @@ void ImGuiLayer::init()
         IMGUILAYER_ERR("Failed to Initialize OpenGL Loader!");
         throw std::runtime_error("Failed to Initialize OpenGL Loader!");
     }
+    IMGUILAYER_INFO(PSX_FMT("OpenGL Version: {}", glGetString(GL_VERSION)));
 
     // create imgui
     IMGUI_CHECKVERSION();

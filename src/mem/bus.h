@@ -59,22 +59,26 @@ struct ASEntry {
 };
 
 class Bus {
-private:
-    std::vector<std::unique_ptr<ASEntry>> m_address_spaces;
-
 public:
+    enum class RWVerbosity {
+        Default,
+        Quiet,
+    };
     void AddAddressSpace(std::shared_ptr<AddressSpace> as, BusPriority p);
     std::string ToString();
     void Reset();
     
     // reads
-    u8 Read8(u32 addr);
-    u16 Read16(u32 addr);
-    u32 Read32(u32 addr);
+    u8 Read8(u32 addr, RWVerbosity verb = RWVerbosity::Default);
+    u16 Read16(u32 addr, RWVerbosity verb = RWVerbosity::Default);
+    u32 Read32(u32 addr, RWVerbosity verb = RWVerbosity::Default);
 
     // writes
-    void Write8(u8 data, u32 addr);
-    void Write16(u16 data, u32 addr);
-    void Write32(u32 data, u32 addr);
+    void Write8(u8 data, u32 addr, RWVerbosity verb = RWVerbosity::Default);
+    void Write16(u16 data, u32 addr, RWVerbosity verb = RWVerbosity::Default);
+    void Write32(u32 data, u32 addr, RWVerbosity verb = RWVerbosity::Default);
+
+private:
+    std::vector<std::unique_ptr<ASEntry>> m_address_spaces;
 };
 

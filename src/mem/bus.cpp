@@ -20,7 +20,6 @@
 #define BUS_WARN(msg) PSXLOG_WARN("Bus", msg)
 #define BUS_ERROR(msg) PSXLOG_ERROR("Bus", msg)
 
-
 // this is important to avoid -Wweak-vtables from clang
 AddressSpace::~AddressSpace() = default;
 
@@ -66,7 +65,7 @@ std::string Bus::ToString()
 }
 
 // reads
-u8 Bus::Read8(u32 addr)
+u8 Bus::Read8(u32 addr, RWVerbosity verb)
 {
     for (const auto& entry : m_address_spaces) {
         auto [res, found] = entry->as->Read8(addr);
@@ -75,11 +74,13 @@ u8 Bus::Read8(u32 addr)
         }
     }
 
-    BUS_WARN(PSX_FMT("Read8 attempt on invalid address 0x{:08x}", addr));
+    if (verb != RWVerbosity::Quiet) {
+        BUS_WARN(PSX_FMT("Read8 attempt on invalid address 0x{:08x}", addr));
+    }
     return 0;
 }
 
-u16 Bus::Read16(u32 addr)
+u16 Bus::Read16(u32 addr, RWVerbosity verb)
 {
     for (const auto& entry : m_address_spaces) {
         auto [res, found] = entry->as->Read16(addr);
@@ -88,11 +89,13 @@ u16 Bus::Read16(u32 addr)
         }
     }
 
-    BUS_WARN(PSX_FMT("Read16 attempt on invalid address 0x{:08x}", addr));
+    if (verb != RWVerbosity::Quiet) {
+        BUS_WARN(PSX_FMT("Read16 attempt on invalid address 0x{:08x}", addr));
+    }
     return 0;
 }
 
-u32 Bus::Read32(u32 addr)
+u32 Bus::Read32(u32 addr, RWVerbosity verb)
 {
     for (const auto& entry : m_address_spaces) {
         auto [res, found] = entry->as->Read32(addr);
@@ -101,35 +104,49 @@ u32 Bus::Read32(u32 addr)
         }
     }
 
-    BUS_WARN(PSX_FMT("Read32 attempt on invalid address 0x{:08x}", addr));
+    if (verb != RWVerbosity::Quiet) {
+        BUS_WARN(PSX_FMT("Read32 attempt on invalid address 0x{:08x}", addr));
+    }
     return 0;
 }
 
 
 // writes
-void Bus::Write8(u8 data, u32 addr)
+void Bus::Write8(u8 data, u32 addr, RWVerbosity verb)
 {
     for (const auto& entry : m_address_spaces) {
         if (entry->as->Write8(data, addr)) {
             return;
         }
     }
+
+    if (verb != RWVerbosity::Quiet) {
+        BUS_WARN(PSX_FMT("Write8 attempt [{}] on invalid address 0x{:08x}", data, addr));
+    }
 }
 
-void Bus::Write16(u16 data, u32 addr)
+void Bus::Write16(u16 data, u32 addr, RWVerbosity verb)
 {
     for (const auto& entry : m_address_spaces) {
         if (entry->as->Write16(data, addr)) {
             return;
         }
     }
+
+    if (verb != RWVerbosity::Quiet) {
+        BUS_WARN(PSX_FMT("Write16 attempt [{}] on invalid address 0x{:08x}", data, addr));
+    }
 }
 
-void Bus::Write32(u32 data, u32 addr)
+void Bus::Write32(u32 data, u32 addr, RWVerbosity verb)
 {
     for (const auto& entry : m_address_spaces) {
         if (entry->as->Write32(data, addr)) {
             return;
         }
+    }
+
+    if (verb != RWVerbosity::Quiet) {
+        BUS_WARN(PSX_FMT("Write32 attempt [{}] on invalid address 0x{:08x}", data, addr));
     }
 }

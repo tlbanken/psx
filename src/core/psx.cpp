@@ -19,12 +19,13 @@
 #include "cpu/cpu.h"
 #include "layer/imgui_layer.h"
 #include "core/globals.h"
+#include "bios/bios.h"
 
 #define PSX_INFO(msg) PSXLOG_INFO("PSX", msg)
 #define PSX_WARN(msg) PSXLOG_WARN("PSX", msg)
 #define PSX_ERROR(msg) PSXLOG_ERROR("PSX", msg)
 
-Psx::Psx()
+Psx::Psx(const std::string& bios_path)
     : m_imgui_layer(ImGuiLayer::Style::Dark)
 {
     PSX_INFO("Initializing the PSX");
@@ -43,8 +44,14 @@ Psx::Psx()
     // CPU
     PSX_INFO("Initializing CPU");
     m_cpu = std::shared_ptr<Cpu>(new Cpu(m_bus));
-    // add to imgui sys control cop
+    // add to imgui
     m_imgui_layer.AddDbgModule(m_cpu);
+
+    // BIOS
+    PSX_INFO(PSX_FMT("Creating BIOS from {}", bios_path));
+    std::shared_ptr<Bios> bios(new Bios(bios_path));
+    // add to bus
+    m_bus->AddAddressSpace(bios, BusPriority::High);
 }
 
 /*
@@ -53,17 +60,17 @@ Psx::Psx()
 void Psx::Run()
 {
     g_emu_state.paused = true;
-    u32 pc = 0x0000'0100;
+//    u32 pc = 0x0000'0100;
     // write a little test program @ 0x0000'0100
-    m_bus->Write32(Asm::AsmInstruction("ADDI    R2 R0 5"), pc);
-    pc += 4;
-    m_bus->Write32(Asm::AsmInstruction("SYSCALL"), pc);
-    pc += 4;
-    m_bus->Write32(Asm::AsmInstruction("ADD     R2 R0 R1"), pc);
-    pc += 4;
-    m_bus->Write32(Asm::AsmInstruction("ADDI    R1 R0 23"), pc);
-    pc += 4;
-    m_cpu->SetPC(0x100); // must set after writes
+//    m_bus->Write32(Asm::AsmInstruction("ADDI    R2 R0 5"), pc);
+//    pc += 4;
+//    m_bus->Write32(Asm::AsmInstruction("SYSCALL"), pc);
+//    pc += 4;
+//    m_bus->Write32(Asm::AsmInstruction("ADD     R2 R0 R1"), pc);
+//    pc += 4;
+//    m_bus->Write32(Asm::AsmInstruction("ADDI    R1 R0 23"), pc);
+//    pc += 4;
+//    m_cpu->SetPC(0x100); // must set after writes
     while (!m_imgui_layer.ShouldStop()) {
         // gui update
         m_imgui_layer.OnUpdate();
