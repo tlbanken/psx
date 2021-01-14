@@ -7,6 +7,8 @@
  * Header file for the CPU tests.
  */
 
-namespace psxtest {
+namespace Psx {
+namespace Test {
     void CpuTests();
+}
 }

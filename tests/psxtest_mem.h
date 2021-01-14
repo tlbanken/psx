@@ -9,6 +9,8 @@
 
 #pragma once
 
-namespace psxtest {
+namespace Psx {
+namespace Test {
     void MemTests();
+}
 }

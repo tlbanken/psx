@@ -8,146 +8,180 @@
  */
 
 #include <fstream>
+#include <vector>
+
+#include "imgui/imgui.h"
 
 #include "bios.h"
 #include "util/psxlog.h"
+#include "layer/dbgmod.h"
 
-#define BIOS_INFO(msg) PSXLOG_INFO("BIOS", msg)
-#define BIOS_WARN(msg) PSXLOG_WARN("BIOS", msg)
-#define BIOS_ERROR(msg) PSXLOG_ERROR("BIOS", msg)
+#define BIOS_INFO(...) PSXLOG_INFO("BIOS", __VA_ARGS__)
+#define BIOS_WARN(...) PSXLOG_WARN("BIOS", __VA_ARGS__)
+#define BIOS_ERROR(...) PSXLOG_ERROR("BIOS", __VA_ARGS__)
 
-Bios::Bios(const std::string& path)
+namespace {
+
+struct State {
+    std::vector<u8> rom;
+    std::string bios_path;
+    bool bios_loaded = false;
+    Psx::ImGuiLayer::DbgMod::HexDump hexdump;
+} s;
+
+}// end namespace
+
+namespace Psx {
+namespace Bios {
+
+void Init()
 {
-    BIOS_INFO("Initializing BIOS");
-    m_rom.resize(1024 * 512, 0);
+    BIOS_INFO("Initializing state");
+    s.rom.resize(1024 * 512, 0);
+}
+
+void Init(const std::string& path)
+{
+    Init();
     LoadFromFile(path);
+}
+
+void Shutdown()
+{
+    BIOS_INFO("Shutting down");
+    s.bios_loaded = false;
+}
+
+void Reset()
+{
+    BIOS_INFO("Resetting state");
+    for (auto& byte : s.rom) {
+        byte = 0x00;
+    }
+}
+
+/*
+ * Returns true if a BIOS is currently loaded.
+ */
+bool IsLoaded()
+{
+    return s.bios_loaded;
 }
 
 /*
  * Load BIOS from the path specified.
  */
-void Bios::LoadFromFile(const std::string& path)
+void LoadFromFile(const std::string& path)
 {
-    BIOS_INFO(PSX_FMT("Loading BIOS from {}", path));
-    m_bios_path = path;
+    if (path == "") {
+        BIOS_WARN("Path is empty, skipping BIOS load");
+        return;
+    }
+
+    BIOS_INFO("Loading BIOS from {}", path);
+    s.bios_path = path;
     // open file
     std::ifstream file;
     file.open(path, std::ios::binary);
     if (!file.is_open()) {
-        BIOS_ERROR(PSX_FMT("Failed to open BIOS from {}", path));
+        BIOS_ERROR("Failed to open BIOS from {}", path);
         throw std::runtime_error(PSX_FMT("Failed to open BIOS from {}", path));
     }
 
     // dump bytes into local rom
-    for (auto& byte : m_rom) {
+    for (auto& byte : s.rom) {
         file >> byte;
     }
 
     // DEBUG
 //    std::ofstream ofile;
 //    ofile.open("bios_debug", std::ios::binary);
-//    for (const auto& byte : m_rom) {
+//    for (const auto& byte : s.rom) {
 //        ofile << byte;
 //    }
     file.close();
+    s.bios_loaded = true;
 }
 
-// *** AddressSpace ***
-void Bios::Reset()
-{
-    BIOS_INFO("Resetting BIOS");
-}
 
-static std::pair<bool, u32> mapAddr(u32 addr)
+/*
+ * To be called on every ImGui update while the debug window is active.
+ */
+void OnActive(bool *active)
 {
-    auto plus512K = [] (u32 a) {return a + (1024 * 512);};
-    auto inRange = [&] (u32 base, u32 a) {return a >= base && a < plus512K(base);};
-
-    // KSEG1
-    if (inRange(0xbfc0'0000, addr)) {
-        return {true, addr & 0x3ff};
-    }
-    // KSEG0
-    if (inRange(0x9fc0'0000, addr)) {
-        return {true, addr & 0x3ff};
-    }
-    // KUSEG
-    if (inRange(0x1fc0'0000, addr)) {
-        return {true, addr & 0x3ff};
+    if (!ImGui::Begin("Ram Debug", active)) {
+        ImGui::End();
+        return;
     }
 
-    return {false, 0};
+    s.hexdump.Update(s.rom);
+
+    ImGui::End();
 }
 
-ASResult Bios::Read8(u32 addr)
+// *** Reads ***
+template<class T>
+T Read(u32 addr)
 {
-    auto [found, maddr] = mapAddr(addr);
-    u8 data = 0;
-    if (found) {
-        PSX_ASSERT(maddr < m_rom.size());
-        data = m_rom[maddr];
+    u32 maddr = addr & 0x0007'ffff; // addr % 512K
+    T data = 0;
+    if constexpr (std::is_same_v<T, u8>) {
+        PSX_ASSERT(maddr < s.rom.size());
+        // read8
+        data = s.rom[maddr];
+    } else if constexpr (std::is_same_v<T, u16>) {
+        PSX_ASSERT(maddr < s.rom.size() - 2);
+        // read16 as little endian
+        data  = s.rom[maddr];
+        data |= static_cast<u16>(s.rom[maddr + 1]) << 8;
+    } else if constexpr (std::is_same_v<T, u32>) {
+        PSX_ASSERT(maddr < s.rom.size() - 4);
+        // read32 as little endian
+        data  = s.rom[maddr];
+        data |= static_cast<u32>(s.rom[maddr + 1]) << 8;
+        data |= static_cast<u32>(s.rom[maddr + 2]) << 16;
+        data |= static_cast<u32>(s.rom[maddr + 3]) << 24;
+    } else {
+        static_assert(!std::is_same_v<T, T>);
     }
-    ASResult asr;
-    asr.found = found;
-    asr.res.res8 = data;
-    return asr;
+    return data;
 }
+// template impl needs to be visable to other cpp files to avoid compile err
+template u8 Read<u8>(u32 addr);
+template u16 Read<u16>(u32 addr);
+template u32 Read<u32>(u32 addr);
 
-ASResult Bios::Read16(u32 addr)
+// *** Write ***
+template<class T>
+void Write(T data, u32 addr)
 {
-    auto [found, maddr] = mapAddr(addr);
-    u16 data = 0;
-    if (found) {
-        PSX_ASSERT(maddr < m_rom.size() - 2);
-        data = m_rom[maddr];
-        data |= static_cast<u16>(m_rom[maddr+1]) << 8;
+    // TODO Check for cache enable
+    u32 maddr = addr & 0x0007'ffff; // addr % 512K
+    if constexpr (std::is_same_v<T, u8>) {
+        PSX_ASSERT(maddr < s.rom.size());
+        // write8
+        s.rom[maddr] = data;
+    } else if constexpr (std::is_same_v<T, u16>) {
+        PSX_ASSERT(maddr < s.rom.size() - 2);
+        // write16 as little endian
+        s.rom[maddr + 0] = static_cast<u8>(data);
+        s.rom[maddr + 1] = static_cast<u8>(data >> 8);
+    } else if constexpr (std::is_same_v<T, u32>) {
+        PSX_ASSERT(maddr < s.rom.size() - 4);
+        // write32 as little endian
+        s.rom[maddr + 0] = static_cast<u8>(data);
+        s.rom[maddr + 1] = static_cast<u8>(data >> 8);
+        s.rom[maddr + 2] = static_cast<u8>(data >> 16);
+        s.rom[maddr + 3] = static_cast<u8>(data >> 24);
+    } else {
+        static_assert(!std::is_same_v<T, T>);
     }
-    ASResult asr;
-    asr.found = found;
-    asr.res.res16 = data;
-    return asr;
 }
+// template impl needs to be visable to other cpp files to avoid compile err
+template void Write<u8>(u8 data, u32 addr);
+template void Write<u16>(u16 data, u32 addr);
+template void Write<u32>(u32 data, u32 addr);
 
-ASResult Bios::Read32(u32 addr)
-{
-    auto [found, maddr] = mapAddr(addr);
-    u32 data = 0;
-    if (found) {
-        PSX_ASSERT(maddr < m_rom.size() - 4);
-        data = m_rom[maddr];
-        data |= static_cast<u32>(m_rom[maddr+1]) << 8;
-        data |= static_cast<u32>(m_rom[maddr+2]) << 16;
-        data |= static_cast<u32>(m_rom[maddr+3]) << 24;
-    }
-    ASResult asr;
-    asr.found = found;
-    asr.res.res32 = data;
-    return asr;
-}
 
-bool Bios::Write8(u8 data, u32 addr)
-{
-    // ROM is read-only
-    BIOS_WARN(PSX_FMT("BIOS is Read Only! Attempting to Write [{}] to BIOS @ 0x{:08x}", data, addr));
-    (void) data;
-    (void) addr;
-    return false;
-}
-
-bool Bios::Write16(u16 data, u32 addr)
-{
-    // ROM is read-only
-    BIOS_WARN(PSX_FMT("BIOS is Read Only! Attempting to Write [{}] to BIOS @ 0x{:08x}", data, addr));
-    (void) data;
-    (void) addr;
-    return false;
-}
-
-bool Bios::Write32(u32 data, u32 addr)
-{
-    // ROM is read-only
-    BIOS_WARN(PSX_FMT("BIOS is Read Only! Attempting to Write [{}] to BIOS @ 0x{:08x}", data, addr));
-    (void) data;
-    (void) addr;
-    return false;
+}// end namespace
 }

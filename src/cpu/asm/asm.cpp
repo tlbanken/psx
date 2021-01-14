@@ -49,6 +49,8 @@
 #define SET_COPOP(instr, copop)         SET_RS(instr, copop)
 #define SET_COPBRANCHOP(instr, cbo)     SET_RT(instr, cbo)
 
+using namespace Psx::Cpu;
+
 static const std::string prim_op_map[] = {
     /*00*/ "???",  /*01*/ "BCONDZ",/*02*/ "J",    /*03*/ "JAL",
     /*04*/ "BEQ",  /*05*/ "BNE",   /*06*/ "BLEZ", /*07*/ "BGTZ",
@@ -715,106 +717,110 @@ static u32 secOpAsm(u32 funct, const std::vector<std::string>& tokens)
     return raw_instr;
 }
 
+
+
+namespace Psx {
+namespace Cpu {
 namespace Asm {
-    /*
-     * Assemble the given instruction. The instruction should be one instruction
-     * in the Modified MIPS Form specified above. Returns the resulting binary
-     * form.
-     */
-    u32 AsmInstruction(const std::string& str_instr)
-    {
-        // break up into tokens
-        std::istringstream iss(str_instr);
-        std::vector<std::string> tokens{std::istream_iterator<std::string>{iss},
-                                        std::istream_iterator<std::string>{}};
 
-        // check if empty string
-        if (tokens.size() == 0) {
-            return 0x0000'0000;
-        }
-        for (auto& c : tokens[0]) {
-            c = (char)std::toupper(c);
-        }
-        // for (const auto& token : tokens) {
-        //     std::cout << token << " ";
-        // }
-        // std::cout << std::endl;
+/*
+ * Assemble the given instruction. The instruction should be one instruction
+ * in the Modified MIPS Form specified above. Returns the resulting binary
+ * form.
+ */
+u32 AsmInstruction(const std::string& str_instr)
+{
+    // break up into tokens
+    std::istringstream iss(str_instr);
+    std::vector<std::string> tokens{std::istream_iterator<std::string>{iss},
+                                    std::istream_iterator<std::string>{}};
 
-        // get opcode and build instruction
-        u32 raw_instr = 0;
-        auto prim_iter = prim_str_to_op.find(tokens.at(0));
-        auto sec_iter = sec_str_to_op.find(tokens.at(0));
-        auto bcondz_iter = bcondz_str_to_op.find(tokens.at(0));
-        if (prim_iter != prim_str_to_op.end()) {
-            u32 op = prim_iter->second;
-            raw_instr = primOpAsm(op, tokens);
-        } else if (sec_iter != sec_str_to_op.end()) {
-            // SPECIAL
-            // opcode == 0
-            u32 funct = sec_iter->second;
-            raw_instr = secOpAsm(funct, tokens);
-        } else if (bcondz_iter != bcondz_str_to_op.end()) {
-            // bcondz
-            // opcode == 1
-            raw_instr = SET_OP(raw_instr, 0x01);
-            raw_instr = SET_BCONDZOP(raw_instr, bcondz_iter->second);
-            // rs
-            PSX_ASSERT(tokens.at(1)[0] == 'R');
-            u32 rs = (u32)std::stoi(tokens.at(1).substr(1), nullptr, 0);
-            raw_instr = SET_RS(raw_instr, rs);
-            // imm16
-            u32 imm16 = (u32)std::stoi(tokens.at(2), nullptr, 0);
-            raw_instr = SET_IMM16(raw_instr, imm16);
-        } else {
-            // Unknown instruction
-            throw std::runtime_error(PSX_FMT("Unknown Instruction: [{}]", str_instr));
-        }
-        return raw_instr;
+    // check if empty string
+    if (tokens.size() == 0) {
+        return 0x0000'0000;
+    }
+    for (auto& c : tokens[0]) {
+        c = (char)std::toupper(c);
     }
 
-    /*
-     * Disassemble the instruction and return a string formatted in the 
-     * Modified MIPS Form specified above.
-     */
-    std::string DasmInstruction(u32 raw_instr)
-    {
-        std::string str_instr;
-        const Asm::Instruction instr = Asm::DecodeRawInstr(raw_instr);
-        if (instr.op == 0x01) {
-            // BCONDZ
-            str_instr = PSX_FMT("{:<8}R{}, {:+d}", bcondzOpToStr(instr.bcondz_op), instr.rs, (i16)instr.imm16);
-        } else if (instr.op == 0x00) {
-            // SPECIAL
-            // look-up in map
-            str_instr = PSX_FMT("{:<8}{}", sec_op_map[instr.funct], secOpDasm(instr));
-        } else {
-            // NORMAL
-            str_instr = PSX_FMT("{:<8}{}", prim_op_map[instr.op], primOpDasm(instr));
-        }
-        return str_instr;
+    // get opcode and build instruction
+    u32 raw_instr = 0;
+    auto prim_iter = prim_str_to_op.find(tokens.at(0));
+    auto sec_iter = sec_str_to_op.find(tokens.at(0));
+    auto bcondz_iter = bcondz_str_to_op.find(tokens.at(0));
+    if (prim_iter != prim_str_to_op.end()) {
+        u32 op = prim_iter->second;
+        raw_instr = primOpAsm(op, tokens);
+    } else if (sec_iter != sec_str_to_op.end()) {
+        // SPECIAL
+        // opcode == 0
+        u32 funct = sec_iter->second;
+        raw_instr = secOpAsm(funct, tokens);
+    } else if (bcondz_iter != bcondz_str_to_op.end()) {
+        // bcondz
+        // opcode == 1
+        raw_instr = SET_OP(raw_instr, 0x01);
+        raw_instr = SET_BCONDZOP(raw_instr, bcondz_iter->second);
+        // rs
+        PSX_ASSERT(tokens.at(1)[0] == 'R');
+        u32 rs = (u32)std::stoi(tokens.at(1).substr(1), nullptr, 0);
+        raw_instr = SET_RS(raw_instr, rs);
+        // imm16
+        u32 imm16 = (u32)std::stoi(tokens.at(2), nullptr, 0);
+        raw_instr = SET_IMM16(raw_instr, imm16);
+    } else {
+        // Unknown instruction
+        throw std::runtime_error(PSX_FMT("Unknown Instruction: [{}]", str_instr));
     }
+    return raw_instr;
+}
 
-    /*
-     * Transforms a raw 32-bit instruction into a structured instruction for easy
-     * manipulation.
-     */
-    Asm::Instruction DecodeRawInstr(u32 raw_instr)
-    {
-        Asm::Instruction instr;
-        instr.op = (raw_instr >> 26) & 0x3f; // 26-31
-        instr.rs = (raw_instr >> 21) & 0x1f; // 21-25
-        instr.rt = (raw_instr >> 16) & 0x1f; // 16-20
-        instr.rd = (raw_instr >> 11) & 0x1f; // 11-15
-        instr.shamt = (raw_instr >> 6) & 0x1f; // 6-10
-        instr.funct = (raw_instr >> 0) & 0x3f; // 0-5
-
-        instr.imm16 = (raw_instr >> 0) & 0xffff; // 0-15
-        
-        instr.target = (raw_instr >> 0) & 0x3ff'ffff; // 0-25
-
-        instr.imm25 = (raw_instr >> 0) & 0x1ff'ffff; // 0-24
-
-        return instr;
+/*
+ * Disassemble the instruction and return a string formatted in the
+ * Modified MIPS Form specified above.
+ */
+std::string DasmInstruction(u32 raw_instr)
+{
+    std::string str_instr;
+    const Asm::Instruction instr = Asm::DecodeRawInstr(raw_instr);
+    if (instr.op == 0x01) {
+        // BCONDZ
+        str_instr = PSX_FMT("{:<8}R{}, {:+d}", bcondzOpToStr(instr.bcondz_op), instr.rs, (i16)instr.imm16);
+    } else if (instr.op == 0x00) {
+        // SPECIAL
+        // look-up in map
+        str_instr = PSX_FMT("{:<8}{}", sec_op_map[instr.funct], secOpDasm(instr));
+    } else {
+        // NORMAL
+        str_instr = PSX_FMT("{:<8}{}", prim_op_map[instr.op], primOpDasm(instr));
     }
+    return str_instr;
+}
+
+/*
+ * Transforms a raw 32-bit instruction into a structured instruction for easy
+ * manipulation.
+ */
+Asm::Instruction DecodeRawInstr(u32 raw_instr)
+{
+    Asm::Instruction instr;
+    instr.op = (raw_instr >> 26) & 0x3f; // 26-31
+    instr.rs = (raw_instr >> 21) & 0x1f; // 21-25
+    instr.rt = (raw_instr >> 16) & 0x1f; // 16-20
+    instr.rd = (raw_instr >> 11) & 0x1f; // 11-15
+    instr.shamt = (raw_instr >> 6) & 0x1f; // 6-10
+    instr.funct = (raw_instr >> 0) & 0x3f; // 0-5
+
+    instr.imm16 = (raw_instr >> 0) & 0xffff; // 0-15
+
+    instr.target = (raw_instr >> 0) & 0x3ff'ffff; // 0-25
+
+    instr.imm25 = (raw_instr >> 0) & 0x1ff'ffff; // 0-24
+
+    return instr;
+}
+
+}// end namespace
+}
 }
 

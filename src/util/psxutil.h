@@ -12,6 +12,7 @@
 #include <cstdint>
 #include <cassert>
 #include <string>
+#include <iostream>
 
 
 #include "core/config.h"
@@ -34,7 +35,9 @@ typedef uint8_t u8;
 
 #define PSX_FANCYTITLE(title) fmt::format("┌{0:─^{2}}┐\n│{1: ^{2}}│\n└{0:─^{2}}┘\n", "", title, 20)
 
-#define PSX_FMT(fmtstr, ...) fmt::format(FMT_STRING(fmtstr), __VA_ARGS__)
+// VA_OPT Trick Requires C++20
+//#define PSX_FMT(fmtstr, ...) fmt::format(FMT_STRING(fmtstr) __VA_OPT__(,) __VA_ARGS__)
+#define PSX_FMT(...) fmt::format(__VA_ARGS__)
 
 
 #ifdef DEBUG

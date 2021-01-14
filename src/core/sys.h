@@ -1,5 +1,5 @@
 /*
- * psx.h
+ * sys.h
  * 
  * Travis Banken
  * 12/5/2020
@@ -16,13 +16,18 @@
 #include "cpu/cpu.h"
 #include "layer/imgui_layer.h"
 
-class Psx {
+namespace Psx {
+
+class System {
 public:
-    Psx(const std::string& bios_path);
+    System(const std::string& bios_path, bool headless_mode);
+    ~System();
     void Run();
+    static void Reset();
 
 private:
-    std::shared_ptr<Bus> m_bus;
-    ImGuiLayer m_imgui_layer;
-    std::shared_ptr<Cpu> m_cpu;
+    static System *m_instance;
+    bool m_headless_mode;
 };
+
+}// end namespace

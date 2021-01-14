@@ -9,33 +9,22 @@
 
 #pragma once
 
-#include <vector>
-#include <memory>
+#include "util/psxutil.h"
 
-#include "mem/bus.h"
-#include "layer/imgui_layer.h"
+namespace Psx {
+namespace Ram {
 
-class Ram final : public AddressSpace, public ImGuiLayer::DbgModule {
-private:
-    std::vector<u8> m_sysram;
+void Init();
+void Reset();
 
+template<class T>
+T Read(u32 addr);
 
-    std::string hexDumpLine(u32 addr);
-public:
-    Ram();
+template<class T>
+void Write(T data, u32 addr);
 
-    // ** Adress Space **
-    void Reset();
-    // reads
-    ASResult Read8(u32 addr);
-    ASResult Read16(u32 addr);
-    ASResult Read32(u32 addr);
-    // writes
-    bool Write8(u8 data, u32 addr);
-    bool Write16(u16 data, u32 addr);
-    bool Write32(u32 data, u32 addr);
+void OnActive(bool *active);
 
-    // ** Debug Module **
-    std::string GetModuleLabel();
-    void OnActive(bool *active);
-};
+}// end namespace
+}
+

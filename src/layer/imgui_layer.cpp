@@ -7,44 +7,83 @@
  * Layer over the Dear ImGui Framework
  */
 
-#include <stdexcept>
 
 #include "imgui/imgui.h"
 #include "imgui/imgui_impl_glfw.h"
 #include "imgui/imgui_impl_opengl3.h"
 
 #include "layer/imgui_layer.h"
+#include "cpu/cpu.h"
+#include "bios/bios.h"
 #include "util/psxlog.h"
 #include "util/psxutil.h"
+#include "mem/ram.h"
 
 #define WINDOW_H 1280
 #define WINDOW_W 720
 
-#define IMGUILAYER_INFO(msg) PSXLOG_INFO("ImGui-Layer", msg)
-#define IMGUILAYER_WARN(msg) PSXLOG_WARN("ImGui-Layer", msg)
-#define IMGUILAYER_ERR(msg) PSXLOG_ERROR("ImGui-Layer", msg)
+#define IMGUILAYER_INFO(...) PSXLOG_INFO("ImGui-Layer", __VA_ARGS__)
+#define IMGUILAYER_WARN(...) PSXLOG_WARN("ImGui-Layer", __VA_ARGS__)
+#define IMGUILAYER_ERR(...) PSXLOG_ERROR("ImGui-Layer", __VA_ARGS__)
 
-ImGuiLayer::DbgModule::~DbgModule() = default;
+namespace  {
+struct State {
+    GLFWwindow *window;
+} s;
+
+    // Protos
+    void newFrame();
+    void render();
+
+}// end namespace
 
 /*
  * Will be called by GLFW on errors.
  */
 static void errorCallback(int error, const char* description)
 {
-    PSXLOG_ERROR("GLFW Error", PSX_FMT("({:d}), {}", error, description));
+    PSXLOG_ERROR("GLFW Error", "({:d}), {}", error, description);
 }
 
-// ===============================================
-// PUBLIC FUNCTIONS
-// ===============================================
-ImGuiLayer::ImGuiLayer()
-{
-    init();
-}
 
-ImGuiLayer::ImGuiLayer(ImGuiLayer::Style style)
+namespace Psx {
+namespace ImGuiLayer {
+
+void Init(ImGuiLayer::Style style)
 {
-    init();
+    IMGUILAYER_INFO("Setting up ImGui");
+    // setup glfw
+    glfwSetErrorCallback(errorCallback);
+    if (!glfwInit()) {
+        IMGUILAYER_ERR("Failed to Initialize GLFW!");
+        throw std::runtime_error("Failed to Initialize GLFW");
+    }
+
+    // create window
+    s.window = glfwCreateWindow(WINDOW_H, WINDOW_W, "PSX Emulator", nullptr, nullptr);
+    if (s.window == nullptr) {
+        IMGUILAYER_ERR("Failed to create GLFW window!");
+        throw std::runtime_error("Failed to create GLFW window!");
+    }
+    glfwMakeContextCurrent(s.window);
+    glfwSwapInterval(1); // enable vsync TODO: make this an option?
+
+    // init opengl loader
+    if (!gladLoadGL()) {
+        IMGUILAYER_ERR("Failed to Initialize OpenGL Loader!");
+        throw std::runtime_error("Failed to Initialize OpenGL Loader!");
+    }
+    IMGUILAYER_INFO("OpenGL Version: {}", glGetString(GL_VERSION));
+
+    // create imgui
+    IMGUI_CHECKVERSION();
+    ImGui::CreateContext();
+
+    // setup OpenGL and GLFW
+    ImGui_ImplGlfw_InitForOpenGL(s.window, true);
+    ImGui_ImplOpenGL3_Init();
+
+    // set style
     if (style == ImGuiLayer::Style::Dark) {
         ImGui::StyleColorsDark();
     } else {
@@ -52,7 +91,7 @@ ImGuiLayer::ImGuiLayer(ImGuiLayer::Style style)
     }
 }
 
-ImGuiLayer::~ImGuiLayer()
+void Shutdown()
 {
     IMGUILAYER_INFO("Shutting down");
 
@@ -60,32 +99,36 @@ ImGuiLayer::~ImGuiLayer()
     ImGui_ImplGlfw_Shutdown();
     ImGui::DestroyContext();
 
-    glfwDestroyWindow(m_window);
+    glfwDestroyWindow(s.window);
     glfwTerminate();
 }
-
 
 /*
  * Handles updating everything ImGui side of things. Should be called in the main
  * emulation loop.
  */
-void ImGuiLayer::OnUpdate()
+void OnUpdate()
 {
+    // active states
+    static bool ram_active = false;
+    static bool cpu_active = false;
+    static bool bios_active = false;
+
     newFrame();
 
     // Call Modules if currently active
-    for (auto& entry : m_mod_entries) {
-        if (entry.active) {
-            entry.module->OnActive(&entry.active);
-        }
-    }
+    if (ram_active) Ram::OnActive(&ram_active);
+    if (cpu_active) Cpu::OnActive(&cpu_active);
+    if (bios_active) Bios::OnActive(&bios_active);
 
     // Main Menu Bar
     if (ImGui::BeginMainMenuBar()) {
         if (ImGui::BeginMenu("Debug")) {
-            for (auto& e : m_mod_entries) {
-                ImGui::MenuItem(e.module->GetModuleLabel().data(), NULL, &e.active);
-            }
+
+            ImGui::MenuItem("Ram", NULL, &ram_active);
+            ImGui::MenuItem("Cpu", NULL, &cpu_active);
+            ImGui::MenuItem("Bios", NULL, &bios_active);
+
             ImGui::EndMenu();
         }
         ImGui::EndMainMenuBar();
@@ -101,65 +144,24 @@ void ImGuiLayer::OnUpdate()
  * Checks if the ImGui needs to terminate. This most common case being if the
  * window is closed.
  */
-bool ImGuiLayer::ShouldStop()
+bool ShouldStop()
 {
-    return glfwWindowShouldClose(m_window);
-}
-
-/*
- * Add a ImGui Debug Module which will be show up in the "Debug" main menu tab.
- */
-void ImGuiLayer::AddDbgModule(std::shared_ptr<ImGuiLayer::DbgModule> module)
-{
-    IMGUILAYER_INFO(PSX_FMT("Adding debug module [{}]", module->GetModuleLabel()));
-    DbgModEntry entry{module, false};
-    m_mod_entries.push_back(entry);
+    return glfwWindowShouldClose(s.window);
 }
 
 
+}// end namespace
+}
+
+namespace {
 
 // ===============================================
 // PRIVATE HELPER FUNCTIONS
-// ===============================================
-void ImGuiLayer::init()
-{
-    IMGUILAYER_INFO("Setting up ImGui");
-    // setup glfw
-    glfwSetErrorCallback(errorCallback);
-    if (!glfwInit()) {
-        IMGUILAYER_ERR("Failed to Initialize GLFW!");
-        throw std::runtime_error("Failed to Initialize GLFW");
-    }
-
-    // create window
-    m_window = glfwCreateWindow(WINDOW_H, WINDOW_W, "PSX Emulator", nullptr, nullptr);
-    if (m_window == nullptr) {
-        IMGUILAYER_ERR("Failed to create GLFW window!");
-        throw std::runtime_error("Failed to create GLFW window!");
-    }
-    glfwMakeContextCurrent(m_window);
-    glfwSwapInterval(1); // enable vsync TODO: make this an option?
-
-    // init opengl loader
-    if (!gladLoadGL()) {
-        IMGUILAYER_ERR("Failed to Initialize OpenGL Loader!");
-        throw std::runtime_error("Failed to Initialize OpenGL Loader!");
-    }
-    IMGUILAYER_INFO(PSX_FMT("OpenGL Version: {}", glGetString(GL_VERSION)));
-
-    // create imgui
-    IMGUI_CHECKVERSION();
-    ImGui::CreateContext();
-
-    // setup OpenGL and GLFW
-    ImGui_ImplGlfw_InitForOpenGL(m_window, true);
-    ImGui_ImplOpenGL3_Init();
-}
-
+// ==============================================
 /*
  * Creates a new frame in ImGui. Should be called BEFORE ImGuiLayer::render()
  */
-void ImGuiLayer::newFrame()
+void newFrame()
 {
     glfwPollEvents();
     // start new frame
@@ -171,10 +173,12 @@ void ImGuiLayer::newFrame()
 /*
  * Renders the current draw data in ImGui.
  */
-void ImGuiLayer::render()
+void render()
 {
     ImGui::Render();
     glClear(GL_COLOR_BUFFER_BIT);
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-    glfwSwapBuffers(m_window);
+    glfwSwapBuffers(s.window);
+}
+
 }

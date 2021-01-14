@@ -13,6 +13,7 @@
 #include "fmt/format.h"
 
 #include "core/config.h"
+#include "core/sys.h"
 #include "util/psxlog.h"
 #include "util/psxutil.h"
 
@@ -26,20 +27,21 @@
 
 int main()
 {
-    psxlog::Init(std::cout, true);
-
     std::cout << PSX_FANCYTITLE(PSX_FMT("{}-Tests v{}", PROJECT_NAME, PROJECT_VER));
+    Psx::Log::Init(std::cout, true);
+    Psx::System psx("", true);
+
     TMAIN_INFO("Starting Memory Tests");
     // call memory tests
-    psxtest::MemTests();
+    Psx::Test::MemTests();
 
     // call asm/dasm tests
     TMAIN_INFO("Starting Asm/Dasm Tests");
-    psxtest::AsmDasmTests();
+    Psx::Test::AsmDasmTests();
 
     // call cpu tests
     TMAIN_INFO("Starting CPU Tests");
-    psxtest::CpuTests();
+    Psx::Test::CpuTests();
 
     return 0;
 }

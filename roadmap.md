@@ -40,6 +40,7 @@
     - [x] Bus
     - [x] Ram
     - [ ] DMA?
+- [ ] BIOS
 
 ## Tier 2
 - [ ] Root Counters (Timers)

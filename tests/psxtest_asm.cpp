@@ -15,12 +15,15 @@
 #include "util/psxlog.h"
 #include "cpu/asm/asm.h"
 
-#define LOG_DASM(instr) PSXLOG_INFO("Test-Dasm", PSX_FMT("0x{:08x} -> [{}]", instr, Asm::DasmInstruction(instr)))
-#define LOG_ASM(instr) PSXLOG_INFO("Test-Asm", PSX_FMT("[{}] -> 0x{:08x}", instr, Asm::AsmInstruction(instr)))
+#define LOG_DASM(instr) PSXLOG_INFO("Test-Dasm", "0x{:08x} -> [{}]", instr, Cpu::Asm::DasmInstruction(instr))
+#define LOG_ASM(instr) PSXLOG_INFO("Test-Asm", "[{}] -> 0x{:08x}", instr, Cpu::Asm::AsmInstruction(instr))
 #define LOG_COMBO(instr) {\
-    u32 _i = Asm::AsmInstruction(instr);\
-    std::string _si = Asm::DasmInstruction(_i);\
-    PSXLOG_INFO("Test-Combo", PSX_FMT("[{:<20}] -> 0x{:08x} -> [{}]", instr, _i, _si));}
+    u32 _i = Cpu::Asm::AsmInstruction(instr);\
+    std::string _si = Cpu::Asm::DasmInstruction(_i);\
+    PSXLOG_INFO("Test-Combo", "[{:<20}] -> 0x{:08x} -> [{}]", instr, _i, _si); \
+}
+
+using namespace Psx;
 
 static void dasmTests()
 {
@@ -153,13 +156,17 @@ static void comboTests()
     LOG_COMBO("JALR R1 R2");
 }
 
-namespace psxtest {
-    void AsmDasmTests()
-    {
-        std::cout << PSX_FANCYTITLE("ASM/DASM TESTS");
-        PSXLOG_INFO("Test-Asm/Dasm", "Starting Disassembler tests");
-        dasmTests();
-        asmTests();
-        comboTests();
-    }
+namespace Psx {
+namespace Test {
+
+void AsmDasmTests()
+{
+    std::cout << PSX_FANCYTITLE("ASM/DASM TESTS");
+    PSXLOG_INFO("Test-Asm/Dasm", "Starting Disassembler tests");
+    dasmTests();
+    asmTests();
+    comboTests();
+}
+
+}// end namespace
 }

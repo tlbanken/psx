@@ -11,8 +11,8 @@ src
 │   ├── globals.cpp
 │   ├── globals.h
 │   ├── main.cpp
-│   ├── psx.cpp
-│   └── psx.h
+│   ├── sys.cpp
+│   └── sys.h
 ├── cpu
 │   ├── asm
 │   │   ├── asm.cpp
@@ -20,19 +20,20 @@ src
 │   │   └── CMakeLists.txt
 │   ├── CMakeLists.txt
 │   ├── cop0.cpp
+│   ├── cop0.h
 │   ├── cpu.cpp
 │   ├── cpu.h
 │   └── _cpu_ops.h
 ├── layer
 │   ├── CMakeLists.txt
+│   ├── dbgmod.cpp
+│   ├── dbgmod.h
 │   ├── imgui_layer.cpp
 │   └── imgui_layer.h
 ├── mem
 │   ├── bus.cpp
 │   ├── bus.h
 │   ├── CMakeLists.txt
-│   ├── memctrl.cpp
-│   ├── memctrl.h
 │   ├── ram.cpp
 │   └── ram.h
 └── util
@@ -79,4 +80,4 @@ tests
 ├── psxtest_mem.cpp
 └── psxtest_mem.h
 
-11 directories, 65 files
+11 directories, 66 files

@@ -9,144 +9,135 @@
  * write to the bus without caring about which HW device is the target.
  */
 
-#include <algorithm>
+#include <type_traits>
 
 #include "fmt/core.h"
 
 #include "mem/bus.h"
+#include "mem/ram.h"
+#include "bios/bios.h"
 #include "util/psxlog.h"
 
-#define BUS_INFO(msg) PSXLOG_INFO("Bus", msg)
-#define BUS_WARN(msg) PSXLOG_WARN("Bus", msg)
-#define BUS_ERROR(msg) PSXLOG_ERROR("Bus", msg)
+#define BUS_INFO(...) PSXLOG_INFO("Bus", __VA_ARGS__)
+#define BUS_WARN(...) PSXLOG_WARN("Bus", __VA_ARGS__)
+#define BUS_ERROR(...) PSXLOG_ERROR("Bus", __VA_ARGS__)
 
-// this is important to avoid -Wweak-vtables from clang
-AddressSpace::~AddressSpace() = default;
+// *** Private Helpers and Data ***
+namespace {
 
-// custom compare for std::sort
-static bool priorityLT(const std::unique_ptr<ASEntry>& e1, const std::unique_ptr<ASEntry>& e2)
-{
-    BusPriority p1 = e1.get()->p;
-    BusPriority p2 = e2.get()->p;
+struct State {
 
-    return p1 < p2;
+} s;
+
 }
 
-void Bus::AddAddressSpace(std::shared_ptr<AddressSpace> as, BusPriority p)
+namespace Psx {
+namespace Bus {
+
+// *** State Modifiers ***
+void Init()
 {
-    BUS_INFO(PSX_FMT("Adding AddressSpace obj @{:p} to Bus with priority {}", static_cast<void*>(as.get()), p));
-    // create new entry
-    std::unique_ptr<ASEntry> entry(new ASEntry);
-    entry->as = as;
-    entry->p = p;
-
-    // add to list
-    m_address_spaces.push_back(std::move(entry));
-
-    // sort list to ensure priorities
-    std::sort(m_address_spaces.begin(), m_address_spaces.end(), priorityLT);
+    BUS_INFO("Initializing state");
 }
 
-void Bus::Reset()
+void Reset()
 {
-    BUS_INFO("Resetting all Address Spaces");
-    for (const auto& entry : m_address_spaces) {
-        entry->as->Reset();
-    }
+
 }
 
-std::string Bus::ToString()
+// *** Reads ***
+template<class T>
+T Read(u32 addr, Bus::RWVerbosity verb)
 {
-    std::string s("");
-    for (const auto& e : m_address_spaces) {
-        s.append(PSX_FMT("[@{:p}, {}] -> ", static_cast<void*>(e->as.get()), e->p));
-    }
-    return s;
-}
+    // Helpers
+    auto inRange = [] (u32 base, u32 size, u32 addr) {
+        return addr >= base && addr < (base + size);
+    };
 
-// reads
-u8 Bus::Read8(u32 addr, RWVerbosity verb)
-{
-    for (const auto& entry : m_address_spaces) {
-        auto [res, found] = entry->as->Read8(addr);
-        if (found) {
-            return res.res8;
-        }
+    // Main RAM
+    constexpr u32 mb_2 = 2 * 1024 * 1024;
+    if (inRange(0x0000'0000, mb_2, addr) // KUSEG
+     || inRange(0x8000'0000, mb_2, addr) // KSEG0
+     || inRange(0xa000'0000, mb_2, addr))// KSEG1
+    {
+        return Ram::Read<T>(addr);
     }
 
-    if (verb != RWVerbosity::Quiet) {
-        BUS_WARN(PSX_FMT("Read8 attempt on invalid address 0x{:08x}", addr));
+    // BIOS
+    constexpr u32 kb_512 = 512 * 1024;
+    if (inRange(0x1fc0'0000, kb_512, addr) // KUSEG
+     || inRange(0x9fc0'0000, kb_512, addr) // KSEG0
+     || inRange(0xbfc0'0000, kb_512, addr))// KSEG1
+    {
+        return Bios::Read<T>(addr);
+    }
+
+    if constexpr (std::is_same_v<T, u8>) {
+        if (verb != RWVerbosity::Quiet)
+            BUS_WARN("Read8 attempt on invalid address [0x{:08x}]", addr);
+    } else if constexpr (std::is_same_v<T, u16>) {
+        if (verb != RWVerbosity::Quiet)
+            BUS_WARN("Read16 attempt on invalid address [0x{:08x}]", addr);
+    } else if constexpr (std::is_same_v<T, u32>) {
+        if (verb != RWVerbosity::Quiet)
+            BUS_WARN("Read32 attempt on invalid address [0x{:08x}]", addr);
+    } else {
+        static_assert(!std::is_same_v<T, T>);
     }
     return 0;
 }
+// required to allow other files to "see" impl, otherwise compile error
+template u8 Read<u8>(u32 addr, Bus::RWVerbosity verb);
+template u16 Read<u16>(u32 addr, Bus::RWVerbosity verb);
+template u32 Read<u32>(u32 addr, Bus::RWVerbosity verb);
 
-u16 Bus::Read16(u32 addr, RWVerbosity verb)
+
+// *** Writes ***
+template<class T>
+void Write(T data, u32 addr, Bus::RWVerbosity verb)
 {
-    for (const auto& entry : m_address_spaces) {
-        auto [res, found] = entry->as->Read16(addr);
-        if (found) {
-            return res.res16;
-        }
+    // Helpers
+    auto inRange = [] (u32 base, u32 size, u32 addr) {
+        return addr >= base && addr < (base + size);
+    };
+
+    // Main RAM
+    constexpr u32 mb_2 = 2 * 1024 * 1024;
+    if (inRange(0x0000'0000, mb_2, addr) // KUSEG
+     || inRange(0x8000'0000, mb_2, addr) // KSEG0
+     || inRange(0xa000'0000, mb_2, addr))// KSEG1
+    {
+        Ram::Write<T>(data, addr);
+        return;
     }
 
-    if (verb != RWVerbosity::Quiet) {
-        BUS_WARN(PSX_FMT("Read16 attempt on invalid address 0x{:08x}", addr));
-    }
-    return 0;
-}
-
-u32 Bus::Read32(u32 addr, RWVerbosity verb)
-{
-    for (const auto& entry : m_address_spaces) {
-        auto [res, found] = entry->as->Read32(addr);
-        if (found) {
-            return res.res32;
-        }
+    // BIOS
+    constexpr u32 kb_512 = 512 * 1024;
+    if (inRange(0x1fc0'0000, kb_512, addr) // KUSEG
+     || inRange(0x9fc0'0000, kb_512, addr) // KSEG0
+     || inRange(0xbfc0'0000, kb_512, addr))// KSEG1
+    {
+        Bios::Write<T>(data, addr);
+        return;
     }
 
-    if (verb != RWVerbosity::Quiet) {
-        BUS_WARN(PSX_FMT("Read32 attempt on invalid address 0x{:08x}", addr));
-    }
-    return 0;
-}
-
-
-// writes
-void Bus::Write8(u8 data, u32 addr, RWVerbosity verb)
-{
-    for (const auto& entry : m_address_spaces) {
-        if (entry->as->Write8(data, addr)) {
-            return;
-        }
-    }
-
-    if (verb != RWVerbosity::Quiet) {
-        BUS_WARN(PSX_FMT("Write8 attempt [{}] on invalid address 0x{:08x}", data, addr));
-    }
-}
-
-void Bus::Write16(u16 data, u32 addr, RWVerbosity verb)
-{
-    for (const auto& entry : m_address_spaces) {
-        if (entry->as->Write16(data, addr)) {
-            return;
-        }
-    }
-
-    if (verb != RWVerbosity::Quiet) {
-        BUS_WARN(PSX_FMT("Write16 attempt [{}] on invalid address 0x{:08x}", data, addr));
+    if constexpr (std::is_same_v<T, u8>) {
+        if (verb != RWVerbosity::Quiet)
+            BUS_WARN("Write8 attempt [{}] on invalid address [0x{:08x}]", data, addr);
+    } else if constexpr (std::is_same_v<T, u16>) {
+        if (verb != RWVerbosity::Quiet)
+            BUS_WARN("Write16 attempt [{}] on invalid address [0x{:08x}]", data, addr);
+    } else if constexpr (std::is_same_v<T, u32>) {
+        if (verb != RWVerbosity::Quiet)
+            BUS_WARN("Write32 attempt [{}] on invalid address [0x{:08x}]", data, addr);
+    } else {
+        static_assert(!std::is_same_v<T, T>);
     }
 }
+// required to allow other files to "see" impl, otherwise compile error
+template void Write<u8>(u8 data, u32 addr, Bus::RWVerbosity verb);
+template void Write<u16>(u16 data, u32 addr, Bus::RWVerbosity verb);
+template void Write<u32>(u32 data, u32 addr, Bus::RWVerbosity verb);
 
-void Bus::Write32(u32 data, u32 addr, RWVerbosity verb)
-{
-    for (const auto& entry : m_address_spaces) {
-        if (entry->as->Write32(data, addr)) {
-            return;
-        }
-    }
-
-    if (verb != RWVerbosity::Quiet) {
-        BUS_WARN(PSX_FMT("Write32 attempt [{}] on invalid address 0x{:08x}", data, addr));
-    }
+}
 }

@@ -8,61 +8,96 @@
  * Exception/Interrupt handling.
  */
 
+#include "cpu/cop0.h"
+
+#include <string>
+#include <map>
+
+#include "util/psxutil.h"
 #include "cpu/cpu.h"
 
-#define COP0_INFO(msg) PSXLOG_INFO("Cop0", msg);
-#define COP0_WARN(msg) PSXLOG_WARN("Cop0", msg);
-#define COP0_ERROR(msg) PSXLOG_ERROR("Cop0", msg);
+#define COP0_INFO(...) PSXLOG_INFO("Cop0", __VA_ARGS__);
+#define COP0_WARN(...) PSXLOG_WARN("Cop0", __VA_ARGS__);
+#define COP0_ERROR(...) PSXLOG_ERROR("Cop0", __VA_ARGS__);
 
-static const std::map<Cpu::Exception::Type, std::string> extype_to_str = {
-    {Cpu::Exception::Type::Interrupt, "INT"},    {Cpu::Exception::Type::AddrErrLoad, "AEL"},
-    {Cpu::Exception::Type::AddrErrStore, "AES"}, {Cpu::Exception::Type::IBusErr, "IBE"},
-    {Cpu::Exception::Type::DBusErr, "DBE"},      {Cpu::Exception::Type::Syscall, "SYS"},
-    {Cpu::Exception::Type::Break, "BRK"},        {Cpu::Exception::Type::ReservedInstr, "RI"},
-    {Cpu::Exception::Type::CopUnusable, "COP"},  {Cpu::Exception::Type::Overflow, "OVF"},
+namespace {
+using namespace Psx::Cop0;
+struct State {
+    // Registers
+    struct CauseReg {
+        Exception::Type ex_type;
+        u8 int_pending = 0;
+        u8 cop_num = 0;
+        bool branch_delay = false;
+    } cause; // r13
+    u32 epc = 0;
+    u32 bad_vaddr = 0;
+} s;
+
+const std::map<Psx::Cop0::Exception::Type, std::string> extype_to_str = {
+    {Exception::Type::Interrupt, "INT"},    {Exception::Type::AddrErrLoad, "AEL"},
+    {Exception::Type::AddrErrStore, "AES"}, {Exception::Type::IBusErr, "IBE"},
+    {Exception::Type::DBusErr, "DBE"},      {Exception::Type::Syscall, "SYS"},
+    {Exception::Type::Break, "BRK"},        {Exception::Type::ReservedInstr, "RI"},
+    {Exception::Type::CopUnusable, "COP"},  {Exception::Type::Overflow, "OVF"},
 };
 
 /*
- * Raises the given exception. A handler will then be called and the
- * System Control Cop will update it's status registers.
+ * Return, in string form, the last exception occured.
  */
-void Cpu::Cop0::RaiseException(const Exception& ex)
+std::string FmtLastException()
 {
-    // update cause register
-    m_cause.ex_type = ex.type;
-    m_cause.branch_delay = m_cpu.InBranchDelaySlot();
-    m_cause.cop_num = ex.cop_num;
+    return PSX_FMT("EX{{TYPE: {}, BADV: {:08x}, BD: {}, EPC: {:08x}}}",
+            extype_to_str.at(s.cause.ex_type), s.bad_vaddr, s.cause.branch_delay, s.epc);
+}
+}// end namespace
 
-    // update badv
-    m_bad_vaddr = ex.badv;
 
-    // update epc
-    m_epc = m_cpu.GetPC() + 4; // pc has already incremented
-    if (m_cause.ex_type != Exception::Type::Interrupt && m_cause.branch_delay) {
-        COP0_WARN("Branch Delay Exception! Did anything break??");
-        m_epc -= 4;
-    }
 
-    COP0_WARN("Exception Handler not fully implemented!");
-    COP0_INFO(FmtLastException());
+
+namespace Psx {
+namespace Cop0 {
+
+void Init()
+{
+    COP0_INFO("Initializing state");
 }
 
 /*
  * Reset the state of the coprocessor.
  */
-void Cpu::Cop0::Reset()
+void Reset()
 {
-    m_cause = {};
-    m_epc = 0;
-    m_bad_vaddr = 0;
+    COP0_INFO("Resetting state");
+    s.cause = {};
+    s.epc = 0;
+    s.bad_vaddr = 0;
 }
 
 /*
- * Return, in string form, the last exception occured.
+ * Raises the given exception. A handler will then be called and the
+ * System Control Cop will update it's status registers.
  */
-std::string Cpu::Cop0::FmtLastException()
+void RaiseException(const Exception& ex)
 {
-    return PSX_FMT("EX{{TYPE: {}, BADV: {:08x}, BD: {}, EPC: {:08x}}}",
-            extype_to_str.at(m_cause.ex_type), m_bad_vaddr, m_cause.branch_delay, m_epc);
+    // update cause register
+    s.cause.ex_type = ex.type;
+    s.cause.branch_delay = Cpu::InBranchDelaySlot();
+    s.cause.cop_num = ex.cop_num;
+
+    // update badv
+    s.bad_vaddr = ex.badv;
+
+    // update epc
+    s.epc = Cpu::GetPC() + 4; // pc has already incremented
+    if (s.cause.ex_type != Exception::Type::Interrupt && s.cause.branch_delay) {
+        COP0_WARN("Branch Delay Exception! Did anything break??");
+        s.epc -= 4;
+    }
+
+    COP0_WARN("Exception Handler not fully implemented!");
+    COP0_INFO("{}", FmtLastException());
 }
 
+}// end namespace
+}

@@ -53,68 +53,73 @@ static std::string getCurrentTimestamp()
     return fmt::format("{:010}", ms_diff);
 }
 
-namespace psxlog {
-    void Init(std::ostream& ofile, bool loggingEnabled)
-    {
-        s_logOn = loggingEnabled;
-        logStream(ofile);
+namespace Psx {
+namespace Log {
+
+void Init(std::ostream& ofile, bool loggingEnabled)
+{
+    s_logOn = loggingEnabled;
+    logStream(ofile);
+}
+
+void Log(const std::string& label, const std::string& msg, Psx::Log::MsgType t)
+{
+    // don't do anything if no logging
+    if (!s_logOn) {
+        return;
     }
 
-    void Log(const std::string& label, const std::string& msg, psxlog::MsgType t)
-    {
-        // don't do anything if no logging
-        if (!s_logOn) {
-            return;
-        }
+    auto color = fmt::terminal_color::white;
+    char let = '?';
 
-        auto color = fmt::terminal_color::white;
-        char let = '?';
-
-        switch (t) {
-        case MsgType::Info:
-            color = fmt::terminal_color::blue;
-            let = 'I';
-            break;
-        case MsgType::Warning:
-            color = fmt::terminal_color::yellow;
-            let = 'W';
-            break;
-        case MsgType::Error:
-            color = fmt::terminal_color::red;
-            let = 'E';
-            break;
-        default:
-            // should never get here
-            assert(0);
-        }
-
-        // format: [<Time in ms>] <MsgType> <LABEL>        <MSG>
-        std::ostream& o = logStream();
-        o << fmt::format("[{}] ", getCurrentTimestamp());
-        // only add color to terminals, not files
-        if (&o != &std::cerr && &o != &std::cout) {
-            o << fmt::format("{}", let);
-        } else {
-            o << fmt::format(fg(color), "{}", let);
-        }
-        o << fmt::format(" {:<15} {}\n", label, msg);
-        o.flush();
+    switch (t) {
+    case MsgType::Info:
+        color = fmt::terminal_color::blue;
+        let = 'I';
+        break;
+    case MsgType::Warning:
+        color = fmt::terminal_color::yellow;
+        let = 'W';
+        break;
+    case MsgType::Error:
+        color = fmt::terminal_color::red;
+        let = 'E';
+        break;
+    default:
+        // should never get here
+        assert(0);
     }
 
-    // Logs that omit the type
-    void ILog(const std::string& label, const std::string& msg)
-    {
-        psxlog::Log(label, msg, psxlog::MsgType::Info);
+    // format: [<Time in ms>] <MsgType> <LABEL>        <MSG>
+    std::ostream& o = logStream();
+    o << fmt::format("[{}] ", getCurrentTimestamp());
+    // only add color to terminals, not files
+    if (&o != &std::cerr && &o != &std::cout) {
+        o << fmt::format("{}", let);
+    } else {
+        o << fmt::format(fg(color), "{}", let);
     }
+    o << fmt::format(" {:<15} {}\n", label, msg);
+    o.flush();
+}
 
-    void WLog(const std::string& label, const std::string& msg)
-    {
-        psxlog::Log(label, msg, psxlog::MsgType::Warning);
-    }
+// Logs that omit the type
+void ILog(const std::string& label, const std::string& msg)
+{
+    Log(label, msg, Psx::Log::MsgType::Info);
+}
 
-    void ELog(const std::string& label, const std::string& msg)
-    {
-        psxlog::Log(label, msg, psxlog::MsgType::Error);
-    }
+void WLog(const std::string& label, const std::string& msg)
+{
+    Log(label, msg, Psx::Log::MsgType::Warning);
+}
+
+void ELog(const std::string& label, const std::string& msg)
+{
+    Log(label, msg, Psx::Log::MsgType::Error);
+}
+
+
+}
 }
 

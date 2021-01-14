@@ -17,11 +17,11 @@
 
 #include "util/psxlog.h"
 #include "util/psxutil.h"
-#include "core/psx.h"
+#include "core/sys.h"
 
-#define MAIN_INFO(msg) PSXLOG_INFO("Main", msg)
-#define MAIN_WARN(msg) PSXLOG_WARN("Main", msg)
-#define MAIN_ERR(msg) PSXLOG_ERROR("Main", msg)
+#define MAIN_INFO(...) PSXLOG_INFO("Main", __VA_ARGS__)
+#define MAIN_WARN(...) PSXLOG_WARN("Main", __VA_ARGS__)
+#define MAIN_ERR(...) PSXLOG_ERROR("Main", __VA_ARGS__)
 
 int main()
 {
@@ -30,7 +30,7 @@ int main()
     g_emu_state.step_instr = false;
 
     // init the logger
-    psxlog::Init(std::cerr, true);
+    Psx::Log::Init(std::cerr, true);
 
     // print project name and version
     std::cout << PSX_FANCYTITLE(PSX_FMT("{} v{}", PROJECT_NAME, PROJECT_VER));
@@ -39,16 +39,19 @@ int main()
     bios_path.append(PROJECT_ROOT_PATH);
     bios_path.append("/bios/SCPH1001.BIN");
     try {
-        // create PSX object
-        Psx psx(bios_path);
+        // create main System object
+        Psx::System psx(bios_path, false);
         psx.Run();
     } catch (std::runtime_error& re) {
         std::cerr << "Runtime error: " << re.what() << std::endl;
         return 1;
+    } catch (std::invalid_argument& e) {
+        std::cerr << "Invalid Arg Exception: " << e.what() << std::endl;
+        return 1;
     } catch (std::exception& e) {
         std::cerr << "Error Occured: " << e.what() << std::endl;
         return 1;
-    } catch (...) {
+    }catch (...) {
         std::cerr << "Unknown Fatal Failure Occured!" << std::endl;
         return 1;
     }

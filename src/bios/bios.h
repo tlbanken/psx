@@ -10,26 +10,29 @@
 #pragma once
 
 #include <string>
-#include <mem/bus.h>
-#include <util/psxutil.h>
 
-class Bios final : public AddressSpace {
-public:
-    Bios(const std::string& path);
+#include "util/psxutil.h"
 
-    void LoadFromFile(const std::string& path);
 
-    // AddressSpace
-    ASResult Read8(u32 addr);
-    ASResult Read16(u32 addr);
-    ASResult Read32(u32 addr);
-    bool Write8(u8 data, u32 addr);
-    bool Write16(u16 data, u32 addr);
-    bool Write32(u32 data, u32 addr);
-    void Reset();
+namespace Psx {
+namespace Bios {
 
-private:
-    std::vector<u8> m_rom;
-    std::string m_bios_path;
-};
+void Init(const std::string& path);
+void Init();
+void Reset();
+void Shutdown();
+
+void LoadFromFile(const std::string& path);
+bool IsLoaded();
+void OnActive(bool *active);
+
+// reads and writes
+template<class T>
+T Read(u32 addr);
+
+template<class T>
+void Write(T data, u32 addr);
+
+}// end namespace
+}
 
