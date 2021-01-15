@@ -16,7 +16,7 @@
     - [x] Memory Cards
 
 ## Planning
-- [ ] Overview
+- [x] Overview (good enough)
 - [x] Debug
 
 ## Misc
@@ -40,7 +40,8 @@
     - [x] Bus
     - [x] Ram
     - [ ] DMA?
-- [ ] BIOS
+- [x] BIOS
+- [ ] Cache
 
 ## Tier 2
 - [ ] Root Counters (Timers)

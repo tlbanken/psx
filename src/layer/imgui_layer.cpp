@@ -135,7 +135,7 @@ void OnUpdate()
     }
 
     // Demo
-    ImGui::ShowDemoWindow();
+//    ImGui::ShowDemoWindow();
 
     render();
 }

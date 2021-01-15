@@ -17,6 +17,7 @@
 #include "mem/ram.h"
 #include "bios/bios.h"
 #include "util/psxlog.h"
+#include "mem/memcontrol.h"
 
 #define BUS_INFO(...) PSXLOG_INFO("Bus", __VA_ARGS__)
 #define BUS_WARN(...) PSXLOG_WARN("Bus", __VA_ARGS__)
@@ -25,9 +26,7 @@
 // *** Private Helpers and Data ***
 namespace {
 
-struct State {
-
-} s;
+bool inline inRangeMemControl(u32 addr);
 
 }
 
@@ -70,6 +69,11 @@ T Read(u32 addr, Bus::RWVerbosity verb)
      || inRange(0xbfc0'0000, kb_512, addr))// KSEG1
     {
         return Bios::Read<T>(addr);
+    }
+
+    // Memory Control Register
+    if (inRangeMemControl(addr)) {
+        return MemControl::Read<T>(addr);
     }
 
     if constexpr (std::is_same_v<T, u8>) {
@@ -121,6 +125,12 @@ void Write(T data, u32 addr, Bus::RWVerbosity verb)
         return;
     }
 
+    // Memory Control Register
+    if (inRangeMemControl(addr)) {
+        MemControl::Write<T>(data, addr);
+        return;
+    }
+
     if constexpr (std::is_same_v<T, u8>) {
         if (verb != RWVerbosity::Quiet)
             BUS_WARN("Write8 attempt [{}] on invalid address [0x{:08x}]", data, addr);
@@ -139,5 +149,16 @@ template void Write<u8>(u8 data, u32 addr, Bus::RWVerbosity verb);
 template void Write<u16>(u16 data, u32 addr, Bus::RWVerbosity verb);
 template void Write<u32>(u32 data, u32 addr, Bus::RWVerbosity verb);
 
+}// end namespace
 }
+
+namespace {
+
+bool inline inRangeMemControl(u32 addr)
+{
+    return (addr >= 0x1f80'1000 && addr <= 0x1f80'1020) || addr == 0x1f80'1060 || addr == 0xfffe'0130;
 }
+
+}// end namespace
+
+

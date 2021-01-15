@@ -21,30 +21,27 @@
 #include "layer/imgui_layer.h"
 #include "core/globals.h"
 #include "bios/bios.h"
+#include "mem/memcontrol.h"
 
-#define SYS_INFO(...) PSXLOG_INFO("SYS", __VA_ARGS__)
-#define SYS_WARN(...) PSXLOG_WARN("SYS", __VA_ARGS__)
-#define SYS_ERROR(...) PSXLOG_ERROR("SYS", __VA_ARGS__)
+#define SYS_INFO(...) PSXLOG_INFO("System", __VA_ARGS__)
+#define SYS_WARN(...) PSXLOG_WARN("System", __VA_ARGS__)
+#define SYS_ERROR(...) PSXLOG_ERROR("System", __VA_ARGS__)
 
 namespace Psx {
 
 System::System(const std::string& bios_path, bool headless_mode)
     : m_headless_mode(headless_mode)
 {
+    SYS_INFO("Headless Mode: {}", headless_mode ? "True" : "False");
     SYS_INFO("Initializing global emu state");
     g_emu_state = {};
 
     SYS_INFO("Initializing all System Modules");
-    SYS_INFO("Initializing Bus");
     Bus::Init();
-    SYS_INFO("Initializing Ram");
     Ram::Init();
-    // CPU
-    SYS_INFO("Initializing CPU and COP");
+    MemControl::Init();
     Cpu::Init();
     Cop0::Init();
-    // BIOS
-    SYS_INFO("Creating BIOS from {}", bios_path);
     Bios::Init(bios_path);
 
     if (!headless_mode) {
@@ -68,6 +65,7 @@ void System::Reset()
     Cop0::Reset();
     Cpu::Reset();
     Ram::Reset();
+    MemControl::Reset();
     Bus::Reset();
 }
 
@@ -82,13 +80,21 @@ void System::Run()
     }
 
     g_emu_state.paused = true;
+    bool new_frame = true;
     while (!ImGuiLayer::ShouldStop()) {
         // gui update
-        ImGuiLayer::OnUpdate();
+        if (g_emu_state.paused || new_frame) {
+            ImGuiLayer::OnUpdate();
+            new_frame = false;
+        }
 
-        // cpu update
+        // system step
         if (!g_emu_state.paused || g_emu_state.step_instr) {
             Cpu::Step();
+            // TODO update new_frame when gpu finishes a new frame
+            static int count = 0;
+            new_frame = count++ >= 10'000; // plz fix me
+            if (new_frame) count = 0;
         }
 
         // reset some state

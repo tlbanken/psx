@@ -2,7 +2,7 @@
  * bios.cpp
  *
  * Travis Banken
- * 1/9/21
+ * 1/9/2021
  *
  * Bios loader for the PSX.
  */
@@ -55,8 +55,9 @@ void Shutdown()
 void Reset()
 {
     BIOS_INFO("Resetting state");
-    for (auto& byte : s.rom) {
-        byte = 0x00;
+    if (!s.bios_loaded) {
+        // reload
+        LoadFromFile(s.bios_path);
     }
 }
 
@@ -89,9 +90,7 @@ void LoadFromFile(const std::string& path)
     }
 
     // dump bytes into local rom
-    for (auto& byte : s.rom) {
-        file >> byte;
-    }
+    file.read((char*) s.rom.data(), s.rom.size());
 
     // DEBUG
 //    std::ofstream ofile;
@@ -109,7 +108,7 @@ void LoadFromFile(const std::string& path)
  */
 void OnActive(bool *active)
 {
-    if (!ImGui::Begin("Ram Debug", active)) {
+    if (!ImGui::Begin("Bios Debug", active)) {
         ImGui::End();
         return;
     }
@@ -155,6 +154,7 @@ template u32 Read<u32>(u32 addr);
 template<class T>
 void Write(T data, u32 addr)
 {
+    BIOS_ERROR("Trying to write [{:x}] to ROM @ 0x{:08x}", data, addr);
     // TODO Check for cache enable
     u32 maddr = addr & 0x0007'ffff; // addr % 512K
     if constexpr (std::is_same_v<T, u8>) {

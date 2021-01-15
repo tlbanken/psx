@@ -56,6 +56,10 @@ std::string hexDumpLine(u32 addr, const std::vector<u8>& mem)
 namespace Psx {
 namespace ImGuiLayer {
 namespace DbgMod {
+HexDump::HexDump()
+{
+    m_search_buf.resize(8, 0);
+}
 
 void HexDump::Update(const std::vector<u8>& mem)
 {
@@ -80,16 +84,15 @@ void HexDump::Update(const std::vector<u8>& mem)
         m_start_line = m_start_line >= last_line - 10 ? last_line : m_start_line + 10;
     }
     ImGui::SameLine();
-    static char searchBuf[7] = "";
-    auto input_flags = ImGuiInputTextFlags_CharsHexadecimal;
-    ImGui::InputTextWithHint("Goto Address", "Enter address (hex)", searchBuf, sizeof(searchBuf), input_flags);
-    u32 res = 0;
-    if (searchBuf[0] != '\0') {
-        res = static_cast<u32>(std::stoi(searchBuf, nullptr, 16));
+    auto input_flags = ImGuiInputTextFlags_CharsHexadecimal | ImGuiInputTextFlags_EnterReturnsTrue;
+    if (ImGui::InputTextWithHint("Goto Address", "Enter address (hex)", m_search_buf.data(), m_search_buf.size(), input_flags)) {
+        if (m_search_buf.c_str()[0] != '\0') {
+            m_search_res = static_cast<u32>(std::stoi(m_search_buf.data(), nullptr, 16));
+        }
     }
-    if (m_target != res) {
+    if (m_target != m_search_res) {
         m_find_target = true;
-        m_target = res;
+        m_target = m_search_res;
         m_start_line = (m_target >> 4);
     } else {
         m_find_target = false;
