@@ -22,6 +22,7 @@
 #include "core/globals.h"
 #include "bios/bios.h"
 #include "mem/memcontrol.h"
+#include "layer/dbgmod.h"
 
 #define SYS_INFO(...) PSXLOG_INFO("System", __VA_ARGS__)
 #define SYS_WARN(...) PSXLOG_WARN("System", __VA_ARGS__)
@@ -79,7 +80,10 @@ void System::Run()
         throw std::runtime_error("Cannot Run() while in headless mode, use Step() instead");
     }
 
+    // DEBUG
     g_emu_state.paused = true;
+    ImGuiLayer::DbgMod::Breakpoints::SetPCBreakpoint(0xbfc0'0278);
+
     bool new_frame = true;
     while (!ImGuiLayer::ShouldStop()) {
         // gui update
@@ -95,6 +99,11 @@ void System::Run()
             static int count = 0;
             new_frame = count++ >= 10'000; // plz fix me
             if (new_frame) count = 0;
+
+            // check breakpoints
+            if (ImGuiLayer::DbgMod::Breakpoints::ShouldBreakPC(Cpu::GetPC())) {
+                ImGuiLayer::OnUpdate();
+            }
         }
 
         // reset some state

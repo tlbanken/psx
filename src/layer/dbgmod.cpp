@@ -10,6 +10,15 @@
 #include "dbgmod.h"
 
 #include "imgui/imgui.h"
+
+#include "core/globals.h"
+#include "cpu/cpu.h"
+
+
+#define DBG_INFO(...) PSXLOG_INFO("Debug", __VA_ARGS__)
+#define DBG_WARN(...) PSXLOG_WARN("Debug", __VA_ARGS__)
+#define DBG_ERROR(...) PSXLOG_ERROR("Debug", __VA_ARGS__)
+
 namespace {
 /*
  * Creates one line of hexdump output for a given address. Will proccess 16 bytes
@@ -87,7 +96,7 @@ void HexDump::Update(const std::vector<u8>& mem)
     auto input_flags = ImGuiInputTextFlags_CharsHexadecimal | ImGuiInputTextFlags_EnterReturnsTrue;
     if (ImGui::InputTextWithHint("Goto Address", "Enter address (hex)", m_search_buf.data(), m_search_buf.size(), input_flags)) {
         if (m_search_buf.c_str()[0] != '\0') {
-            m_search_res = static_cast<u32>(std::stoi(m_search_buf.data(), nullptr, 16));
+            m_search_res = static_cast<u32>(std::stol(m_search_buf.data(), nullptr, 16));
         }
     }
     if (m_target != m_search_res) {
@@ -122,6 +131,108 @@ void HexDump::Update(const std::vector<u8>& mem)
     //----------------------------------------------------
 
 }
+
+namespace Breakpoints {
+
+
+namespace {
+    std::vector<u32> pc_breakpoints;
+    bool is_breaked = false;
+    u32 last_pc_break = 0;
+}
+
+bool Exists()
+{
+    return pc_breakpoints.size() != 0;
+}
+
+void OnActive(bool *active)
+{
+    if (!ImGui::Begin("Breakpoints", active)) {
+        ImGui::End();
+        return;
+    }
+
+    PopupAddPCBreakpoint();
+
+    ImGui::TextUnformatted("Active PC Breakpoints");
+    int i = 1;
+    for (const auto& bp : pc_breakpoints) {
+        ImGui::Text("%d. 0x%08x", i, bp);
+        i++;
+    }
+
+    ImGui::End();
+}
+
+bool ShouldBreakPC(u32 pc)
+{
+    for (const auto& bp : pc_breakpoints) {
+        if (pc == bp) {
+            return true;
+        }
+    }
+    return false;
+}
+
+void Break(u32 pc)
+{
+    g_emu_state.paused = true;
+    last_pc_break = pc;
+    is_breaked = true;
+    // Always center this window when appearing
+    ImVec2 center(ImGui::GetIO().DisplaySize.x * 0.5f, ImGui::GetIO().DisplaySize.y * 0.5f);
+    ImGui::SetNextWindowPos(center, ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
+
+    pc_breakpoints.erase(std::remove(pc_breakpoints.begin(), pc_breakpoints.end(), pc), pc_breakpoints.end());
+}
+
+void OnUpdate()
+{
+    if (is_breaked)
+        ImGui::OpenPopup("Break");
+
+    if (ImGui::BeginPopupModal("Break", NULL, ImGuiWindowFlags_AlwaysAutoResize)) {
+        ImGui::Text("Break on PC 0x%08x!", last_pc_break);
+        if (ImGui::Button("Close")) {
+            is_breaked = false;
+            ImGui::CloseCurrentPopup();
+        }
+        ImGui::EndPopup();
+    }
+}
+
+void SetPCBreakpoint(u32 pc)
+{
+    DBG_INFO("Setting PC Breakpoint @ 0x{:08x}", pc);
+    pc_breakpoints.push_back(pc);
+}
+
+void PopupAddPCBreakpoint()
+{
+    if (ImGui::Button("Add PC Breakpoint###")) {
+        ImGui::OpenPopup("Add PC Breakpoint");
+    }
+    // Always center this window when appearing
+    ImVec2 center(ImGui::GetIO().DisplaySize.x * 0.5f, ImGui::GetIO().DisplaySize.y * 0.5f);
+    ImGui::SetNextWindowPos(center, ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
+
+    if (ImGui::BeginPopupModal("Add PC Breakpoint", NULL, ImGuiWindowFlags_AlwaysAutoResize)) {
+        ImGui::TextUnformatted("Enter an address to break on...");
+        static char s_search_buf[9] = {0};
+        auto input_flags = ImGuiInputTextFlags_CharsHexadecimal | ImGuiInputTextFlags_EnterReturnsTrue;
+        if (ImGui::InputTextWithHint("PC Breakpoint", "Enter address (hex)", s_search_buf, 9, input_flags)) {
+            if (s_search_buf[0] != '\0') {
+                u32 pc = static_cast<u32>(std::stol(s_search_buf, nullptr, 16));
+                SetPCBreakpoint(pc);
+                ImGui::CloseCurrentPopup();
+            }
+        }
+        ImGui::EndPopup();
+    }
+}
+
+}// end breakpoints namespace
 
 }// end namespace
 }

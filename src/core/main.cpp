@@ -48,10 +48,13 @@ int main()
     } catch (std::invalid_argument& e) {
         std::cerr << "Invalid Arg Exception: " << e.what() << std::endl;
         return 1;
+    } catch (std::out_of_range& e) {
+        std::cerr << "Out of Range Exception: " << e.what() << std::endl;
+        return 1;
     } catch (std::exception& e) {
         std::cerr << "Error Occured: " << e.what() << std::endl;
         return 1;
-    }catch (...) {
+    } catch (...) {
         std::cerr << "Unknown Fatal Failure Occured!" << std::endl;
         return 1;
     }

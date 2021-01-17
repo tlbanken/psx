@@ -13,7 +13,9 @@
 #include "imgui/imgui_impl_opengl3.h"
 
 #include "layer/imgui_layer.h"
+#include "layer/dbgmod.h"
 #include "cpu/cpu.h"
+#include "cpu/cop0.h"
 #include "bios/bios.h"
 #include "util/psxlog.h"
 #include "util/psxutil.h"
@@ -113,29 +115,41 @@ void OnUpdate()
     static bool ram_active = false;
     static bool cpu_active = false;
     static bool bios_active = false;
+    static bool breakpoints_active = false;
+    static bool cop0_active = false;
 
     newFrame();
 
     // Call Modules if currently active
     if (ram_active) Ram::OnActive(&ram_active);
     if (cpu_active) Cpu::OnActive(&cpu_active);
+    if (cop0_active) Cop0::OnActive(&cop0_active);
     if (bios_active) Bios::OnActive(&bios_active);
+    if (breakpoints_active) DbgMod::Breakpoints::OnActive(&breakpoints_active);
 
     // Main Menu Bar
     if (ImGui::BeginMainMenuBar()) {
         if (ImGui::BeginMenu("Debug")) {
 
+            ImGui::MenuItem("Breakpoints", NULL, &breakpoints_active);
             ImGui::MenuItem("Ram", NULL, &ram_active);
             ImGui::MenuItem("Cpu", NULL, &cpu_active);
+            ImGui::MenuItem("Cop0", NULL, &cop0_active);
             ImGui::MenuItem("Bios", NULL, &bios_active);
 
             ImGui::EndMenu();
         }
         ImGui::EndMainMenuBar();
     }
+    DbgMod::Breakpoints::OnUpdate();
+
+    // should we break?
+    if (ImGuiLayer::DbgMod::Breakpoints::ShouldBreakPC(Cpu::GetPC())) {
+        DbgMod::Breakpoints::Break(Cpu::GetPC());
+    }
 
     // Demo
-//    ImGui::ShowDemoWindow();
+    ImGui::ShowDemoWindow();
 
     render();
 }

@@ -33,13 +33,10 @@ struct State {
     opfunc sec_opmap[0x40] = {0};
     std::map<u8, opfunc> bcondz_opmap;
 
-    // ops
-
     // registers
     struct Registers {
         // special
         u32 pc = 0xbfc0'0000; // beginning of BIOS
-//        u32 next_pc = pc + 4; // handle branch delays
         u32 hi = 0;
         u32 lo = 0;
         // general purpose
@@ -135,7 +132,6 @@ void SetPC(u32 addr)
 {
     CPU_WARN("Forcing PC to 0x{:08x}", addr);
     s.regs.pc = addr;
-//    s.regs.next_pc = addr + 4;
     s.bds = {};
 }
 
@@ -224,7 +220,7 @@ bool InBranchDelaySlot()
  */
 void OnActive(bool *active)
 {
-    const u32 pc_region = (10 << 2);
+    constexpr u32 pc_region = (10 << 2);
 
     if (!ImGui::Begin("CPU Debug", active)) {
         ImGui::End();
@@ -273,8 +269,9 @@ void OnActive(bool *active)
     ImGuiWindowFlags dasm_window_flags = ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse;
 
     ImGui::BeginGroup();
-    ImGui::BeginChild("Instruction Disassembly", ImVec2(300,0), false, dasm_window_flags);
+    ImGui::BeginChild("Instruction Disassembly", ImVec2(350,0), false, dasm_window_flags);
     ImGui::TextUnformatted("Instruction Disassembly");
+    ImGui::Separator();
     for (u32 addr = prePC; addr <= postPC; addr += 4) {
         u32 instr = Bus::Read<u32>(addr, Bus::RWVerbosity::Quiet);
         if (addr == pc) {
@@ -294,6 +291,7 @@ void OnActive(bool *active)
     //-------------------------------------
     ImGui::BeginChild("Registers", ImVec2(0,0), false, dasm_window_flags);
     ImGui::TextUnformatted("Registers");
+    ImGui::Separator();
     ImGui::BeginGroup();
         // zero
         ImGui::TextUnformatted(PSX_FMT("R0(ZR)  = {:<26}", PSX_FMT("{0:#010x} ({0})", s.regs.r[0])).data());
@@ -1451,11 +1449,58 @@ u8 Bgezal(const Asm::Instruction& instr)
 // Co-Processor Instructions
 //================================================
 // *** Cop General ***
+/*
+ * Cop0 Command
+ * op = 0x10
+ * Format: Cop0 ...
+ */
 u8 Cop0(const Asm::Instruction& instr)
 {
-    PSX_ASSERT(0);
-    (void) instr;
-    return 0;
+    // check operation
+    u32 modified_reg = 0;
+    if ((instr.cop_op & 0x10) == 0) {
+        if ((instr.cop_op & 0x08) != 0) {
+            // Branch
+            PSX_ASSERT(0);
+        } else {
+            // Moves
+            // MF rt, cop0_rd
+            // MT rt, cop0_rd
+            switch (instr.cop_op) {
+            case 0x00: // MFCn
+                s.regs.r[instr.rt] = Cop0::Mf(instr.rd);
+                modified_reg = instr.rt;
+                break;
+            case 0x02: // CFCn
+            {
+                // reserved instruction exception
+                Cop0::Exception e;
+                e.type = Cop0::Exception::Type::ReservedInstr;
+                Cop0::RaiseException(e);
+                break;
+            }
+            case 0x04: // MTCn
+                Cop0::Mt(s.regs.r[instr.rt], instr.rd);
+                break;
+            case 0x06: // CTCn
+            {
+                // reserved instruction exception
+                Cop0::Exception e;
+                e.type = Cop0::Exception::Type::ReservedInstr;
+                Cop0::RaiseException(e);
+                break;
+            }
+            default:
+                CPU_ERROR("Unkown COP0 move operation: {:x}", instr.cop_op);
+                PSX_ASSERT(0);
+                break;
+            }
+        }
+    } else {
+        // Cop Command
+        Cop0::ExeCmd(instr.imm25);
+    }
+    return modified_reg;
 }
 
 u8 Cop1(const Asm::Instruction& instr)

@@ -15,7 +15,6 @@
 namespace Psx {
 namespace Cop0 {
 
-//class Cpu final : public ImGuiLayer::DbgModule {
 struct Exception {
     enum class Type {
         Interrupt     = 0x00,
@@ -33,10 +32,13 @@ struct Exception {
     u8 cop_num = 0;
 };
 
-//class Cpu final : public ImGuiLayer::DbgModule {
 void Init();
 void Reset();
+void OnActive(bool *active);
 void RaiseException(const Exception& ex);
+void ExeCmd(u32 command);
+u32 Mf(u8 reg);
+void Mt(u32 data, u8 reg);
 
 }// end namespace
 }

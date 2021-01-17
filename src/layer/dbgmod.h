@@ -31,6 +31,18 @@ private:
     static const u32 m_num_lines = 50;
 };
 
+namespace Breakpoints {
+
+void OnActive(bool *active);
+void OnUpdate();
+bool Exists();
+void Break(u32 pc);
+bool ShouldBreakPC(u32 pc);
+void PopupAddPCBreakpoint();
+void SetPCBreakpoint(u32 pc);
+
+}// end namespace (breakpoint)
+
 
 }// end namespace
 }
