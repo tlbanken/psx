@@ -14,7 +14,7 @@
 #define PSX_LOGGING
 
 // TODO: Define in cmake
-#define DEBUG
+#define PSX_DEBUG
 
 
 // Version from cmake

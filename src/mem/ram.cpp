@@ -14,6 +14,7 @@
 #include "imgui/imgui.h"
 
 #include "layer/dbgmod.h"
+#include "cpu/cop0.h"
 
 #define RAM_INFO(...) PSXLOG_INFO("RAM", __VA_ARGS__)
 #define RAM_WARN(...) PSXLOG_WARN("RAM", __VA_ARGS__)
@@ -34,7 +35,7 @@ namespace Ram {
 
 void Init()
 {
-    RAM_INFO("Initializing 2MB of Sytem RAM");
+    RAM_INFO("Initializing 2MB of System RAM");
     s.sysram.resize(2048 * 1024, 0); // 2MB
 }
 
@@ -52,6 +53,14 @@ void Reset()
 template<class T>
 T Read(u32 addr)
 {
+#ifdef PSX_DEBUG
+    // not sure if this is needed
+    bool in_cache_region = (addr & 0x8000'0000) || ((addr & 0xf000'0000) == 0);
+    if (in_cache_region && Cop0::CacheIsIsolated()) {
+        RAM_WARN("Reading from RAM [0x{:08x}] while Cache is isolated. Did something break?", addr);
+    }
+#endif
+
     u32 maddr = addr & 0x1f'ffff; // addr % 2MB
     T data = 0;
     if constexpr (std::is_same_v<T, u8>) {
@@ -84,6 +93,13 @@ template u32 Read<u32>(u32 addr);
 template<class T>
 void Write(T data, u32 addr)
 {
+    // don't do any writes if cache is isolated (kuseg or kseg0)
+    bool in_cache_region = (addr & 0x8000'0000) || ((addr & 0xf000'0000) == 0);
+    if (in_cache_region && Cop0::CacheIsIsolated()) {
+        RAM_WARN("Cache is Isolated, skipping write [{}] to 0x{:08x}", data, addr);
+        return;
+    }
+
     u32 maddr = addr & 0x1f'ffff; // addr % 2MB
     if constexpr (std::is_same_v<T, u8>) {
         PSX_ASSERT(maddr < s.sysram.size());

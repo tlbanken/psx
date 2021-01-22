@@ -91,6 +91,9 @@ void Reset()
 void Step()
 {
     // fetch next instruction
+    // TODO: Right now, we ignore instruction cache. This shouldn't be
+    // a problem for most games, but maybe something to come back to in
+    // the future.
     u32 cur_instr = Bus::Read<u32>(s.regs.pc);
 
     // check if last instruction was a branch/jump

@@ -1,6 +1,7 @@
 Important PC Addresses to Potentially Break on:
 0xbfc0'0000 -- Start of Bios
 0xbfc0'0150 -- Bios Initialization routine start
+0xbfc0'0250 -- Initializing cache
 0xbfc0'0278 -- After Zeroing places in RAM (not sure what its doing)
 0xbfc0'029c -- Zeroing out more places in RAM
 0xbfc0'0328 -- After zeroing out more places in RAM

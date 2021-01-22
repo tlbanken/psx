@@ -16,6 +16,7 @@ namespace MemControl {
 
 void Init();
 void Reset();
+void OnActive(bool *active);
 
 template<class T>
 void Write(T data, u32 addr);

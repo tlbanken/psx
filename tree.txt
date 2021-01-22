@@ -18,8 +18,6 @@ src
 │   │   ├── asm.cpp
 │   │   ├── asm.h
 │   │   └── CMakeLists.txt
-│   ├── cache.cpp
-│   ├── cache.h
 │   ├── CMakeLists.txt
 │   ├── cop0.cpp
 │   ├── cop0.h
@@ -39,7 +37,9 @@ src
 │   ├── memcontrol.cpp
 │   ├── memcontrol.h
 │   ├── ram.cpp
-│   └── ram.h
+│   ├── ram.h
+│   ├── scratchpad.cpp
+│   └── scratchpad.h
 └── util
     ├── CMakeLists.txt
     ├── psxlog.cpp

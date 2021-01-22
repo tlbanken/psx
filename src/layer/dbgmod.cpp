@@ -137,14 +137,17 @@ namespace Breakpoints {
 
 namespace {
     std::vector<u32> pc_breakpoints;
+    std::vector<u32> memw_breakpoints;
+    std::vector<u32> memr_breakpoints;
+
     bool is_breaked = false;
-    u32 last_pc_break = 0;
+    u32 last_break_addr = 0;
 }
 
-bool Exists()
-{
-    return pc_breakpoints.size() != 0;
-}
+//bool Exists()
+//{
+//    return pc_breakpoints.size() != 0;
+//}
 
 void OnActive(bool *active)
 {
@@ -175,16 +178,59 @@ bool ShouldBreakPC(u32 pc)
     return false;
 }
 
-void Break(u32 pc)
+/*
+ * Returns true if the current address matches any of the currently set
+ * memory write breakpoints.
+ */
+bool ShouldBreakMemW(u32 addr)
+{
+    for (const auto& bp : memw_breakpoints) {
+        if (addr == bp) {
+            return true;
+        }
+    }
+    return false;
+}
+
+/*
+ * Returns true if the current address matches any of the currently set
+ * memory read breakpoints.
+ */
+bool ShouldBreakMemR(u32 addr)
+{
+    for (const auto& bp : memr_breakpoints) {
+        if (addr == bp) {
+            return true;
+        }
+    }
+    return false;
+}
+
+void BreakPC(u32 pc)
 {
     g_emu_state.paused = true;
-    last_pc_break = pc;
+    last_break_addr = pc;
     is_breaked = true;
-    // Always center this window when appearing
-    ImVec2 center(ImGui::GetIO().DisplaySize.x * 0.5f, ImGui::GetIO().DisplaySize.y * 0.5f);
-    ImGui::SetNextWindowPos(center, ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
 
     pc_breakpoints.erase(std::remove(pc_breakpoints.begin(), pc_breakpoints.end(), pc), pc_breakpoints.end());
+}
+
+void BreakMemW(u32 addr)
+{
+    g_emu_state.paused = true;
+    last_break_addr = addr;
+    is_breaked = true;
+
+    memw_breakpoints.erase(std::remove(memw_breakpoints.begin(), memw_breakpoints.end(), addr), memw_breakpoints.end());
+}
+
+void BreakMemR(u32 addr)
+{
+    g_emu_state.paused = true;
+    last_break_addr = addr;
+    is_breaked = true;
+
+    memr_breakpoints.erase(std::remove(memr_breakpoints.begin(), memr_breakpoints.end(), addr), memr_breakpoints.end());
 }
 
 void OnUpdate()
@@ -192,8 +238,12 @@ void OnUpdate()
     if (is_breaked)
         ImGui::OpenPopup("Break");
 
+    // Always center this window when appearing
+    ImVec2 center(ImGui::GetIO().DisplaySize.x * 0.5f, ImGui::GetIO().DisplaySize.y * 0.5f);
+    ImGui::SetNextWindowPos(center, ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
+
     if (ImGui::BeginPopupModal("Break", NULL, ImGuiWindowFlags_AlwaysAutoResize)) {
-        ImGui::Text("Break on PC 0x%08x!", last_pc_break);
+        ImGui::Text("Break on 0x%08x!", last_break_addr);
         if (ImGui::Button("Close")) {
             is_breaked = false;
             ImGui::CloseCurrentPopup();
@@ -206,6 +256,24 @@ void SetPCBreakpoint(u32 pc)
 {
     DBG_INFO("Setting PC Breakpoint @ 0x{:08x}", pc);
     pc_breakpoints.push_back(pc);
+}
+
+/*
+ * Set a breakpoint when the given memory address is written to.
+ */
+void SetMemWBreakpoint(u32 addr)
+{
+    DBG_INFO("Setting Mem Write Breakpoint @ 0x{:08x}", addr);
+    memw_breakpoints.push_back(addr);
+}
+
+/*
+ * Set a breakpoint when the given memory address is written to.
+ */
+void SetMemRBreakpoint(u32 addr)
+{
+    DBG_INFO("Setting Mem Read Breakpoint @ 0x{:08x}", addr);
+    memr_breakpoints.push_back(addr);
 }
 
 void PopupAddPCBreakpoint()

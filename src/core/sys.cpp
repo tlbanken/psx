@@ -22,6 +22,7 @@
 #include "core/globals.h"
 #include "bios/bios.h"
 #include "mem/memcontrol.h"
+#include "mem/scratchpad.h"
 #include "layer/dbgmod.h"
 
 #define SYS_INFO(...) PSXLOG_INFO("System", __VA_ARGS__)
@@ -40,6 +41,7 @@ System::System(const std::string& bios_path, bool headless_mode)
     SYS_INFO("Initializing all System Modules");
     Bus::Init();
     Ram::Init();
+    Scratchpad::Init();
     MemControl::Init();
     Cpu::Init();
     Cop0::Init();
@@ -66,6 +68,7 @@ void System::Reset()
     Cop0::Reset();
     Cpu::Reset();
     Ram::Reset();
+    Scratchpad::Reset();
     MemControl::Reset();
     Bus::Reset();
 }
@@ -82,7 +85,7 @@ void System::Run()
 
     // DEBUG
     g_emu_state.paused = true;
-    ImGuiLayer::DbgMod::Breakpoints::SetPCBreakpoint(0xbfc0'0278);
+    ImGuiLayer::DbgMod::Breakpoints::SetMemWBreakpoint(0x1f80'1010);
 
     bool new_frame = true;
     while (!ImGuiLayer::ShouldStop()) {

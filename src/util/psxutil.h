@@ -40,7 +40,7 @@ typedef uint8_t u8;
 #define PSX_FMT(...) fmt::format(__VA_ARGS__)
 
 
-#ifdef DEBUG
+#ifdef PSX_DEBUG
 #define PSX_ASSERT(cond) assert(cond)
 #else
 #define PSX_ASSERT(cond)

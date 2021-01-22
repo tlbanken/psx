@@ -36,10 +36,16 @@ namespace Breakpoints {
 void OnActive(bool *active);
 void OnUpdate();
 bool Exists();
-void Break(u32 pc);
+void BreakPC(u32 pc);
+void BreakMemW(u32 addr);
+void BreakMemR(u32 addr);
 bool ShouldBreakPC(u32 pc);
+bool ShouldBreakMemW(u32 addr);
+bool ShouldBreakMemR(u32 addr);
 void PopupAddPCBreakpoint();
 void SetPCBreakpoint(u32 pc);
+void SetMemWBreakpoint(u32 addr);
+void SetMemRBreakpoint(u32 addr);
 
 }// end namespace (breakpoint)
 

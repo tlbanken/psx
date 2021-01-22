@@ -18,6 +18,9 @@
 #include "bios/bios.h"
 #include "util/psxlog.h"
 #include "mem/memcontrol.h"
+#include "mem/scratchpad.h"
+#include "layer/dbgmod.h"
+#include "layer/imgui_layer.h"
 
 #define BUS_INFO(...) PSXLOG_INFO("Bus", __VA_ARGS__)
 #define BUS_WARN(...) PSXLOG_WARN("Bus", __VA_ARGS__)
@@ -53,6 +56,12 @@ T Read(u32 addr, Bus::RWVerbosity verb)
         return addr >= base && addr < (base + size);
     };
 
+    // check for breakpoint
+    if (ImGuiLayer::DbgMod::Breakpoints::ShouldBreakMemR(addr)) {
+        ImGuiLayer::DbgMod::Breakpoints::BreakMemR(addr);
+        ImGuiLayer::OnUpdate();
+    }
+
     // Main RAM
     constexpr u32 mb_2 = 2 * 1024 * 1024;
     if (inRange(0x0000'0000, mb_2, addr) // KUSEG
@@ -69,6 +78,14 @@ T Read(u32 addr, Bus::RWVerbosity verb)
      || inRange(0xbfc0'0000, kb_512, addr))// KSEG1
     {
         return Bios::Read<T>(addr);
+    }
+
+    // Scratchpad
+    constexpr u32 kb_1 = 1 * 1024;
+    if (inRange(0x1f80'0000, kb_1, addr) // KUSEG
+     || inRange(0x9f80'0000, kb_1, addr))// KSEG0
+    {
+        return Scratchpad::Read<T>(addr);
     }
 
     // Memory Control Register
@@ -105,6 +122,12 @@ void Write(T data, u32 addr, Bus::RWVerbosity verb)
         return addr >= base && addr < (base + size);
     };
 
+    // check for breakpoint
+    if (ImGuiLayer::DbgMod::Breakpoints::ShouldBreakMemW(addr)) {
+        ImGuiLayer::DbgMod::Breakpoints::BreakMemW(addr);
+        ImGuiLayer::OnUpdate();
+    }
+
     // Main RAM
     constexpr u32 mb_2 = 2 * 1024 * 1024;
     if (inRange(0x0000'0000, mb_2, addr) // KUSEG
@@ -122,6 +145,15 @@ void Write(T data, u32 addr, Bus::RWVerbosity verb)
      || inRange(0xbfc0'0000, kb_512, addr))// KSEG1
     {
         Bios::Write<T>(data, addr);
+        return;
+    }
+
+    // Scratchpad
+    constexpr u32 kb_1 = 1 * 1024;
+    if (inRange(0x1f80'0000, kb_1, addr) // KUSEG
+     || inRange(0x9f80'0000, kb_1, addr))// KSEG0
+    {
+        Scratchpad::Write<T>(data, addr);
         return;
     }
 

@@ -155,6 +155,7 @@ template<class T>
 void Write(T data, u32 addr)
 {
     BIOS_ERROR("Trying to write [{:x}] to ROM @ 0x{:08x}", data, addr);
+    PSX_ASSERT(0);
     // TODO Check for cache enable
     u32 maddr = addr & 0x0007'ffff; // addr % 512K
     if constexpr (std::is_same_v<T, u8>) {

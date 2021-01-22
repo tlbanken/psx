@@ -387,6 +387,11 @@ void OnActive(bool *active)
     ImGui::End();
 }
 
+bool CacheIsIsolated()
+{
+    return (s.regs.sr.raw >> 16) & 0x1;
+}
+
 
 }// end namespace
 }

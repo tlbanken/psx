@@ -20,6 +20,8 @@
 #include "util/psxlog.h"
 #include "util/psxutil.h"
 #include "mem/ram.h"
+#include "mem/memcontrol.h"
+#include "mem/scratchpad.h"
 
 #define WINDOW_H 1280
 #define WINDOW_W 720
@@ -117,15 +119,19 @@ void OnUpdate()
     static bool bios_active = false;
     static bool breakpoints_active = false;
     static bool cop0_active = false;
+    static bool memctrl_active = false;
+    static bool scratch_active = false;
 
     newFrame();
 
     // Call Modules if currently active
     if (ram_active) Ram::OnActive(&ram_active);
+    if (scratch_active) Scratchpad::OnActive(&scratch_active);
     if (cpu_active) Cpu::OnActive(&cpu_active);
     if (cop0_active) Cop0::OnActive(&cop0_active);
     if (bios_active) Bios::OnActive(&bios_active);
     if (breakpoints_active) DbgMod::Breakpoints::OnActive(&breakpoints_active);
+    if (memctrl_active) MemControl::OnActive(&memctrl_active);
 
     // Main Menu Bar
     if (ImGui::BeginMainMenuBar()) {
@@ -133,9 +139,11 @@ void OnUpdate()
 
             ImGui::MenuItem("Breakpoints", NULL, &breakpoints_active);
             ImGui::MenuItem("Ram", NULL, &ram_active);
+            ImGui::MenuItem("Scratchpad", NULL, &scratch_active);
             ImGui::MenuItem("Cpu", NULL, &cpu_active);
             ImGui::MenuItem("Cop0", NULL, &cop0_active);
             ImGui::MenuItem("Bios", NULL, &bios_active);
+            ImGui::MenuItem("MemControl", NULL, &memctrl_active);
 
             ImGui::EndMenu();
         }
@@ -145,7 +153,7 @@ void OnUpdate()
 
     // should we break?
     if (ImGuiLayer::DbgMod::Breakpoints::ShouldBreakPC(Cpu::GetPC())) {
-        DbgMod::Breakpoints::Break(Cpu::GetPC());
+        DbgMod::Breakpoints::BreakPC(Cpu::GetPC());
     }
 
     // Demo

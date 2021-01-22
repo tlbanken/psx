@@ -39,6 +39,7 @@ void RaiseException(const Exception& ex);
 void ExeCmd(u32 command);
 u32 Mf(u8 reg);
 void Mt(u32 data, u8 reg);
+bool CacheIsIsolated();
 
 }// end namespace
 }

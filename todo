@@ -8,5 +8,6 @@ Here are some random specifics that I need to come back to at some point.
 - scratch pad
 - expansion regions
 - BIOS ROM can be mirrored to the last 4MB (disabled by default)
+- Cache Control -- enable scratch pad 1 and 2 together
 
 
