@@ -63,27 +63,27 @@ T Read(u32 addr, Bus::RWVerbosity verb)
     }
 
     // Main RAM
-    constexpr u32 mb_2 = 2 * 1024 * 1024;
-    if (inRange(0x0000'0000, mb_2, addr) // KUSEG
-     || inRange(0x8000'0000, mb_2, addr) // KSEG0
-     || inRange(0xa000'0000, mb_2, addr))// KSEG1
+    constexpr u32 ram_size = 8 * 1024 * 1024; // 8 MB
+    if (inRange(0x0000'0000, ram_size, addr) // KUSEG
+     || inRange(0x8000'0000, ram_size, addr) // KSEG0
+     || inRange(0xa000'0000, ram_size, addr))// KSEG1
     {
         return Ram::Read<T>(addr);
     }
 
     // BIOS
-    constexpr u32 kb_512 = 512 * 1024;
-    if (inRange(0x1fc0'0000, kb_512, addr) // KUSEG
-     || inRange(0x9fc0'0000, kb_512, addr) // KSEG0
-     || inRange(0xbfc0'0000, kb_512, addr))// KSEG1
+    constexpr u32 bios_size = 512 * 1024;
+    if (inRange(0x1fc0'0000, bios_size, addr) // KUSEG
+     || inRange(0x9fc0'0000, bios_size, addr) // KSEG0
+     || inRange(0xbfc0'0000, bios_size, addr))// KSEG1
     {
         return Bios::Read<T>(addr);
     }
 
     // Scratchpad
-    constexpr u32 kb_1 = 1 * 1024;
-    if (inRange(0x1f80'0000, kb_1, addr) // KUSEG
-     || inRange(0x9f80'0000, kb_1, addr))// KSEG0
+    constexpr u32 sp_size = 1 * 1024;
+    if (inRange(0x1f80'0000, sp_size, addr) // KUSEG
+     || inRange(0x9f80'0000, sp_size, addr))// KSEG0
     {
         return Scratchpad::Read<T>(addr);
     }
@@ -129,29 +129,29 @@ void Write(T data, u32 addr, Bus::RWVerbosity verb)
     }
 
     // Main RAM
-    constexpr u32 mb_2 = 2 * 1024 * 1024;
-    if (inRange(0x0000'0000, mb_2, addr) // KUSEG
-     || inRange(0x8000'0000, mb_2, addr) // KSEG0
-     || inRange(0xa000'0000, mb_2, addr))// KSEG1
+    constexpr u32 ram_size = 8 * 1024 * 1024; // 8 MB
+    if (inRange(0x0000'0000, ram_size, addr) // KUSEG
+     || inRange(0x8000'0000, ram_size, addr) // KSEG0
+     || inRange(0xa000'0000, ram_size, addr))// KSEG1
     {
         Ram::Write<T>(data, addr);
         return;
     }
 
     // BIOS
-    constexpr u32 kb_512 = 512 * 1024;
-    if (inRange(0x1fc0'0000, kb_512, addr) // KUSEG
-     || inRange(0x9fc0'0000, kb_512, addr) // KSEG0
-     || inRange(0xbfc0'0000, kb_512, addr))// KSEG1
+    constexpr u32 bios_size = 512 * 1024;
+    if (inRange(0x1fc0'0000, bios_size, addr) // KUSEG
+     || inRange(0x9fc0'0000, bios_size, addr) // KSEG0
+     || inRange(0xbfc0'0000, bios_size, addr))// KSEG1
     {
         Bios::Write<T>(data, addr);
         return;
     }
 
     // Scratchpad
-    constexpr u32 kb_1 = 1 * 1024;
-    if (inRange(0x1f80'0000, kb_1, addr) // KUSEG
-     || inRange(0x9f80'0000, kb_1, addr))// KSEG0
+    constexpr u32 sp_size = 1 * 1024;
+    if (inRange(0x1f80'0000, sp_size, addr) // KUSEG
+     || inRange(0x9f80'0000, sp_size, addr))// KSEG0
     {
         Scratchpad::Write<T>(data, addr);
         return;

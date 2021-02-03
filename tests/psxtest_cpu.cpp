@@ -1026,11 +1026,11 @@ static void jumpTests()
     Cpu::SetPC(0);
     EXE_BD_INSTR("JAL 0x100");
     assert(Cpu::GetPC() == 0x100);
-    assert(Cpu::GetR(31) == 0x8);
+    assert(Cpu::GetR(31) == 0x4);
     Cpu::SetPC(0xb000'3000);
     EXE_BD_INSTR("JAL 0x100");
     assert(Cpu::GetPC() == 0xb000'0100);
-    assert(Cpu::GetR(31) == 0xb000'3008);
+    assert(Cpu::GetR(31) == 0xb000'3004);
     // test branch delay
     EXE_TWO_INSTRS("JAL 0x100", "ADDI R10 R0 11");
     assert(Cpu::GetPC() == 0x100);
@@ -1094,7 +1094,7 @@ static void branchTests()
     assert(Cpu::GetPC() == 0x104);
     // test branch delay
     EXE_TWO_INSTRS("BEQ R1 R1 4", "ADDI R10 R0 11");
-    assert(Cpu::GetPC() == 0x1010);
+    assert(Cpu::GetPC() == 0x1010 + 4);
     assert(Cpu::GetR(10) == 11);
 
     //========================
@@ -1113,7 +1113,7 @@ static void branchTests()
     assert(Cpu::GetPC() == 0x104);
     // test branch delay
     EXE_TWO_INSTRS("BNE R1 R0 4", "ADDI R10 R0 11");
-    assert(Cpu::GetPC() == 0x1010);
+    assert(Cpu::GetPC() == 0x1010 + 4);
     assert(Cpu::GetR(10) == 11);
 
     //========================
@@ -1134,7 +1134,7 @@ static void branchTests()
     assert(Cpu::GetPC() == 0x104);
     // test branch delay
     EXE_TWO_INSTRS("BLEZ R0 4", "ADDI R10 R0 11");
-    assert(Cpu::GetPC() == 0x1010);
+    assert(Cpu::GetPC() == 0x1010 + 4);
     assert(Cpu::GetR(10) == 11);
 
     //========================
@@ -1159,7 +1159,7 @@ static void branchTests()
     // test branch delay
     Cpu::SetR(1, 1);
     EXE_TWO_INSTRS("BGTZ R1 4", "ADDI R10 R0 11");
-    assert(Cpu::GetPC() == 0x1010);
+    assert(Cpu::GetPC() == 0x1010 + 4);
     assert(Cpu::GetR(10) == 11);
 
     //========================
@@ -1184,7 +1184,7 @@ static void branchTests()
     // test branch delay
     Cpu::SetR(1, (u32)-1);
     EXE_TWO_INSTRS("BLTZ R1 4", "ADDI R10 R0 11");
-    assert(Cpu::GetPC() == 0x1010);
+    assert(Cpu::GetPC() == 0x1010 + 4);
     assert(Cpu::GetR(10) == 11);
 
     //========================
@@ -1209,7 +1209,7 @@ static void branchTests()
     // test branch delay
     Cpu::SetR(1, 1);
     EXE_TWO_INSTRS("BGEZ R1 4", "ADDI R10 R0 11");
-    assert(Cpu::GetPC() == 0x1010);
+    assert(Cpu::GetPC() == 0x1010 + 4);
     assert(Cpu::GetR(10) == 11);
 
     //========================
@@ -1243,9 +1243,9 @@ static void branchTests()
     Cpu::SetR(31, 0);
     Cpu::SetR(1, (u32)-1);
     EXE_TWO_INSTRS("BLTZAL R1 4", "ADDI R10 R0 11");
-    assert(Cpu::GetPC() == 0x1010);
+    assert(Cpu::GetPC() == 0x1010 + 4);
     assert(Cpu::GetR(10) == 11);
-    assert(Cpu::GetR(31) == 0x1008);
+    assert(Cpu::GetR(31) == 0x1008 + 4);
 
     //========================
     // BGEZAL
@@ -1278,9 +1278,9 @@ static void branchTests()
     Cpu::SetR(31, 0);
     Cpu::SetR(1, 1);
     EXE_TWO_INSTRS("BGEZAL R1 4", "ADDI R10 R0 11");
-    assert(Cpu::GetPC() == 0x1010);
+    assert(Cpu::GetPC() == 0x1010 + 4);
     assert(Cpu::GetR(10) == 11);
-    assert(Cpu::GetR(31) == 0x1008);
+    assert(Cpu::GetR(31) == 0x1008 + 4);
 }
 
 namespace Psx {

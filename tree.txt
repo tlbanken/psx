@@ -34,6 +34,8 @@ src
 │   ├── bus.cpp
 │   ├── bus.h
 │   ├── CMakeLists.txt
+│   ├── dma.cpp
+│   ├── dma.h
 │   ├── memcontrol.cpp
 │   ├── memcontrol.h
 │   ├── ram.cpp
@@ -84,4 +86,4 @@ tests
 ├── psxtest_mem.cpp
 └── psxtest_mem.h
 
-11 directories, 70 files
+11 directories, 72 files

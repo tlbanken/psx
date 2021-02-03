@@ -25,4 +25,4 @@
 #define PTOJECT_VER_PATCH "2"
 
 // Project Root Path
-#define PROJECT_ROOT_PATH "/home/travis/Documents/Projects/psx"
+#define PROJECT_ROOT_PATH "/home/travis/Projects/psx"

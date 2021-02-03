@@ -6,3 +6,47 @@ Important PC Addresses to Potentially Break on:
 0xbfc0'029c -- Zeroing out more places in RAM
 0xbfc0'0328 -- After zeroing out more places in RAM
 
+
+*** Boot Process (BIOS: SCPH1001.BIN) ***
+0xbfc0'0000 -- Start
+0xbfc0'000c -- Set BIOS ROM Delay/Size to 0x0013'243f
+0xbfc0'0001 -- Set Ram Size to 0xb88
+0xbfc0'0160 -- Set Com Delay to 0x0003'1125
+0xbfc0'0168 -- Set Expansion 1 Base Addr to 0x1f00'0000
+0xbfc0'0174 -- Set Expansion 2 Base Addr to 0x1f80'2000
+0xbfc0'0180 -- Set Expansion 1 Delay/Size to 0x0013'243f
+0xbfc0'018c -- Set SPU_DELAY Delay/Size to 0x2009'31e1
+0xbfc0'0198 -- Set CDROM_DELAY Delay/Size to 0x0002'0843
+0xbfc0'01a0 -- Set Expansion 3 Delay/Size to 0x0000'3022
+0xbfc0'01ac -- Set Expansion 2 Delay/Size to 0x0007'0777
+0xbfc0'01b0 -- Zero out all registers
+// Initialize cache (3 steps)
+0xbfc0'0234 -- Set Cache Control to 0x804 (Enable Code-Cache)
+0xbfc0'023c -- Set Cop0.sr to 0x0001'0000 (Isolate Cache)
+0xbfc0'0250 -- Init Cache Step 1
+0xbfc0'0278 -- Set Cop0.sr to 0 (Unset Isolate Cache)
+0xbfc0'0288 -- Set Cache Control to 0x0000'0800 (Enable Code-Cache)
+0xbfc0'028c -- Set Cop0.sr to 0x0001'0000 (Isolate Cache)
+0xbfc0'029c -- Init Cache Step 2
+0xbfc0'0328 -- Set Cop0.sr to 0 (Unset Isolate Cache)
+0xbfc0'0334 -- Init Cache Final Step
+0xbfc0'0364 -- Set Cache Control to 0x0001'e988 (Enable Scratchpad 1 and 2 and CC)
+0xbfc0'0368 -- Zero out Cop0 Data Registers
+// Setting special values in Bios Memory
+0xbfc0'03f0 -- Set Ram size in Bios Memory (0x60) to 0xb88
+0xbfc0'03f8 -- Set Unknown field in Bios Memory (0x64) to 0
+0xbfc0'0404 -- Set Unknown field in Bios Memory (0x68) to 0xff
+// SPU Volume Init
+0xbfc0'040c -- Set SPU Main Volume Left to 0
+0xbfc0'0410 -- Set SPU Main Volume Right to 0
+0xbfc0'0414 -- Set SPU Reverb Output Volume Left to 0
+0xbfc0'041c -- Set SPU Reverb Output Volume Right to 0
+// POST
+0xbfc0'1a74 -- Set POST to a value
+// Flush Write Queue Subroutine
+0xbfc0'3998 -- Flush Write Queue
+// Relocating BIOS Code @ 0xbfc1'0000 to cached ram @ 0xa000'0500
+0xbfc0'0438 -- Looks Like it is copying over stuff from ROM into RAM
+0xbfc0'0454 -- This is where the call to 0xa000'0500 happens 
+               (But filled with NOPs which is bad)
+

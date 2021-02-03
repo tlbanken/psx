@@ -57,6 +57,7 @@ std::string hexDumpLine(u32 addr, const std::vector<u8>& mem)
             , hexDumpChar(mem[addr+12]), hexDumpChar(mem[addr+13])
             , hexDumpChar(mem[addr+14]), hexDumpChar(mem[addr+15])
     );
+
     return dump;
 }
 
@@ -68,6 +69,7 @@ namespace DbgMod {
 HexDump::HexDump()
 {
     m_search_buf.resize(8, 0);
+    m_file_name.resize(64);
 }
 
 void HexDump::Update(const std::vector<u8>& mem)
@@ -93,6 +95,10 @@ void HexDump::Update(const std::vector<u8>& mem)
         m_start_line = m_start_line >= last_line - 10 ? last_line : m_start_line + 10;
     }
     ImGui::SameLine();
+    if (ImGui::Button("Dump to File")) {
+        ImGui::OpenPopup("Dump File");
+    }
+    ImGui::SameLine();
     auto input_flags = ImGuiInputTextFlags_CharsHexadecimal | ImGuiInputTextFlags_EnterReturnsTrue;
     if (ImGui::InputTextWithHint("Goto Address", "Enter address (hex)", m_search_buf.data(), m_search_buf.size(), input_flags)) {
         if (m_search_buf.c_str()[0] != '\0') {
@@ -107,6 +113,25 @@ void HexDump::Update(const std::vector<u8>& mem)
         m_find_target = false;
     }
     //----------------------------------------------------
+
+    //----------------------------------------------------
+    // Dump to file
+    //----------------------------------------------------
+    // Always center this window when appearing
+    ImVec2 center(ImGui::GetIO().DisplaySize.x * 0.5f, ImGui::GetIO().DisplaySize.y * 0.5f);
+    ImGui::SetNextWindowPos(center, ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
+
+    if (ImGui::BeginPopupModal("Dump File", NULL, ImGuiWindowFlags_AlwaysAutoResize)) {
+        ImGui::TextUnformatted("Enter Name of File");
+        auto input_flags = ImGuiInputTextFlags_EnterReturnsTrue;
+        if (ImGui::InputTextWithHint("Dump File Name", "Enter File Name", m_file_name.data(), m_file_name.size(), input_flags)) {
+            if (m_file_name != "") {
+                dumpToFile(mem);
+                ImGui::CloseCurrentPopup();
+            }
+        }
+        ImGui::EndPopup();
+    }
 
     //----------------------------------------------------
     // Hex Dump Region
@@ -130,6 +155,23 @@ void HexDump::Update(const std::vector<u8>& mem)
     ImGui::EndChild();
     //----------------------------------------------------
 
+}
+
+void HexDump::dumpToFile(const std::vector<u8>& mem)
+{
+    DBG_INFO("Dump Mem to {}", m_file_name);
+    // open file
+    std::ofstream file;
+    file.open(m_file_name, std::ios::binary);
+    if (!file.is_open()) {
+        DBG_ERROR("Failed to open {} for writing", m_file_name);
+        throw std::runtime_error(PSX_FMT("Failed to open {} for writing", m_file_name));
+    }
+
+    // dump
+    file.write((char*) mem.data(), mem.size());
+
+    file.close();
 }
 
 namespace Breakpoints {

@@ -92,12 +92,6 @@ void LoadFromFile(const std::string& path)
     // dump bytes into local rom
     file.read((char*) s.rom.data(), s.rom.size());
 
-    // DEBUG
-//    std::ofstream ofile;
-//    ofile.open("bios_debug", std::ios::binary);
-//    for (const auto& byte : s.rom) {
-//        ofile << byte;
-//    }
     file.close();
     s.bios_loaded = true;
 }

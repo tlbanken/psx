@@ -28,6 +28,34 @@ set(FMT_HDRS
 file(COPY ${FMT_HDRS} DESTINATION "${PROJECT_SOURCE_DIR}/extern/include/fmt")
 
 # ==============================
+# GLFW
+# ==============================
+add_subdirectory(glfw)
+
+set(GLFW_HDRS
+    ${PROJECT_SOURCE_DIR}/extern/glfw/include/GLFW/glfw3.h
+)
+
+# Copy headers to extern/include/glfw
+file(COPY ${GLFW_HDRS} DESTINATION "${PROJECT_SOURCE_DIR}/extern/include/glfw")
+
+# ==============================
+# GLAD
+# ==============================
+add_library(glad STATIC
+    glad/src/glad.c
+)
+
+target_include_directories(glad PRIVATE "${PROJECT_SOURCE_DIR}/extern/glad/include/")
+
+set(GLAD_HDRS
+    ${PROJECT_SOURCE_DIR}/extern/glad/include/glad/glad.h
+)
+
+# Copy headers to extern/include/glad
+file(COPY ${GLAD_HDRS} DESTINATION "${PROJECT_SOURCE_DIR}/extern/include/glad")
+
+# ==============================
 # Dear ImGui Library
 # ==============================
 add_library(imgui STATIC
@@ -45,7 +73,8 @@ add_compile_definitions(IMGUI_IMPL_OPENGL_LOADER_GLAD)
 
 target_include_directories(imgui PRIVATE "${PROJECT_SOURCE_DIR}/extern/imgui/")
 target_include_directories(imgui PRIVATE "${PROJECT_SOURCE_DIR}/extern/imgui/backends")
-target_include_directories(imgui PRIVATE "${PROJECT_SOURCE_DIR}/extern/include")
+target_include_directories(imgui PRIVATE "${PROJECT_SOURCE_DIR}/extern/glad/include/")
+target_include_directories(imgui PRIVATE "${PROJECT_SOURCE_DIR}/extern/glfw/include/")
 
 set(IMGUI_HDRS
     ${PROJECT_SOURCE_DIR}/extern/imgui/imgui.h
@@ -59,35 +88,6 @@ set(IMGUI_HDRS
 
 # Copy headers to extern/include/imgui
 file(COPY ${IMGUI_HDRS} DESTINATION "${PROJECT_SOURCE_DIR}/extern/include/imgui")
-
-# ==============================
-# GLFW
-# ==============================
-add_subdirectory(glfw)
-
-set(GLFW_HDRS
-    ${PROJECT_SOURCE_DIR}/extern/glfw/include/GLFW/glfw3.h
-)
-
-# Copy headers to extern/include/imgui
-file(COPY ${GLFW_HDRS} DESTINATION "${PROJECT_SOURCE_DIR}/extern/include/glfw")
-
-# ==============================
-# GLAD
-# ==============================
-add_library(glad STATIC
-    glad/src/glad.c
-)
-
-target_include_directories(glad PRIVATE "${PROJECT_SOURCE_DIR}/extern/glad/include/")
-
-set(GLAD_HDRS
-    ${PROJECT_SOURCE_DIR}/extern/glad/include/glad/glad.h
-)
-
-# Copy headers to extern/include/imgui
-file(COPY ${GLAD_HDRS} DESTINATION "${PROJECT_SOURCE_DIR}/extern/include/glad")
-
 
 
 

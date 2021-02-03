@@ -3,6 +3,7 @@ target_sources(psx PRIVATE
     ram.cpp
     memcontrol.cpp
     scratchpad.cpp
+    dma.cpp
 )
 
 target_sources(psx-test PRIVATE
@@ -10,4 +11,5 @@ target_sources(psx-test PRIVATE
     ram.cpp
     memcontrol.cpp
     scratchpad.cpp
+    dma.cpp
 )

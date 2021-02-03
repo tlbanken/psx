@@ -22,6 +22,7 @@
 #include "mem/ram.h"
 #include "mem/memcontrol.h"
 #include "mem/scratchpad.h"
+#include "mem/dma.h"
 
 #define WINDOW_H 1280
 #define WINDOW_W 720
@@ -121,6 +122,7 @@ void OnUpdate()
     static bool cop0_active = false;
     static bool memctrl_active = false;
     static bool scratch_active = false;
+    static bool dma_active = false;
 
     newFrame();
 
@@ -132,6 +134,7 @@ void OnUpdate()
     if (bios_active) Bios::OnActive(&bios_active);
     if (breakpoints_active) DbgMod::Breakpoints::OnActive(&breakpoints_active);
     if (memctrl_active) MemControl::OnActive(&memctrl_active);
+    if (dma_active) Dma::OnActive(&dma_active);
 
     // Main Menu Bar
     if (ImGui::BeginMainMenuBar()) {
@@ -144,6 +147,7 @@ void OnUpdate()
             ImGui::MenuItem("Cop0", NULL, &cop0_active);
             ImGui::MenuItem("Bios", NULL, &bios_active);
             ImGui::MenuItem("MemControl", NULL, &memctrl_active);
+            ImGui::MenuItem("DMA", NULL, &dma_active);
 
             ImGui::EndMenu();
         }

@@ -34,14 +34,14 @@
 
 ## Tier 1
 - [ ] CPU
-    - [ ] cpu
+    - [x] cpu
     - [ ] cop0
 - [ ] Memory
     - [x] Bus
     - [x] Ram
-    - [ ] DMA?
+    - [ ] DMA
 - [x] BIOS
-- [ ] Cache
+- [x] Scratchpad
 
 ## Tier 2
 - [ ] Root Counters (Timers)

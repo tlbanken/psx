@@ -111,10 +111,11 @@ void Step()
     s.lds.is_primed = false;
 
     // execute
+    s.regs.pc += 4;
     u8 modified_reg = ExecuteInstruction(cur_instr);
 
     // update pc (dependent on branch)
-    s.regs.pc = take_branch ? baddr : s.regs.pc + 4;
+    s.regs.pc = take_branch ? baddr : s.regs.pc;
 
     // race condition: if instruction writes to same register in load
     // delay slot, the instruction wins over the load.
@@ -1248,7 +1249,7 @@ u8 Jal(const Asm::Instruction& instr)
 {
     u32 target = instr.target << 2;
     target |= (s.regs.pc & 0xf000'0000);
-    s.regs.r[31] = s.regs.pc + 8; // return addr
+    s.regs.r[31] = s.regs.pc + 4; // return addr
     s.bds.pc = target;
     s.bds.is_primed = true;
     s.bds.take_branch = true;

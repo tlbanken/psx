@@ -5,7 +5,6 @@ Here are some random specifics that I need to come back to at some point.
 - variable RAM size (what if reg 0x1f80'1060 is changed!)
 - Mirrored RAM?
     - 2MB of ram can be mirrored to the first 8MB (enabled by default)
-- scratch pad
 - expansion regions
 - BIOS ROM can be mirrored to the last 4MB (disabled by default)
 - Cache Control -- enable scratch pad 1 and 2 together

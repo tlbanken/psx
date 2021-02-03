@@ -73,6 +73,7 @@ T Read(u32 addr)
         data  = s.sysram[maddr];
         data |= static_cast<u16>(s.sysram[maddr + 1]) << 8;
     } else if constexpr (std::is_same_v<T, u32>) {
+//        std::cout  << "[" << std::hex << addr << "] " << maddr << " < " << s.sysram.size() << std::endl;
         PSX_ASSERT(maddr < s.sysram.size() - 4);
         // read32 as little endian
         data  = s.sysram[maddr];
