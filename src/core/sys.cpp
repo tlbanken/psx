@@ -90,7 +90,6 @@ void System::Run()
     // DEBUG
     g_emu_state.paused = true;
     using namespace Psx::ImGuiLayer::DbgMod;
-    Breakpoints::Set<Breakpoints::BrkType::PCWatch>(0x0000'00a0);
 
     bool new_frame = true;
     while (!ImGuiLayer::ShouldStop()) {

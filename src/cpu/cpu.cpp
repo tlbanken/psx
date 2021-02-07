@@ -1283,8 +1283,8 @@ u8 Jr(const Asm::Instruction& instr)
 /*
  * Jump Register and Link
  * funct = 0x09
- * Format: JRAL rs, rd
- * Jump to the address stored in rs.
+ * Format: JALR rs, rd
+ * Jump to the address stored in rs, store the return address in rd.
  */
 u8 Jalr(const Asm::Instruction& instr)
 {
@@ -1297,7 +1297,7 @@ u8 Jalr(const Asm::Instruction& instr)
         Cop0::RaiseException(e);
     } else {
         s.bds.pc = target;
-        s.regs.r[31] = s.regs.r[instr.rd];
+        s.regs.r[instr.rd] = s.regs.pc + 4;
         s.bds.take_branch = true;
     }
     s.bds.is_primed = true;

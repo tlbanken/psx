@@ -1061,11 +1061,11 @@ static void jumpTests()
     Cpu::SetR(2, 0xbe0);
     EXE_BD_INSTR("JALR R1 R2");
     assert(Cpu::GetPC() == 0x100);
-    assert(Cpu::GetR(31) == 0xbe0);
+    assert(Cpu::GetR(2) == 0x4);
     Cpu::SetPC(0xb000'3000);
     EXE_BD_INSTR("JALR R1 R2");
     assert(Cpu::GetPC() == 0x100);
-    assert(Cpu::GetR(31) == 0xbe0);
+    assert(Cpu::GetR(2) == 0xb000'3004);
     // test branch delay
     EXE_TWO_INSTRS("JALR R1 R2", "ADDI R10 R0 11");
     assert(Cpu::GetPC() == 0x100);
