@@ -1,12 +1,17 @@
 Here are some random specifics that I need to come back to at some point.
 
+** Debug **
+- change mem r/w breakpoints to watchpoints
+- don't auto delete breakpoints and watchpoints
+- organize debug modules sensibly
+
+** Emulation **
 - COM_DELAY/COMMON_DELAY Register (0x1f80'1020)
-- RAM cache in different segments
-- variable RAM size (what if reg 0x1f80'1060 is changed!)
-- Mirrored RAM?
-    - 2MB of ram can be mirrored to the first 8MB (enabled by default)
+- Ram options can be configured (using RAM SIZE register)
 - expansion regions
+    - expansion 1 should return 0xff if not available
 - BIOS ROM can be mirrored to the last 4MB (disabled by default)
 - Cache Control -- enable scratch pad 1 and 2 together
-
+- Move from coprocessor should use the load delay slot
+- Interrupts register
 

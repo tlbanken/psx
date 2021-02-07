@@ -13,6 +13,7 @@
 #include "cpu/cop0.h"
 #include "mem/bus.h"
 #include "core/globals.h"
+#include "layer/dbgmod.h"
 
 #define CPU_INFO(...) PSXLOG_INFO("CPU", __VA_ARGS__)
 #define CPU_WARN(...) PSXLOG_WARN("CPU", __VA_ARGS__)
@@ -1461,7 +1462,7 @@ u8 Bgezal(const Asm::Instruction& instr)
 u8 Cop0(const Asm::Instruction& instr)
 {
     // check operation
-    u32 modified_reg = 0;
+    u8 modified_reg = 0;
     if ((instr.cop_op & 0x10) == 0) {
         if ((instr.cop_op & 0x08) != 0) {
             // Branch

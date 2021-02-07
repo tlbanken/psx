@@ -112,7 +112,7 @@ struct State {
             // field getters/setters
             void SetExType(Exception::Type t)
             {
-                raw &= ~(0x1f << 2);
+                raw &= ~(0x1fu << 2);
                 raw |= static_cast<u32>(t) << 2;
             }
             Exception::Type GetExType()
@@ -122,13 +122,13 @@ struct State {
 
             void SetSWIntPending(u32 val)
             {
-                raw &= ~(0x3 << 8);
+                raw &= ~(0x3u << 8);
                 raw |= (val & 0x3) << 8;
             }
 
             void SetCopNum(u32 cop_num)
             {
-                raw &= ~(0x3 << 28);
+                raw &= ~(0x3u << 28);
                 raw |= ((cop_num & 0x3) << 28);
             }
 
@@ -230,7 +230,7 @@ void ExeCmd(u32 command)
         // copy bits 2,3 into 0,1. Copy bits 4,5 into 2,3
         u32 bits_2_3 = (s.regs.sr.raw >> 2) & 0x3;
         u32 bits_4_5 = (s.regs.sr.raw >> 4) & 0x3;
-        s.regs.sr.raw &= ~(0xf);
+        s.regs.sr.raw &= ~(0xfu);
         s.regs.sr.raw |= bits_2_3 | (bits_4_5 << 2);
     } else {
         COP0_WARN("Command not supported: 0x{:08x}", command);

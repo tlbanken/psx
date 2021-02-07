@@ -23,6 +23,7 @@
 #include "mem/memcontrol.h"
 #include "mem/scratchpad.h"
 #include "mem/dma.h"
+#include "core/globals.h"
 
 #define WINDOW_H 1280
 #define WINDOW_W 720
@@ -151,14 +152,23 @@ void OnUpdate()
 
             ImGui::EndMenu();
         }
+        if (ImGui::BeginMenu("State")) {
+            if (g_emu_state.paused) {
+                if (ImGui::MenuItem("Resume")) {
+                    IMGUILAYER_INFO("Resuming emulation");
+                    g_emu_state.paused = false;
+                }
+            } else {
+                if (ImGui::MenuItem("Pause")) {
+                    IMGUILAYER_INFO("Pausing emulation");
+                    g_emu_state.paused = true;
+                }
+            }
+            ImGui::EndMenu();
+        }
         ImGui::EndMainMenuBar();
     }
     DbgMod::Breakpoints::OnUpdate();
-
-    // should we break?
-    if (ImGuiLayer::DbgMod::Breakpoints::ShouldBreakPC(Cpu::GetPC())) {
-        DbgMod::Breakpoints::BreakPC(Cpu::GetPC());
-    }
 
     // Demo
     ImGui::ShowDemoWindow();

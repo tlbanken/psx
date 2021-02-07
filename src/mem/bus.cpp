@@ -57,10 +57,8 @@ T Read(u32 addr, Bus::RWVerbosity verb)
     };
 
     // check for breakpoint
-    if (ImGuiLayer::DbgMod::Breakpoints::ShouldBreakMemR(addr)) {
-        ImGuiLayer::DbgMod::Breakpoints::BreakMemR(addr);
-        ImGuiLayer::OnUpdate();
-    }
+    using namespace ImGuiLayer::DbgMod;
+    Breakpoints::Saw<Breakpoints::BrkType::ReadWatch>(addr);
 
     // Main RAM
     constexpr u32 ram_size = 8 * 1024 * 1024; // 8 MB
@@ -123,10 +121,8 @@ void Write(T data, u32 addr, Bus::RWVerbosity verb)
     };
 
     // check for breakpoint
-    if (ImGuiLayer::DbgMod::Breakpoints::ShouldBreakMemW(addr)) {
-        ImGuiLayer::DbgMod::Breakpoints::BreakMemW(addr);
-        ImGuiLayer::OnUpdate();
-    }
+    using namespace ImGuiLayer::DbgMod;
+    Breakpoints::Saw<Breakpoints::BrkType::WriteWatch>(addr);
 
     // Main RAM
     constexpr u32 ram_size = 8 * 1024 * 1024; // 8 MB

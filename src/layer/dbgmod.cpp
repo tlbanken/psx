@@ -9,6 +9,8 @@
 
 #include "dbgmod.h"
 
+#include <deque>
+
 #include "imgui/imgui.h"
 
 #include "core/globals.h"
@@ -123,8 +125,8 @@ void HexDump::Update(const std::vector<u8>& mem)
 
     if (ImGui::BeginPopupModal("Dump File", NULL, ImGuiWindowFlags_AlwaysAutoResize)) {
         ImGui::TextUnformatted("Enter Name of File");
-        auto input_flags = ImGuiInputTextFlags_EnterReturnsTrue;
-        if (ImGui::InputTextWithHint("Dump File Name", "Enter File Name", m_file_name.data(), m_file_name.size(), input_flags)) {
+        auto input_flags_modal = ImGuiInputTextFlags_EnterReturnsTrue;
+        if (ImGui::InputTextWithHint("Dump File Name", "Enter File Name", m_file_name.data(), m_file_name.size(), input_flags_modal)) {
             if (m_file_name != "") {
                 dumpToFile(mem);
                 ImGui::CloseCurrentPopup();
@@ -169,178 +171,267 @@ void HexDump::dumpToFile(const std::vector<u8>& mem)
     }
 
     // dump
-    file.write((char*) mem.data(), mem.size());
+    file.write((char*) mem.data(), (long) mem.size());
 
     file.close();
 }
 
 namespace Breakpoints {
 
+#define REMOVE_BP(bp, vector) \
+    (vector).erase(std::remove((vector).begin(), (vector).end(), (bp)), (vector).end())
 
 namespace {
+struct BreakPair {
+    BrkType type;
+    u32 addr;
+
+    std::string ToString()
+    {
+        std::string type_str;
+        if (type == BrkType::PCWatch) {
+            type_str = "PC Breakpoint";
+        } else if (type == BrkType::ReadWatch) {
+            type_str = "Read Watchpoint";
+        } else if (type == BrkType::WriteWatch) {
+            type_str = "Write Watchpoint";
+        }
+        return PSX_FMT("0x{:08x} ({})", addr, type_str);
+    }
+};
+struct State {
     std::vector<u32> pc_breakpoints;
     std::vector<u32> memw_breakpoints;
     std::vector<u32> memr_breakpoints;
 
-    bool is_breaked = false;
-    u32 last_break_addr = 0;
-}
+    std::deque<BreakPair> break_queue;
+}s;
 
-//bool Exists()
-//{
-//    return pc_breakpoints.size() != 0;
-//}
+// *** Adding through TextBox
+bool textAddPC()
+{
+    static char s_search_buf[9] = {0};
+    auto input_flags = ImGuiInputTextFlags_CharsHexadecimal | ImGuiInputTextFlags_EnterReturnsTrue;
+    if (ImGui::InputTextWithHint("Breakpoint##", "Enter address (hex)", s_search_buf, 9, input_flags)) {
+        if (s_search_buf[0] != '\0') {
+            u32 addr = static_cast<u32>(std::stol(s_search_buf, nullptr, 16));
+            Set<BrkType::PCWatch>(addr);
+            return true;
+        }
+    }
+    return false;
+}
+bool textAddMW()
+{
+    static char s_search_buf[9] = {0};
+    auto input_flags = ImGuiInputTextFlags_CharsHexadecimal | ImGuiInputTextFlags_EnterReturnsTrue;
+    if (ImGui::InputTextWithHint("Breakpoint##", "Enter address (hex)", s_search_buf, 9, input_flags)) {
+        if (s_search_buf[0] != '\0') {
+            u32 addr = static_cast<u32>(std::stol(s_search_buf, nullptr, 16));
+            Set<BrkType::WriteWatch>(addr);
+            return true;
+        }
+    }
+    return false;
+}
+bool textAddMR()
+{
+    static char s_search_buf[9] = {0};
+    auto input_flags = ImGuiInputTextFlags_CharsHexadecimal | ImGuiInputTextFlags_EnterReturnsTrue;
+    if (ImGui::InputTextWithHint("Breakpoint##", "Enter address (hex)", s_search_buf, 9, input_flags)) {
+        if (s_search_buf[0] != '\0') {
+            u32 addr = static_cast<u32>(std::stol(s_search_buf, nullptr, 16));
+            Set<BrkType::ReadWatch>(addr);
+            return true;
+        }
+    }
+    return false;
+}
+}// end private namespace
 
 void OnActive(bool *active)
 {
+    static bool add_pc = false;
+    static bool add_mw = false;
+    static bool add_mr = false;
+
     if (!ImGui::Begin("Breakpoints", active)) {
         ImGui::End();
         return;
     }
 
-    PopupAddPCBreakpoint();
-
-    ImGui::TextUnformatted("Active PC Breakpoints");
+    constexpr int block_width = 220;
+    // Display Breakpoints
+    // PC
+    ImGui::BeginChild("PC Breakpoints", ImVec2(block_width, 500));
+    ImGui::TextUnformatted("PC Breakpoints");
+    ImGui::Separator();
     int i = 1;
-    for (const auto& bp : pc_breakpoints) {
+    std::vector<u32> pc_deletes;
+    for (const auto& bp : s.pc_breakpoints) {
         ImGui::Text("%d. 0x%08x", i, bp);
+        ImGui::SameLine();
+        if (ImGui::Button(PSX_FMT("Delete##PC{}", i).c_str())) {
+            pc_deletes.push_back(bp);
+        }
         i++;
+    }
+    if (!add_pc && ImGui::Button("Add##PC")) {
+        add_pc = true;
+    }
+    if (add_pc) {
+        add_pc = !textAddPC();
+    }
+    ImGui::EndChild();
+    ImGui::SameLine();
+    // MEM WRITE
+    ImGui::BeginChild("MW Breakpoints", ImVec2(block_width, 500));
+    ImGui::TextUnformatted("MemWrite Watchpoints");
+    ImGui::Separator();
+    i = 1;
+    std::vector<u32> memw_deletes;
+    for (const auto& bp : s.memw_breakpoints) {
+        ImGui::Text("%d. 0x%08x", i, bp);
+        ImGui::SameLine();
+        if (ImGui::Button(PSX_FMT("Delete##MW{}", i).c_str())) {
+            memw_deletes.push_back(bp);
+        }
+        i++;
+    }
+    if (!add_mw && ImGui::Button("Add##Write")) {
+        add_mw = true;
+    }
+    if (add_mw) {
+        add_mw = !textAddMW();
+    }
+    ImGui::EndChild();
+    ImGui::SameLine();
+    // MEM READ
+    ImGui::BeginChild("MR Breakpoints", ImVec2(block_width, 500));
+    ImGui::TextUnformatted("MemRead Watchpoints");
+    ImGui::Separator();
+    i = 1;
+    std::vector<u32> memr_deletes;
+    for (const auto& bp : s.memr_breakpoints) {
+        ImGui::Text("%d. 0x%08x", i, bp);
+        ImGui::SameLine();
+        if (ImGui::Button(PSX_FMT("Delete##MR{}", i).c_str())) {
+            memr_deletes.push_back(bp);
+        }
+        i++;
+    }
+    if (!add_mr && ImGui::Button("Add##Read")) {
+        add_mr = true;
+    }
+    if (add_mr) {
+        add_mr = !textAddMR();
+    }
+    ImGui::EndChild();
+
+    // Delete any if needed
+    for (const auto& bp : pc_deletes) {
+        DBG_INFO("Removing PC Breakpoint @ 0x{:08x}", bp);
+        REMOVE_BP(bp, s.pc_breakpoints);
+    }
+    for (const auto& bp : memw_deletes) {
+        DBG_INFO("Removing Mem Write Watchpoint @ 0x{:08x}", bp);
+        REMOVE_BP(bp, s.memw_breakpoints);
+    }
+    for (const auto& bp : memr_deletes) {
+        DBG_INFO("Removing Mem Read Watchpoint @ 0x{:08x}", bp);
+        REMOVE_BP(bp, s.memr_breakpoints);
     }
 
     ImGui::End();
 }
 
-bool ShouldBreakPC(u32 pc)
-{
-    for (const auto& bp : pc_breakpoints) {
-        if (pc == bp) {
-            return true;
-        }
-    }
-    return false;
-}
-
-/*
- * Returns true if the current address matches any of the currently set
- * memory write breakpoints.
- */
-bool ShouldBreakMemW(u32 addr)
-{
-    for (const auto& bp : memw_breakpoints) {
-        if (addr == bp) {
-            return true;
-        }
-    }
-    return false;
-}
-
-/*
- * Returns true if the current address matches any of the currently set
- * memory read breakpoints.
- */
-bool ShouldBreakMemR(u32 addr)
-{
-    for (const auto& bp : memr_breakpoints) {
-        if (addr == bp) {
-            return true;
-        }
-    }
-    return false;
-}
-
-void BreakPC(u32 pc)
-{
-    g_emu_state.paused = true;
-    last_break_addr = pc;
-    is_breaked = true;
-
-    pc_breakpoints.erase(std::remove(pc_breakpoints.begin(), pc_breakpoints.end(), pc), pc_breakpoints.end());
-}
-
-void BreakMemW(u32 addr)
-{
-    g_emu_state.paused = true;
-    last_break_addr = addr;
-    is_breaked = true;
-
-    memw_breakpoints.erase(std::remove(memw_breakpoints.begin(), memw_breakpoints.end(), addr), memw_breakpoints.end());
-}
-
-void BreakMemR(u32 addr)
-{
-    g_emu_state.paused = true;
-    last_break_addr = addr;
-    is_breaked = true;
-
-    memr_breakpoints.erase(std::remove(memr_breakpoints.begin(), memr_breakpoints.end(), addr), memr_breakpoints.end());
-}
-
 void OnUpdate()
 {
-    if (is_breaked)
+    if (s.break_queue.size() > 0)
         ImGui::OpenPopup("Break");
+    else
+        return;
 
     // Always center this window when appearing
     ImVec2 center(ImGui::GetIO().DisplaySize.x * 0.5f, ImGui::GetIO().DisplaySize.y * 0.5f);
     ImGui::SetNextWindowPos(center, ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
 
     if (ImGui::BeginPopupModal("Break", NULL, ImGuiWindowFlags_AlwaysAutoResize)) {
-        ImGui::Text("Break on 0x%08x!", last_break_addr);
+        g_emu_state.paused = true;
+        BreakPair bp = s.break_queue.front();
+        ImGui::TextUnformatted(PSX_FMT("Break! [{}]", bp.ToString()).c_str());
         if (ImGui::Button("Close")) {
-            is_breaked = false;
+            s.break_queue.pop_front();
             ImGui::CloseCurrentPopup();
         }
         ImGui::EndPopup();
     }
 }
 
-void SetPCBreakpoint(u32 pc)
-{
-    DBG_INFO("Setting PC Breakpoint @ 0x{:08x}", pc);
-    pc_breakpoints.push_back(pc);
-}
-
 /*
- * Set a breakpoint when the given memory address is written to.
+ * Inform the breakpoint manager that the given address has been
+ * reached/written/read.
  */
-void SetMemWBreakpoint(u32 addr)
+template <BrkType type>
+void Saw(u32 addr)
 {
-    DBG_INFO("Setting Mem Write Breakpoint @ 0x{:08x}", addr);
-    memw_breakpoints.push_back(addr);
-}
-
-/*
- * Set a breakpoint when the given memory address is written to.
- */
-void SetMemRBreakpoint(u32 addr)
-{
-    DBG_INFO("Setting Mem Read Breakpoint @ 0x{:08x}", addr);
-    memr_breakpoints.push_back(addr);
-}
-
-void PopupAddPCBreakpoint()
-{
-    if (ImGui::Button("Add PC Breakpoint###")) {
-        ImGui::OpenPopup("Add PC Breakpoint");
-    }
-    // Always center this window when appearing
-    ImVec2 center(ImGui::GetIO().DisplaySize.x * 0.5f, ImGui::GetIO().DisplaySize.y * 0.5f);
-    ImGui::SetNextWindowPos(center, ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
-
-    if (ImGui::BeginPopupModal("Add PC Breakpoint", NULL, ImGuiWindowFlags_AlwaysAutoResize)) {
-        ImGui::TextUnformatted("Enter an address to break on...");
-        static char s_search_buf[9] = {0};
-        auto input_flags = ImGuiInputTextFlags_CharsHexadecimal | ImGuiInputTextFlags_EnterReturnsTrue;
-        if (ImGui::InputTextWithHint("PC Breakpoint", "Enter address (hex)", s_search_buf, 9, input_flags)) {
-            if (s_search_buf[0] != '\0') {
-                u32 pc = static_cast<u32>(std::stol(s_search_buf, nullptr, 16));
-                SetPCBreakpoint(pc);
-                ImGui::CloseCurrentPopup();
+    if constexpr (type == BrkType::PCWatch) {
+        // pc breakpoint
+        for (const auto& bp : s.pc_breakpoints) {
+            if (addr == bp) {
+                s.break_queue.push_back({BrkType::PCWatch, addr});
             }
         }
-        ImGui::EndPopup();
-    }
+    } else if constexpr (type == BrkType::WriteWatch) {
+        // mem write watchpoint
+        for (const auto& bp : s.memw_breakpoints) {
+            if (addr == bp) {
+                s.break_queue.push_back({BrkType::WriteWatch, addr});
+            }
+        }
+    } else if constexpr (type == BrkType::ReadWatch) {
+        // mem read watchpoint
+        for (const auto& bp : s.memr_breakpoints) {
+            if (addr == bp) {
+                s.break_queue.push_back({BrkType::ReadWatch, addr});
+            }
+        }
+    } 
 }
+// template impl needs to be visible to other cpp files to avoid compile errs
+template void Saw<BrkType::PCWatch>(u32 addr);
+template void Saw<BrkType::WriteWatch>(u32 addr);
+template void Saw<BrkType::ReadWatch>(u32 addr);
+
+bool ReadyToBreak()
+{
+    return s.break_queue.size() != 0;
+}
+
+// set breakpoint
+template <BrkType type>
+void Set(u32 addr)
+{
+    if constexpr (type == BrkType::PCWatch) {
+        // pc breakpoint
+        DBG_INFO("Setting PC Breakpoint @ 0x{:08x}", addr);
+        s.pc_breakpoints.push_back(addr);
+    } else if constexpr (type == BrkType::WriteWatch) {
+        // mem write watchpoint
+        DBG_INFO("Setting Mem Write Watchpoint @ 0x{:08x}", addr);
+        s.memw_breakpoints.push_back(addr);
+    } else if constexpr (type == BrkType::ReadWatch) {
+        // mem read watchpoint
+        DBG_INFO("Setting Mem Read Watchpoint @ 0x{:08x}", addr);
+        s.memr_breakpoints.push_back(addr);
+    } 
+}
+// template impl needs to be visible to other cpp files to avoid compile errs
+template void Set<BrkType::PCWatch>(u32 addr);
+template void Set<BrkType::WriteWatch>(u32 addr);
+template void Set<BrkType::ReadWatch>(u32 addr);
+
+
 
 }// end breakpoints namespace
 

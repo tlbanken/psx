@@ -35,19 +35,17 @@ private:
 
 namespace Breakpoints {
 
+enum class BrkType {
+    WriteWatch,
+    ReadWatch,
+    PCWatch
+};
+
 void OnActive(bool *active);
 void OnUpdate();
-bool Exists();
-void BreakPC(u32 pc);
-void BreakMemW(u32 addr);
-void BreakMemR(u32 addr);
-bool ShouldBreakPC(u32 pc);
-bool ShouldBreakMemW(u32 addr);
-bool ShouldBreakMemR(u32 addr);
-void PopupAddPCBreakpoint();
-void SetPCBreakpoint(u32 pc);
-void SetMemWBreakpoint(u32 addr);
-void SetMemRBreakpoint(u32 addr);
+template <BrkType type> void Saw(u32 addr);
+bool ReadyToBreak();
+template <BrkType type> void Set(u32 addr);
 
 }// end namespace (breakpoint)
 

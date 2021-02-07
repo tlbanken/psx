@@ -1,11 +1,4 @@
 Important PC Addresses to Potentially Break on:
-0xbfc0'0000 -- Start of Bios
-0xbfc0'0150 -- Bios Initialization routine start
-0xbfc0'0250 -- Initializing cache
-0xbfc0'0278 -- After Zeroing places in RAM (not sure what its doing)
-0xbfc0'029c -- Zeroing out more places in RAM
-0xbfc0'0328 -- After zeroing out more places in RAM
-
 
 *** Boot Process (BIOS: SCPH1001.BIN) ***
 0xbfc0'0000 -- Start
@@ -48,5 +41,43 @@ Important PC Addresses to Potentially Break on:
 // Relocating BIOS Code @ 0xbfc1'0000 to cached ram @ 0xa000'0500
 0xbfc0'0438 -- Looks Like it is copying over stuff from ROM into RAM
 0xbfc0'0454 -- This is where the call to 0xa000'0500 happens 
-               (But filled with NOPs which is bad)
 
+*** Boot Process Part 2 ***
+0xa000'0500 -- Starting execution of bios code in RAM
+0xa000'0508 -- Jump to 0x0000'0598
+// zeroing out some kernel data (0x0000'7460 - 0x0000'8920)
+0x0000'05a8 -- Zero out some kernel data
+// Bunch of function calls in ROM
+0xbfc0'683c -- Jumped back to ROM, looking to jump to ROM function
+               (looks like it is calling POST)
+0xbfc0'6844 -- Calling another function 
+               (moves some ROM code/data into RAM @ 0x0000'0200)
+0xbfc0'684c -- Calling another function
+               (moves some ROM code/data into RAM @ 0xa000'00a0)
+0xbfc0'6854 -- Calling another function
+               (Jumps to 0x0000'00c0)
+0x0000'00c0 -- Jumps to 0x0000'0600
+// indirect jump
+0x0000'0610 -- Loads function pointer from 0x0000'06e4
+0x0000'0618 -- Jump to loaded function pointer (0x0000'0540)
+0x0000'0564 -- moves some (ROM or RAM?) code/data into RAM @ 0x0000'0200
+0x0000'058c -- moves some RAM code/data into RAM @ 0x0000'02ec
+// return to top function call function @ 0xbfc0'685c
+0xbfc0'685c -- indirect jump to 0x0000'00c0
+0x0000'00c8 -- Jump to 0x0000'0600
+0x0000'0610 -- Load function pointer from 0x690
+0x0000'0618 -- Jump to 0x0000'0eb0
+0x0000'0ec8 -- Load some data from 0x0000'0f0c
+0x0000'0ef0 -- Copy some more data from 0x0000'0f0c to 0x8000'0000
+0x0000'00a8 -- Indirect jump to 0x5c4
+0x0000'05d0 -- Load function pointer from 0x310
+0xbfc0'1920 -- Get Cop0 Status Register
+0xbfc0'193c -- Added value, but pc never increased...Bug????
+               - so what happened was it jumped to the same loc,
+                 not sure why
+               - Looks like re-initializing cache?
+// back to top function
+0xbfc0'6864 -- indirect function call to 0x0000'00b0
+0x0000'00b0 -- jump to 0x0000'05e0
+0x0000'0f3c -- Store 0x6cf4 to 0x75d0
+0xbfc0'686c -- Another call to setPOST

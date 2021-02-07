@@ -89,6 +89,8 @@ void System::Run()
 
     // DEBUG
     g_emu_state.paused = true;
+    using namespace Psx::ImGuiLayer::DbgMod;
+    Breakpoints::Set<Breakpoints::BrkType::PCWatch>(0x0000'00a0);
 
     bool new_frame = true;
     while (!ImGuiLayer::ShouldStop()) {
@@ -101,13 +103,14 @@ void System::Run()
         // system step
         if (!g_emu_state.paused || g_emu_state.step_instr) {
             Cpu::Step();
+            Breakpoints::Saw<Breakpoints::BrkType::PCWatch>(Cpu::GetPC());
             // TODO update new_frame when gpu finishes a new frame
             static int count = 0;
             new_frame = count++ >= 10'000; // plz fix me
             if (new_frame) count = 0;
 
             // check breakpoints
-            if (ImGuiLayer::DbgMod::Breakpoints::ShouldBreakPC(Cpu::GetPC())) {
+            if (Breakpoints::ReadyToBreak()) {
                 ImGuiLayer::OnUpdate();
             }
         }
