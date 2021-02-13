@@ -83,7 +83,3 @@ Important PC Addresses to Potentially Break on:
 0xbfc0'686c -- Another call to setPOST
 
 // *** Bug Areas ***
-0xbfc068a4 -- looks like this eventually makes its way to 0xa0 
-              (which may be a fail state)
-0x000028a0 -- This function returns an error?
-0xbfco6fdc -- Device Init()? This fails?

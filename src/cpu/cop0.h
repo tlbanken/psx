@@ -27,6 +27,7 @@ struct Exception {
         ReservedInstr = 0x0a,
         CopUnusable   = 0x0b,
         Overflow      = 0x0c,
+        Reset         = 0xff, // Not stored in cause
     } type;
     u32 badv = 0;
     u8 cop_num = 0;

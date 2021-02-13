@@ -159,6 +159,14 @@ void Write(T data, u32 addr, Bus::RWVerbosity verb)
         return;
     }
 
+#ifdef PSX_DEBUG
+    // POST (not really important, but useful for debug)
+    if (addr == 0x1f80'2041) {
+        BUS_INFO("POST = 0x{:02x}", data);
+        return;
+    }
+#endif
+
     if constexpr (std::is_same_v<T, u8>) {
         if (verb != RWVerbosity::Quiet)
             BUS_WARN("Write8 attempt [{}] on invalid address [0x{:08x}]", data, addr);

@@ -104,10 +104,11 @@ void Step()
     s.bds.take_branch = false;
     u32 baddr = s.bds.pc;
 
-
     // if previous instruction was a load, the load delay will be primed.
     // we need to check this here just in case the next instruction will
     // re-prime the load delay slot.
+    u32 old_lds_val = s.lds.val;
+    u8 old_lds_reg = s.lds.reg;
     s.lds.was_primed = s.lds.is_primed;
     s.lds.is_primed = false;
 
@@ -121,7 +122,7 @@ void Step()
     // race condition: if instruction writes to same register in load
     // delay slot, the instruction wins over the load.
     if (s.lds.was_primed && modified_reg != s.lds.reg) {
-        s.regs.r[s.lds.reg] = s.lds.val;
+        s.regs.r[old_lds_reg] = old_lds_val;
     }
 
     // zero register should always be zero
@@ -135,7 +136,6 @@ void Step()
  */
 void SetPC(u32 addr)
 {
-    CPU_WARN("Forcing PC to 0x{:08x}", addr);
     s.regs.pc = addr;
     s.bds = {};
 }
@@ -411,8 +411,10 @@ u8 BadOp(const Asm::Instruction& instr)
  */
 u8 Syscall(const Asm::Instruction& instr)
 {
-    PSX_ASSERT(0);
     (void) instr;
+    Cop0::Exception ex = {};
+    ex.type = Cop0::Exception::Type::Syscall;
+    Cop0::RaiseException(ex);
     return 0;
 }
 
@@ -783,7 +785,7 @@ u8 Sra(const Asm::Instruction& instr)
  */
 u8 Sllv(const Asm::Instruction& instr)
 {
-    s.regs.r[instr.rd] = s.regs.r[instr.rt] << s.regs.r[instr.rs];
+    s.regs.r[instr.rd] = s.regs.r[instr.rt] << (s.regs.r[instr.rs] & 0x1f);
     return instr.rd;
 }
 
@@ -795,7 +797,7 @@ u8 Sllv(const Asm::Instruction& instr)
  */
 u8 Srlv(const Asm::Instruction& instr)
 {
-    s.regs.r[instr.rd] = s.regs.r[instr.rt] >> s.regs.r[instr.rs];
+    s.regs.r[instr.rd] = s.regs.r[instr.rt] >> (s.regs.r[instr.rs] & 0x1f);
     return instr.rd;
 }
 

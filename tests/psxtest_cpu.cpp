@@ -45,6 +45,17 @@ using namespace Psx;
     Cpu::Step();\
 }
 
+#define EXE_TWO_LW_INSTRS(i1, i2) \
+{\
+    TCPU_INFO("{} -> {}", i1, i2);\
+    Bus::Write<u32>(Cpu::Asm::AsmInstruction(i1), 0x1000);\
+    Bus::Write<u32>(Cpu::Asm::AsmInstruction(i2), 0x1004);\
+    Cpu::SetPC(0x1000);\
+    Cpu::Step();\
+    Cpu::Step();\
+    Cpu::Step();\
+}
+
 #define EXE_BD_INSTR(i) \
     EXE_INSTR(i);\
     Cpu::Step();
@@ -825,31 +836,31 @@ static void loadDelayTests()
     //========================
     System::Reset();
     Bus::Write<u8>(5, 0x0000'0000);
-    EXE_TWO_INSTRS("LB R1 0 R0", "ADD R20 R0 R1");
+    EXE_TWO_LW_INSTRS("LB R1 0 R0", "ADD R20 R0 R1");
     assert(Cpu::GetR(20) == 0);
     assert(Cpu::GetR(1) == 5);
     Cpu::SetR(1, 0);
-    EXE_TWO_INSTRS("LBU R1 0 R0", "ADD R20 R0 R1");
+    EXE_TWO_LW_INSTRS("LBU R1 0 R0", "ADD R20 R0 R1");
     assert(Cpu::GetR(20) == 0);
     assert(Cpu::GetR(1) == 5);
     Cpu::SetR(1, 0);
-    EXE_TWO_INSTRS("LH R1 0 R0", "ADD R20 R0 R1");
+    EXE_TWO_LW_INSTRS("LH R1 0 R0", "ADD R20 R0 R1");
     assert(Cpu::GetR(20) == 0);
     assert(Cpu::GetR(1) == 5);
     Cpu::SetR(1, 0);
-    EXE_TWO_INSTRS("LHU R1 0 R0", "ADD R20 R0 R1");
+    EXE_TWO_LW_INSTRS("LHU R1 0 R0", "ADD R20 R0 R1");
     assert(Cpu::GetR(20) == 0);
     assert(Cpu::GetR(1) == 5);
     Cpu::SetR(1, 0);
-    EXE_TWO_INSTRS("LW R1 0 R0", "ADD R20 R0 R1");
+    EXE_TWO_LW_INSTRS("LW R1 0 R0", "ADD R20 R0 R1");
     assert(Cpu::GetR(20) == 0);
     assert(Cpu::GetR(1) == 5);
     Cpu::SetR(1, 0);
-    EXE_TWO_INSTRS("LWR R1 0 R0", "ADD R20 R0 R1");
+    EXE_TWO_LW_INSTRS("LWR R1 0 R0", "ADD R20 R0 R1");
     assert(Cpu::GetR(20) == 0);
     assert(Cpu::GetR(1) == 5);
     Cpu::SetR(1, 0);
-    EXE_TWO_INSTRS("LWL R1 0 R0", "ADD R20 R0 R1");
+    EXE_TWO_LW_INSTRS("LWL R1 0 R0", "ADD R20 R0 R1");
     assert(Cpu::GetR(20) == 0);
     Cpu::SetR(1, 0);
 
@@ -859,19 +870,19 @@ static void loadDelayTests()
     System::Reset();
     Cpu::SetR(1, 10);
     Bus::Write<u8>(5, 0x0000'0000);
-    EXE_TWO_INSTRS("LB R20 0 R0", "ADD R20 R0 R1");
+    EXE_TWO_LW_INSTRS("LB R20 0 R0", "ADD R20 R0 R1");
     assert(Cpu::GetR(20) == 10); // ADD should win the race
-    EXE_TWO_INSTRS("LBU R20 0 R0", "ADD R20 R0 R1");
+    EXE_TWO_LW_INSTRS("LBU R20 0 R0", "ADD R20 R0 R1");
     assert(Cpu::GetR(20) == 10); // ADD should win the race
-    EXE_TWO_INSTRS("LH R20 0 R0", "ADD R20 R0 R1");
+    EXE_TWO_LW_INSTRS("LH R20 0 R0", "ADD R20 R0 R1");
     assert(Cpu::GetR(20) == 10); // ADD should win the race
-    EXE_TWO_INSTRS("LHU R20 0 R0", "ADD R20 R0 R1");
+    EXE_TWO_LW_INSTRS("LHU R20 0 R0", "ADD R20 R0 R1");
     assert(Cpu::GetR(20) == 10); // ADD should win the race
-    EXE_TWO_INSTRS("LW R20 0 R0", "ADD R20 R0 R1");
+    EXE_TWO_LW_INSTRS("LW R20 0 R0", "ADD R20 R0 R1");
     assert(Cpu::GetR(20) == 10); // ADD should win the race
-    EXE_TWO_INSTRS("LWR R20 0 R0", "ADD R20 R0 R1");
+    EXE_TWO_LW_INSTRS("LWR R20 0 R0", "ADD R20 R0 R1");
     assert(Cpu::GetR(20) == 10); // ADD should win the race
-    EXE_TWO_INSTRS("LWL R20 0 R0", "ADD R20 R0 R1");
+    EXE_TWO_LW_INSTRS("LWL R20 0 R0", "ADD R20 R0 R1");
     assert(Cpu::GetR(20) == 10); // ADD should win the race
 
     //========================
@@ -880,24 +891,24 @@ static void loadDelayTests()
     System::Reset();
     Cpu::SetR(1, 0x1); // unaligned
     Bus::Write<u32>(0xdead'beef, 0x0000'0001);
-    EXE_TWO_INSTRS("LWR R20 0 R1", "LWL R20 3 R1");
+    EXE_TWO_LW_INSTRS("LWR R20 0 R1", "LWL R20 3 R1");
     assert(Cpu::GetR(20) == 0xdead'beef);
     Cpu::SetR(20, 0);
-    EXE_TWO_INSTRS("LWL R20 3 R1", "LWR R20 0 R1");
+    EXE_TWO_LW_INSTRS("LWL R20 3 R1", "LWR R20 0 R1");
     assert(Cpu::GetR(20) == 0xdead'beef);
     Cpu::SetR(1, 0x2); // unaligned
     Bus::Write<u32>(0xdead'beef, 0x0000'0002);
-    EXE_TWO_INSTRS("LWR R20 0 R1", "LWL R20 3 R1");
+    EXE_TWO_LW_INSTRS("LWR R20 0 R1", "LWL R20 3 R1");
     assert(Cpu::GetR(20) == 0xdead'beef);
     Cpu::SetR(20, 0);
-    EXE_TWO_INSTRS("LWL R20 3 R1", "LWR R20 0 R1");
+    EXE_TWO_LW_INSTRS("LWL R20 3 R1", "LWR R20 0 R1");
     assert(Cpu::GetR(20) == 0xdead'beef);
     Cpu::SetR(1, 0x3); // unaligned
     Bus::Write<u32>(0xdead'beef, 0x0000'0003);
-    EXE_TWO_INSTRS("LWR R20 0 R1", "LWL R20 3 R1");
+    EXE_TWO_LW_INSTRS("LWR R20 0 R1", "LWL R20 3 R1");
     assert(Cpu::GetR(20) == 0xdead'beef);
     Cpu::SetR(20, 0);
-    EXE_TWO_INSTRS("LWL R20 3 R1", "LWR R20 0 R1");
+    EXE_TWO_LW_INSTRS("LWL R20 3 R1", "LWR R20 0 R1");
     assert(Cpu::GetR(20) == 0xdead'beef);
 }
 

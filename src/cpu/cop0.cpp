@@ -215,8 +215,19 @@ void RaiseException(const Exception& ex)
         s.regs.epc -= 4;
     }
 
-    COP0_WARN("Exception Handler not fully implemented!");
     COP0_INFO("{}", FmtLastException());
+
+    // call exception handler
+    u32 handler = 0;
+    switch (ex.type) {
+    case Exception::Type::Reset: handler = 0xbfc0'0000; break;
+    case Exception::Type::Break: handler = 0x8000'0040; break;
+    default: handler = 0x8000'0080; break;
+    }
+    // psx bios should not use sr.bev = 1
+    PSX_ASSERT(!(s.regs.sr.raw & (0x1u << 22)) && "No Support for BEV Vectors");
+    COP0_INFO("Calling Handler @ 0x{:08x}", handler);
+    Cpu::SetPC(handler);
 }
 
 /*

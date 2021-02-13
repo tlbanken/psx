@@ -24,6 +24,7 @@
 #include "mem/scratchpad.h"
 #include "mem/dma.h"
 #include "core/globals.h"
+#include "core/sys.h"
 
 #define WINDOW_H 1280
 #define WINDOW_W 720
@@ -163,6 +164,11 @@ void OnUpdate()
                     IMGUILAYER_INFO("Pausing emulation");
                     g_emu_state.paused = true;
                 }
+            }
+
+            if (ImGui::MenuItem("Reset")) {
+                IMGUILAYER_INFO("Resetting Emulator");
+                System::Reset();
             }
             ImGui::EndMenu();
         }
