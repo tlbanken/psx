@@ -41,8 +41,37 @@ typedef uint8_t u8;
 
 
 #ifdef PSX_DEBUG
-#define PSX_ASSERT(cond) assert(cond)
+// #define PSX_ASSERT(cond) assert(cond)
+#define PSX_ASSERT(cond) if (!(cond)) throw std::runtime_error(PSX_FMT("{}:{} Assertion [{}] failed!", __FILE__, __LINE__, #cond));
 #else
 #define PSX_ASSERT(cond)
 #endif
 
+namespace Psx {
+namespace Util {
+
+/*
+ * Set bits at the given index, of a given size, to given val.
+ */
+inline void SetBits(u32& word, uint index, uint size, u32 val)
+{
+    // turn off bits first, then set
+    word &= ~(~(0xffff'ffff << size) << index);
+    word |= (val << index);
+}
+
+/*
+ * Get bits at the given index, of a given size.
+ */
+inline u32 GetBits(u32 word, uint index, uint size)
+{
+    return (word >> index) & ~(0xffff'ffff << size);
+}
+
+/*
+ * Return true if one sec has passed since the last call
+ */
+bool OneSecPassed();
+
+}// end ns
+}

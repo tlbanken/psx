@@ -4,4 +4,5 @@ add_subdirectory(mem)
 add_subdirectory(layer)
 add_subdirectory(cpu)
 add_subdirectory(bios)
+add_subdirectory(gpu)
 

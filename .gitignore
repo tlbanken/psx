@@ -1,6 +1,8 @@
 .vscode
 manuals
 build
+release
+debug
 games
 *.user
 *.kdev4

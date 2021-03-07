@@ -18,6 +18,7 @@
 #include "util/psxlog.h"
 #include "util/psxutil.h"
 #include "core/sys.h"
+#include "cpu/cpu.h"
 
 #define MAIN_INFO(...) PSXLOG_INFO("Main", __VA_ARGS__)
 #define MAIN_WARN(...) PSXLOG_WARN("Main", __VA_ARGS__)
@@ -35,6 +36,7 @@ int main()
     // print project name and version
     std::cout << PSX_FANCYTITLE(PSX_FMT("{} v{}", PROJECT_NAME, PROJECT_VER));
 
+    int rc = 0;
     std::string bios_path;
     bios_path.append(PROJECT_ROOT_PATH);
     bios_path.append("/bios/SCPH1001.BIN");
@@ -44,22 +46,24 @@ int main()
         psx.Run();
     } catch (std::runtime_error& re) {
         std::cerr << "Runtime error: " << re.what() << std::endl;
-        return 1;
+        rc = 1;
     } catch (std::invalid_argument& e) {
         std::cerr << "Invalid Arg Exception: " << e.what() << std::endl;
-        return 1;
+        rc = 1;
     } catch (std::out_of_range& e) {
         std::cerr << "Out of Range Exception: " << e.what() << std::endl;
-        return 1;
+        rc = 1;
     } catch (std::exception& e) {
         std::cerr << "Error Occured: " << e.what() << std::endl;
-        return 1;
+        rc = 1;
     } catch (...) {
         std::cerr << "Unknown Fatal Failure Occured!" << std::endl;
-        return 1;
+        rc = 1;
     }
 
-    return 0;
+    MAIN_INFO("PC at exit: 0x{:08x}", Psx::Cpu::GetPC());
+
+    return rc;
 }
 
 

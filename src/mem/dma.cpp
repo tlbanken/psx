@@ -9,17 +9,21 @@
 
 #include "dma.h"
 
+#include <vector>
+
 #include "imgui/imgui.h"
+#include "mem/ram.h"
 
 #define DMA_INFO(...) PSXLOG_INFO("Dma", __VA_ARGS__)
 #define DMA_WARN(...) PSXLOG_WARN("Dma", __VA_ARGS__)
 #define DMA_ERROR(...) PSXLOG_ERROR("Dma", __VA_ARGS__)
+#define DMA_FATAL(...) DMA_ERROR(__VA_ARGS__); throw std::runtime_error(PSX_FMT(__VA_ARGS__))
 
 namespace {
 
 struct State {
     struct Registers {
-        u32 dpcr = 0; // dma control reg
+        u32 dpcr = 0x07654321; // dma control reg
         u32 dicr = 0; // dma interrupt reg
         struct ChannelReg {
             u32 madr = 0; // dma base addr (R/W)
@@ -29,7 +33,8 @@ struct State {
             std::string ToString()
             {
                 u32 smadr = madr & 0x00ff'ffff;
-                u32 sbcr = bcr & 0x0000'ffff;
+                u32 num_blocks = bcr & 0x0000'ffff;
+                u32 block_size = (bcr >> 16) & 0x0000'ffff;
                 // chcr
                 u32 trans_dir = (chcr >> 0) & 0x1;
                 u32 mem_step = (chcr >> 1) & 0x1;
@@ -41,7 +46,8 @@ struct State {
                 u32 start_trigger = (chcr >> 28) & 0x1;
 
                 return PSX_FMT("DMA Base Addr       : 0x{:08x}\n"
-                               "DMA Block Control   : {}\n"
+                               "Number of Blocks    : {}\n"
+                               "Block size          : {}\n"
                                "--- Channel Control ---\n"
                                "Transfer Direction  : {}\n"
                                "Memory Addr Step    : {}\n"
@@ -52,7 +58,8 @@ struct State {
                                "Start/Busy          : {}\n"
                                "Start/Trigger       : {}\n"
                                ,smadr
-                               ,sbcr
+                               ,num_blocks
+                               ,block_size
                                ,trans_dir
                                ,mem_step
                                ,chop_enab
@@ -134,6 +141,8 @@ struct State {
 
 // Protos
 u32* getRegRef(u32 addr);
+void doDma(uint channel);
+void doDmaOTC();
 
 }// end ns
 
@@ -144,13 +153,64 @@ namespace Dma {
 void Init()
 {
     DMA_INFO("Initializing state");
-    s.regs = {};
+    Reset();
 }
 
 void Reset()
 {
     DMA_INFO("Resetting state");
     s.regs = {};
+    // s.regs.channels[6].chcr = 0x1100'0002;
+}
+
+void Step()
+{
+    // return 1 if channel is ready for transfer, 0 otherwise
+    auto dmaReady = [&] (u32 channel) {
+        // a dma transfer will occur if the following conditions are met:
+        //  1. Master enable must be set (dpcr)
+        //  2. Start Bit must be set (chcr.24)
+        //  3. If syncmode == 0; then trigger bit must be set (chcr.28)
+        if (!Util::GetBits(s.regs.dpcr, 3u + (channel << 2), 1)) {
+            return false;
+        }
+
+        if (!Util::GetBits(s.regs.channels[channel].chcr, 24, 1)) {
+            return false;
+        }
+
+        if (!Util::GetBits(s.regs.channels[channel].chcr, 9, 2)
+            && !Util::GetBits(s.regs.channels[channel].chcr, 28, 1)) {
+            return false;
+        }
+
+        return true;
+    };
+
+    // TODO handle priority
+    // TODO: maybe switch to queue system to improve performance
+    for (u32 channel = 0; channel < 7; channel++) {
+        if (dmaReady(channel)) {
+            DMA_ERROR("[CH{}] Starting DMA", channel);
+            if (Util::GetBits(s.regs.channels[channel].chcr, 8, 1)) {
+                DMA_ERROR("No support for DMA Chopping mode");
+                PSX_ASSERT(0);
+            }
+
+            // clear start/trigger bit
+            Util::SetBits(s.regs.channels[channel].chcr, 28, 1, 0);
+            doDma(channel);
+            // clear start/busy bit
+            Util::SetBits(s.regs.channels[channel].chcr, 24, 1, 0);
+
+            // TODO: Do we clear after dma is complete?
+            Util::SetBits(s.regs.dpcr, 3u + (channel << 2), 1, 0);
+
+            // TODO: do stuff with interrupt bits
+            DMA_ERROR("[CH{}] Finished DMA", channel);
+            break; // only do at most 1 dma request
+        }
+    }
 }
 
 // *** Read ***
@@ -288,6 +348,8 @@ void OnActive(bool *active)
 
 namespace {
 
+using namespace Psx;
+
 /*
  * Returns a pointer to the register which corresponds to the given address.
  */
@@ -306,17 +368,80 @@ u32* getRegRef(u32 addr)
     } else if (is_intreg) {
         reg_ptr = &s.regs.dicr;
     } else {
+        PSX_ASSERT(chnum < 7);
         if (is_madr) {
             reg_ptr = &s.regs.channels[chnum].madr;
         } else if (is_bcr) {
             reg_ptr = &s.regs.channels[chnum].bcr;
         } else if (is_chcr) {
-            reg_ptr = &s.regs.channels[chnum].madr;
+            reg_ptr = &s.regs.channels[chnum].chcr;
         }
     }
 
-    PSX_ASSERT(reg_ptr != nullptr && PSX_FMT("Invalid Address [0x{:08x}]", addr).c_str());
+    PSX_ASSERT(reg_ptr != nullptr);
     return reg_ptr;
+}
+
+/*
+ * Perform DMA operation on the given channel.
+ */
+void doDma(uint channel)
+{
+    switch (channel) {
+    case 0: // mdec in
+        PSX_ASSERT(0);
+        break;
+    case 1: // mdec out
+        PSX_ASSERT(0);
+        break;
+    case 2: // gpu
+        PSX_ASSERT(0);
+        break;
+    case 3: // cdrom
+        PSX_ASSERT(0);
+        break;
+    case 4: // spu
+        DMA_ERROR("!!! No support for CH4 - SPU !!!");
+        break;
+    case 5: // pio
+        PSX_ASSERT(0);
+        break;
+    case 6: // otc (ordering table in ram)
+        // sync-mode should be 0
+        PSX_ASSERT(Util::GetBits(s.regs.channels[6].chcr, 9, 2) == 0);
+        doDmaOTC();
+        break;
+    default:
+        DMA_FATAL("Unknown DMA Channel: {}");
+    }
+}
+
+/*
+ * Perform DMA transfer for channel 6 - OTC.
+ */
+void doDmaOTC()
+{
+    bool dir_from_ram = s.regs.channels[6].chcr & 0x1;
+    u32 num_words = s.regs.channels[6].bcr & 0xffff;
+    if (num_words == 0) num_words = 0x1'0000;
+    u32 words_remaining = num_words;
+
+    if (dir_from_ram) {
+        PSX_ASSERT(0);
+    } else {
+        u32 addr = s.regs.channels[6].madr & 0x00ff'ffff;
+        DMA_INFO("Transfering {} words to RAM @ 0x{:08x}", words_remaining, addr);
+        // direction: to ram
+        while (words_remaining > 0) {
+            u32 cur_addr = addr & 0x1f'fffc; // size of ram (aligned)
+            // for OTC, step is always -4
+            addr -= 4;
+
+            u32 val = words_remaining == 1 ? 0x00ff'ffff : addr & 0x1f'ffff;
+            Ram::Write<u32>(val, cur_addr);
+            words_remaining -= 1;
+        }
+    }
 }
 
 }// end ns

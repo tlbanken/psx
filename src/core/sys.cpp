@@ -26,6 +26,7 @@
 #include "mem/dma.h"
 #include "layer/dbgmod.h"
 #include "cpu/asm/asm.h"
+#include "gpu/gpu.h"
 
 #define SYS_INFO(...) PSXLOG_INFO("System", __VA_ARGS__)
 #define SYS_WARN(...) PSXLOG_WARN("System", __VA_ARGS__)
@@ -47,6 +48,7 @@ System::System(const std::string& bios_path, bool headless_mode)
     Scratchpad::Init();
     MemControl::Init();
     Cpu::Init();
+    Gpu::Init();
     Cop0::Init();
     Bios::Init(bios_path);
 
@@ -70,6 +72,7 @@ void System::Reset()
     Bios::Reset();
     Cop0::Reset();
     Cpu::Reset();
+    Gpu::Reset();
     Ram::Reset();
     Dma::Reset();
     Scratchpad::Reset();
@@ -93,7 +96,14 @@ void System::Run()
     // <declare breakpoints here>
 
     bool new_frame = true;
+    u64 clocks = 0;
     while (!ImGuiLayer::ShouldStop()) {
+        // display current cpu emulation speed
+        if (Util::OneSecPassed()) {
+            ImGuiLayer::SetTitleExtra(PSX_FMT(" -- {:.4f} MHz ({:.1f}%)", (double)clocks / 1'000'000, (double)clocks / 33'868'8));
+            clocks = 0;
+        }
+
         // gui update
         if (g_emu_state.paused || new_frame) {
             ImGuiLayer::OnUpdate();
@@ -102,17 +112,44 @@ void System::Run()
 
         // system step
         if (!g_emu_state.paused || g_emu_state.step_instr) {
-            Cpu::Step();
-            Breakpoints::Saw<Breakpoints::BrkType::PCWatch>(Cpu::GetPC());
+            // Some timing notes:
+            // Scanline:
+            //  CPU Cycles = 2172
+            //  GPU Cylces = 3413
+            // Frame:
+            //  CPU Cycles = 2172 * 263
+            //  GPU Cycles = 3413 * 263
+
+            // CPU (one frame's worth)
+            for (int i = 0; i < 2172 * 263; i++) {
+                Cpu::Step();
+                clocks++;
+#ifdef PSX_DEBUG
+                // check breakpoints
+                Breakpoints::Saw<Breakpoints::BrkType::PCWatch>(Cpu::GetPC());
+                if (Breakpoints::ReadyToBreak()) {
+                    ImGuiLayer::OnUpdate();
+                }
+#endif
+                if (g_emu_state.paused) {
+                    break;
+                }
+            }
+
+            // GPU (one frame's worth)
+            for (int i = 0; i < 3413 * 263; i++) {
+                Gpu::Step();
+            }
+
             // TODO update new_frame when gpu finishes a new frame
             static int count = 0;
-            new_frame = count++ >= 10'000; // plz fix me
+            new_frame = count++ >= 0; // plz fix me
             if (new_frame) count = 0;
 
-            // check breakpoints
-            if (Breakpoints::ReadyToBreak()) {
-                ImGuiLayer::OnUpdate();
-            }
+            // DMA
+            Dma::Step();
+
+
         }
 
         // reset some state

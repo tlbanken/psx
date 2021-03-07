@@ -50,6 +50,9 @@ void Reset()
 template<class T>
 T Read(u32 addr)
 {
+    // let future travis deal with this :/
+    PSX_ASSERT(0);
+
     u32 maddr = addr & 0x3ff; // addr % 1KB
     T data = 0;
     if constexpr (std::is_same_v<T, u8>) {
@@ -82,6 +85,9 @@ template u32 Read<u32>(u32 addr);
 template<class T>
 void Write(T data, u32 addr)
 {
+    // let future travis deal with this :/
+    PSX_ASSERT(0);
+    
     u32 maddr = addr & 0x3ff; // addr % 1KB
     if constexpr (std::is_same_v<T, u8>) {
         PSX_ASSERT(maddr < s.mem.size());

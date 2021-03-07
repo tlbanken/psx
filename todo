@@ -1,8 +1,6 @@
 Here are some random specifics that I need to come back to at some point.
 
 ** Debug **
-- change mem r/w breakpoints to watchpoints
-- don't auto delete breakpoints and watchpoints
 - organize debug modules sensibly
 
 ** Emulation **
@@ -14,4 +12,8 @@ Here are some random specifics that I need to come back to at some point.
 - Cache Control -- enable scratch pad 1 and 2 together
 - Move from coprocessor should use the load delay slot
 - Interrupts register
+- <DMA>
+    - tons of small details in dma, will most likely cause bugs in the future.
+    - could optimize this by hardcoding some values since most/all games don't
+      change a lot of these more niche options
 

@@ -12,6 +12,8 @@
 #include "glad/glad.h"
 #include "glfw/glfw3.h" // MUST be included AFTER glad
 
+#include <string>
+
 namespace Psx {
 namespace ImGuiLayer {
 
@@ -24,6 +26,7 @@ void Init(ImGuiLayer::Style style = Style::Dark);
 void Shutdown();
 void OnUpdate();
 bool ShouldStop();
+void SetTitleExtra(const std::string& extra);
 
 }// end namespace
 }

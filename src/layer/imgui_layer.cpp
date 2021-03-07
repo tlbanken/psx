@@ -25,6 +25,7 @@
 #include "mem/dma.h"
 #include "core/globals.h"
 #include "core/sys.h"
+#include "gpu/gpu.h"
 
 #define WINDOW_H 1280
 #define WINDOW_W 720
@@ -36,6 +37,7 @@
 namespace  {
 struct State {
     GLFWwindow *window;
+    const std::string title_base = "PSX Emulator";
 } s;
 
     // Protos
@@ -67,7 +69,7 @@ void Init(ImGuiLayer::Style style)
     }
 
     // create window
-    s.window = glfwCreateWindow(WINDOW_H, WINDOW_W, "PSX Emulator", nullptr, nullptr);
+    s.window = glfwCreateWindow(WINDOW_H, WINDOW_W, s.title_base.c_str(), nullptr, nullptr);
     if (s.window == nullptr) {
         IMGUILAYER_ERR("Failed to create GLFW window!");
         throw std::runtime_error("Failed to create GLFW window!");
@@ -118,13 +120,14 @@ void OnUpdate()
 {
     // active states
     static bool ram_active = false;
-    static bool cpu_active = false;
+    static bool cpu_active = true; // start with cpu enabled for now
     static bool bios_active = false;
     static bool breakpoints_active = false;
     static bool cop0_active = false;
     static bool memctrl_active = false;
     static bool scratch_active = false;
     static bool dma_active = false;
+    static bool gpu_active = false;
 
     newFrame();
 
@@ -134,15 +137,20 @@ void OnUpdate()
     if (cpu_active) Cpu::OnActive(&cpu_active);
     if (cop0_active) Cop0::OnActive(&cop0_active);
     if (bios_active) Bios::OnActive(&bios_active);
-    if (breakpoints_active) DbgMod::Breakpoints::OnActive(&breakpoints_active);
     if (memctrl_active) MemControl::OnActive(&memctrl_active);
     if (dma_active) Dma::OnActive(&dma_active);
+    if (gpu_active) Gpu::OnActive(&gpu_active);
+#ifdef PSX_DEBUG
+    if (breakpoints_active) DbgMod::Breakpoints::OnActive(&breakpoints_active);
+#endif
 
     // Main Menu Bar
     if (ImGui::BeginMainMenuBar()) {
         if (ImGui::BeginMenu("Debug")) {
 
+#ifdef PSX_DEBUG
             ImGui::MenuItem("Breakpoints", NULL, &breakpoints_active);
+#endif
             ImGui::MenuItem("Ram", NULL, &ram_active);
             ImGui::MenuItem("Scratchpad", NULL, &scratch_active);
             ImGui::MenuItem("Cpu", NULL, &cpu_active);
@@ -150,6 +158,7 @@ void OnUpdate()
             ImGui::MenuItem("Bios", NULL, &bios_active);
             ImGui::MenuItem("MemControl", NULL, &memctrl_active);
             ImGui::MenuItem("DMA", NULL, &dma_active);
+            ImGui::MenuItem("GPU", NULL, &gpu_active);
 
             ImGui::EndMenu();
         }
@@ -174,10 +183,12 @@ void OnUpdate()
         }
         ImGui::EndMainMenuBar();
     }
+#ifdef PSX_DEBUG
     DbgMod::Breakpoints::OnUpdate();
+#endif
 
     // Demo
-    ImGui::ShowDemoWindow();
+    // ImGui::ShowDemoWindow();
 
     render();
 }
@@ -189,6 +200,11 @@ void OnUpdate()
 bool ShouldStop()
 {
     return glfwWindowShouldClose(s.window);
+}
+
+void SetTitleExtra(const std::string& extra)
+{
+    glfwSetWindowTitle(s.window, (s.title_base + extra).c_str());
 }
 
 

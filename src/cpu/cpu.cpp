@@ -408,6 +408,10 @@ u8 BadOp(const Asm::Instruction& instr)
 }
 
 /*
+ * System Call
+ * opcode = 0
+ * Format: SYSCALL
+ * Raises a sycall exception to cop0.
  */
 u8 Syscall(const Asm::Instruction& instr)
 {

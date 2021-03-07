@@ -33,9 +33,9 @@
 - [x] Psx (system object)
 
 ## Tier 1
-- [ ] CPU
+- [X] CPU
     - [x] cpu
-    - [ ] cop0
+    - [X] cop0
 - [ ] Memory
     - [x] Bus
     - [x] Ram

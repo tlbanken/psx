@@ -19,8 +19,10 @@
 #include "util/psxlog.h"
 #include "mem/memcontrol.h"
 #include "mem/scratchpad.h"
+#include "mem/dma.h"
 #include "layer/dbgmod.h"
 #include "layer/imgui_layer.h"
+#include "gpu/gpu.h"
 
 #define BUS_INFO(...) PSXLOG_INFO("Bus", __VA_ARGS__)
 #define BUS_WARN(...) PSXLOG_WARN("Bus", __VA_ARGS__)
@@ -57,8 +59,10 @@ T Read(u32 addr, Bus::RWVerbosity verb)
     };
 
     // check for breakpoint
+#ifdef PSX_DEBUG
     using namespace ImGuiLayer::DbgMod;
     Breakpoints::Saw<Breakpoints::BrkType::ReadWatch>(addr);
+#endif
 
     // Main RAM
     constexpr u32 ram_size = 8 * 1024 * 1024; // 8 MB
@@ -78,12 +82,23 @@ T Read(u32 addr, Bus::RWVerbosity verb)
         return Bios::Read<T>(addr);
     }
 
+    // GPU
+    if (addr == 0x1f80'1810 || addr == 0x1f80'1814) {
+        return Gpu::Read<T>(addr);
+    }
+
     // Scratchpad
     constexpr u32 sp_size = 1 * 1024;
     if (inRange(0x1f80'0000, sp_size, addr) // KUSEG
      || inRange(0x9f80'0000, sp_size, addr))// KSEG0
     {
         return Scratchpad::Read<T>(addr);
+    }
+
+    // DMA
+    constexpr u32 dma_size = (0x1f80'10fc - 0x1f80'1080);
+    if (inRange(0x1f80'1080, dma_size, addr)) {
+        return Dma::Read<T>(addr);
     }
 
     // Memory Control Register
@@ -121,8 +136,10 @@ void Write(T data, u32 addr, Bus::RWVerbosity verb)
     };
 
     // check for breakpoint
+#ifdef PSX_DEBUG
     using namespace ImGuiLayer::DbgMod;
     Breakpoints::Saw<Breakpoints::BrkType::WriteWatch>(addr);
+#endif
 
     // Main RAM
     constexpr u32 ram_size = 8 * 1024 * 1024; // 8 MB
@@ -144,12 +161,25 @@ void Write(T data, u32 addr, Bus::RWVerbosity verb)
         return;
     }
 
+    // GPU
+    if (addr == 0x1f80'1810 || addr == 0x1f80'1814) {
+        Gpu::Write<T>(data, addr);
+        return;
+    }
+
     // Scratchpad
     constexpr u32 sp_size = 1 * 1024;
     if (inRange(0x1f80'0000, sp_size, addr) // KUSEG
      || inRange(0x9f80'0000, sp_size, addr))// KSEG0
     {
         Scratchpad::Write<T>(data, addr);
+        return;
+    }
+
+    // DMA
+    constexpr u32 dma_size = (0x1f80'10fc - 0x1f80'1080);
+    if (inRange(0x1f80'1080, dma_size, addr)) {
+        Dma::Write<T>(data, addr);
         return;
     }
 
@@ -169,13 +199,13 @@ void Write(T data, u32 addr, Bus::RWVerbosity verb)
 
     if constexpr (std::is_same_v<T, u8>) {
         if (verb != RWVerbosity::Quiet)
-            BUS_WARN("Write8 attempt [{}] on invalid address [0x{:08x}]", data, addr);
+            BUS_WARN("Write8 attempt [0x{:02x}] on invalid address [0x{:08x}]", data, addr);
     } else if constexpr (std::is_same_v<T, u16>) {
         if (verb != RWVerbosity::Quiet)
-            BUS_WARN("Write16 attempt [{}] on invalid address [0x{:08x}]", data, addr);
+            BUS_WARN("Write16 attempt [0x{:04x}] on invalid address [0x{:08x}]", data, addr);
     } else if constexpr (std::is_same_v<T, u32>) {
         if (verb != RWVerbosity::Quiet)
-            BUS_WARN("Write32 attempt [{}] on invalid address [0x{:08x}]", data, addr);
+            BUS_WARN("Write32 attempt [0x{:08x}] on invalid address [0x{:08x}]", data, addr);
     } else {
         static_assert(!std::is_same_v<T, T>);
     }

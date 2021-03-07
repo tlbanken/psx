@@ -1,27 +1,27 @@
 /*
- * dma.cpp
+ * gpu.h
  *
  * Travis Banken
- * 1/23/2021
+ * 2/13/2021
  *
- * Handles the DMA channels on the PSX.
+ * GPU for the PSX.
  */
 
 #pragma once
 
 #include "util/psxutil.h"
 
-
 namespace Psx {
-namespace Dma {
+namespace Gpu {
 
 void Init();
 void Reset();
 void Step();
-void OnActive(bool *active);
 
 template<class T> T Read(u32 addr);
 template<class T> void Write(T data, u32 addr);
 
-}// end ns
+void OnActive(bool *active);
+
+} // end ns
 }

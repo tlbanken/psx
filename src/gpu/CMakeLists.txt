@@ -1,9 +1,7 @@
 target_sources(psx PRIVATE
-    psxlog.cpp
-    psxutil.cpp
+    gpu.cpp
 )
 
 target_sources(psx-test PRIVATE
-    psxlog.cpp
-    psxutil.cpp
+    gpu.cpp
 )
