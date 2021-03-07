@@ -20,6 +20,7 @@ void Step();
 
 template<class T> T Read(u32 addr);
 template<class T> void Write(T data, u32 addr);
+void DoDmaCmds(u32 addr);
 
 void OnActive(bool *active);
 

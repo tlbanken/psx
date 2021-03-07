@@ -185,6 +185,7 @@ namespace {
 struct BreakPair {
     BrkType type;
     u32 addr;
+    std::string msg;
 
     std::string ToString()
     {
@@ -195,6 +196,9 @@ struct BreakPair {
             type_str = "Read Watchpoint";
         } else if (type == BrkType::WriteWatch) {
             type_str = "Write Watchpoint";
+        } else if (type == BrkType::Forced) {
+            type_str = "Forced Break";
+            return PSX_FMT("Forced from {}", msg);
         }
         return PSX_FMT("0x{:08x} ({})", addr, type_str);
     }
@@ -361,11 +365,17 @@ void OnUpdate()
         BreakPair bp = s.break_queue.front();
         ImGui::TextUnformatted(PSX_FMT("Break! [{}]", bp.ToString()).c_str());
         if (ImGui::Button("Close")) {
+            DBG_INFO("Break! [{}]", bp.ToString());
             s.break_queue.pop_front();
             ImGui::CloseCurrentPopup();
         }
         ImGui::EndPopup();
     }
+}
+
+void ForceBreak(const std::string& from)
+{
+    s.break_queue.push_back({BrkType::Forced, 0, from});
 }
 
 /*
@@ -379,21 +389,21 @@ void Saw(u32 addr)
         // pc breakpoint
         for (const auto& bp : s.pc_breakpoints) {
             if (addr == bp) {
-                s.break_queue.push_back({BrkType::PCWatch, addr});
+                s.break_queue.push_back({BrkType::PCWatch, addr, ""});
             }
         }
     } else if constexpr (type == BrkType::WriteWatch) {
         // mem write watchpoint
         for (const auto& bp : s.memw_breakpoints) {
             if (addr == bp) {
-                s.break_queue.push_back({BrkType::WriteWatch, addr});
+                s.break_queue.push_back({BrkType::WriteWatch, addr, ""});
             }
         }
     } else if constexpr (type == BrkType::ReadWatch) {
         // mem read watchpoint
         for (const auto& bp : s.memr_breakpoints) {
             if (addr == bp) {
-                s.break_queue.push_back({BrkType::ReadWatch, addr});
+                s.break_queue.push_back({BrkType::ReadWatch, addr, ""});
             }
         }
     } 

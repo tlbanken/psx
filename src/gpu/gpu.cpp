@@ -12,6 +12,8 @@
 #include <queue>
 
 #include "imgui/imgui.h"
+#include "mem/ram.h"
+#include "layer/dbgmod.h"
 
 #define GPU_INFO(...) PSXLOG_INFO("GPU", __VA_ARGS__)
 #define GPU_WARN(...) PSXLOG_WARN("GPU", __VA_ARGS__)
@@ -189,6 +191,37 @@ void Write(T data, u32 addr)
 template void Write<u8>(u8 data, u32 addr);
 template void Write<u16>(u16 data, u32 addr);
 template void Write<u32>(u32 data, u32 addr);
+
+/*
+ * Perform Cmds from dma, starting at the given address in ram
+ */
+void DoDmaCmds(u32 addr)
+{
+    addr &= 0x1f'fffc;
+    while (true) {
+        // read header
+        u32 header = Ram::Read<u32>(addr);
+
+        // high byte contains size of packet
+        u32 num_words = (header >> 24) & 0xff;
+
+        while (num_words > 0) {
+            addr = (addr + 4) & 0x1f'fffc;
+            u32 cmd = Ram::Read<u32>(addr);
+            GPU_INFO("LL COMMAND: 0x{:08x}", cmd);
+            handleGP0Cmd(cmd);
+            num_words--;
+        }
+
+        // are we done processing packets?
+        if ((header & 0xff'ffff) == 0xff'ffff) {
+            break;
+        }
+
+        // find next packet
+        addr = header & 0x1f'fffc;
+    }
+}
 
 /*
  * Called by gui for debug display.

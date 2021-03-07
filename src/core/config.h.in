@@ -10,11 +10,12 @@
 #pragma once
 
 
+// Defined in cmake
 // comment out to disable logging (as a compile-time option)
-#define PSX_LOGGING
+// #define PSX_LOGGING
 
-// TODO: Define in cmake
-#define PSX_DEBUG
+// Defined in cmake
+// #define PSX_DEBUG
 
 
 // Version from cmake

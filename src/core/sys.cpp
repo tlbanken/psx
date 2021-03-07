@@ -100,7 +100,7 @@ void System::Run()
     while (!ImGuiLayer::ShouldStop()) {
         // display current cpu emulation speed
         if (Util::OneSecPassed()) {
-            ImGuiLayer::SetTitleExtra(PSX_FMT(" -- {:.4f} MHz ({:.1f}%)", (double)clocks / 1'000'000, (double)clocks / 33'868'8));
+            ImGuiLayer::SetTitleExtra(PSX_FMT(" -- CPU: {:.4f} MHz ({:.1f}%)", (double)clocks / 1'000'000, (double)clocks / 33'868'8));
             clocks = 0;
         }
 

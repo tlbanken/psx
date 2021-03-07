@@ -38,7 +38,8 @@ namespace Breakpoints {
 enum class BrkType {
     WriteWatch,
     ReadWatch,
-    PCWatch
+    PCWatch,
+    Forced
 };
 
 void OnActive(bool *active);
@@ -46,6 +47,13 @@ void OnUpdate();
 template <BrkType type> void Saw(u32 addr);
 bool ReadyToBreak();
 template <BrkType type> void Set(u32 addr);
+void ForceBreak(const std::string& from);
+
+#ifdef PSX_DEBUG
+#define PSX_BREAK Psx::ImGuiLayer::DbgMod::Breakpoints::ForceBreak(PSX_FMT("{}:{}", __FILE__, __LINE__))
+#else
+#define PSX_BREAK assert(0 && "PSX_DEBUG is turned off, no support for forced breaks!");
+#endif
 
 }// end namespace (breakpoint)
 

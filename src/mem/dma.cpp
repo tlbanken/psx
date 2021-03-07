@@ -13,6 +13,7 @@
 
 #include "imgui/imgui.h"
 #include "mem/ram.h"
+#include "gpu/gpu.h"
 
 #define DMA_INFO(...) PSXLOG_INFO("Dma", __VA_ARGS__)
 #define DMA_WARN(...) PSXLOG_WARN("Dma", __VA_ARGS__)
@@ -139,10 +140,20 @@ struct State {
     } regs;
 } s;
 
+enum class Channel {
+    Ch0 = 0,
+    Ch1 = 1,
+    Ch2 = 2,
+    Ch3 = 3,
+    Ch4 = 4,
+    Ch5 = 5,
+    Ch6 = 6,
+};
+
 // Protos
 u32* getRegRef(u32 addr);
 void doDma(uint channel);
-void doDmaOTC();
+// template<class channel> void doBlockDma(uint chnum);
 
 }// end ns
 
@@ -160,7 +171,6 @@ void Reset()
 {
     DMA_INFO("Resetting state");
     s.regs = {};
-    // s.regs.channels[6].chcr = 0x1100'0002;
 }
 
 void Step()
@@ -191,7 +201,7 @@ void Step()
     // TODO: maybe switch to queue system to improve performance
     for (u32 channel = 0; channel < 7; channel++) {
         if (dmaReady(channel)) {
-            DMA_ERROR("[CH{}] Starting DMA", channel);
+            DMA_INFO("[CH{}] Starting DMA", channel);
             if (Util::GetBits(s.regs.channels[channel].chcr, 8, 1)) {
                 DMA_ERROR("No support for DMA Chopping mode");
                 PSX_ASSERT(0);
@@ -207,7 +217,7 @@ void Step()
             Util::SetBits(s.regs.dpcr, 3u + (channel << 2), 1, 0);
 
             // TODO: do stuff with interrupt bits
-            DMA_ERROR("[CH{}] Finished DMA", channel);
+            DMA_INFO("[CH{}] Finished DMA", channel);
             break; // only do at most 1 dma request
         }
     }
@@ -382,6 +392,50 @@ u32* getRegRef(u32 addr)
     return reg_ptr;
 }
 
+// TODO: we need to handle sync-mode 1 (request mode)
+template<Channel channel>
+void doBlockDma()
+{
+    constexpr uint chnum = static_cast<uint>(channel);
+    bool dir_from_ram = s.regs.channels[chnum].chcr & 0x1;
+    u32 num_words = s.regs.channels[chnum].bcr & 0xffff;
+    if (num_words == 0) num_words = 0x1'0000;
+    u32 words_remaining = num_words;
+    u32 base_addr = s.regs.channels[chnum].madr & 0x00ff'ffff;
+
+    if constexpr (channel == Channel::Ch0) {
+        PSX_ASSERT(0);
+    } else if constexpr (channel == Channel::Ch1) {
+        PSX_ASSERT(0);
+    } else if constexpr (channel == Channel::Ch2) {
+        PSX_ASSERT(0);
+    } else if constexpr (channel == Channel::Ch3) {
+        PSX_ASSERT(0);
+    } else if constexpr (channel == Channel::Ch4) {
+        PSX_ASSERT(0);
+    } else if constexpr (channel == Channel::Ch5) {
+        PSX_ASSERT(0);
+    } else if constexpr (channel == Channel::Ch6) {
+        // OTC (ordering table)
+        if (dir_from_ram) {
+            PSX_ASSERT(0);
+        } else {
+            u32 addr = base_addr;
+            DMA_INFO("Transfering {} words to RAM @ 0x{:08x}", words_remaining, addr);
+            // direction: to ram
+            while (words_remaining > 0) {
+                u32 cur_addr = addr & 0x1f'fffc; // size of ram (aligned)
+                // for OTC, step is always -4
+                addr -= 4;
+
+                u32 val = words_remaining == 1 ? 0x00ff'ffff : addr & 0x1f'ffff;
+                Ram::Write<u32>(val, cur_addr);
+                words_remaining -= 1;
+            }
+        }
+    } 
+}
+
 /*
  * Perform DMA operation on the given channel.
  */
@@ -395,8 +449,24 @@ void doDma(uint channel)
         PSX_ASSERT(0);
         break;
     case 2: // gpu
-        PSX_ASSERT(0);
+    {
+        u32 sync_mode = Util::GetBits(s.regs.channels[2].chcr, 9, 2);
+
+        if (sync_mode == 0 || sync_mode == 1) {
+            doBlockDma<Channel::Ch2>();
+        } else {
+            PSX_ASSERT(sync_mode == 2);
+            bool dir_from_ram = s.regs.channels[2].chcr & 0x1;
+            u32 base_addr = s.regs.channels[2].madr & 0x00ff'ffff;
+            if (dir_from_ram) {
+                Gpu::DoDmaCmds(base_addr);
+            } else {
+                PSX_ASSERT(0);
+            }
+        }
+
         break;
+    }
     case 3: // cdrom
         PSX_ASSERT(0);
         break;
@@ -409,39 +479,12 @@ void doDma(uint channel)
     case 6: // otc (ordering table in ram)
         // sync-mode should be 0
         PSX_ASSERT(Util::GetBits(s.regs.channels[6].chcr, 9, 2) == 0);
-        doDmaOTC();
+        doBlockDma<Channel::Ch6>();
         break;
     default:
         DMA_FATAL("Unknown DMA Channel: {}");
     }
 }
 
-/*
- * Perform DMA transfer for channel 6 - OTC.
- */
-void doDmaOTC()
-{
-    bool dir_from_ram = s.regs.channels[6].chcr & 0x1;
-    u32 num_words = s.regs.channels[6].bcr & 0xffff;
-    if (num_words == 0) num_words = 0x1'0000;
-    u32 words_remaining = num_words;
-
-    if (dir_from_ram) {
-        PSX_ASSERT(0);
-    } else {
-        u32 addr = s.regs.channels[6].madr & 0x00ff'ffff;
-        DMA_INFO("Transfering {} words to RAM @ 0x{:08x}", words_remaining, addr);
-        // direction: to ram
-        while (words_remaining > 0) {
-            u32 cur_addr = addr & 0x1f'fffc; // size of ram (aligned)
-            // for OTC, step is always -4
-            addr -= 4;
-
-            u32 val = words_remaining == 1 ? 0x00ff'ffff : addr & 0x1f'ffff;
-            Ram::Write<u32>(val, cur_addr);
-            words_remaining -= 1;
-        }
-    }
-}
 
 }// end ns
