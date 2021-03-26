@@ -82,7 +82,7 @@ void Init(ImGuiLayer::Style style)
         IMGUILAYER_ERR("Failed to Initialize OpenGL Loader!");
         throw std::runtime_error("Failed to Initialize OpenGL Loader!");
     }
-    IMGUILAYER_INFO("OpenGL Version: {}", glGetString(GL_VERSION));
+    // IMGUILAYER_INFO("OpenGL Version: {}", glGetString(GL_VERSION));
 
     // create imgui
     IMGUI_CHECKVERSION();

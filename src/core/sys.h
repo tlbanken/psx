@@ -23,11 +23,13 @@ public:
     System(const std::string& bios_path, bool headless_mode);
     ~System();
     void Run();
+    bool Step();
     static void Reset();
 
 private:
     static System *m_instance;
     bool m_headless_mode;
+    u64 m_clocks = 0;
 };
 
 }// end namespace

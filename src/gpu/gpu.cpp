@@ -14,6 +14,7 @@
 #include "imgui/imgui.h"
 #include "mem/ram.h"
 #include "layer/dbgmod.h"
+#include "gpu/render/render_opengl.h"
 
 #define GPU_INFO(...) PSXLOG_INFO("GPU", __VA_ARGS__)
 #define GPU_WARN(...) PSXLOG_WARN("GPU", __VA_ARGS__)
@@ -22,6 +23,7 @@
 
 // *** Private Data ***
 namespace {
+using namespace Psx;
 enum class CmdType {
     Misc      = 0,
     Polygon   = 1,
@@ -32,6 +34,11 @@ enum class CmdType {
     VCBlit    = 6, // VRAM-to-CPU blit
     EnvCmds   = 7,
     None      = 0xff,
+};
+
+enum class Shading {
+    Flat = 0,
+    Gouraud = 1,
 };
 
 struct State {
@@ -72,8 +79,19 @@ struct State {
         u16 range_y2 = 0;
     } display;
 
+    struct RenderFlags {
+        Shading shading;
+        bool textured;
+        bool transparent;
+    } render_flags;
+
     // Command queue
     std::queue<u32> cmd_queue = {};
+
+    // 1MB of vram
+    std::vector<u8> vram;
+
+    Renderer *renderer = nullptr;
 }s;
 
 
@@ -82,6 +100,7 @@ void handleGP0Cmd(u32 cmd);
 void handleGP1Cmd(u32 word);
 void handleMiscCmd(u32 word);
 void handleEnvCmd(u32 word);
+void handlePolygon(u32 word);
 void softReset();
 void resetCmdQueue();
 void ackIrq();
@@ -103,32 +122,61 @@ namespace Gpu {
 void Init()
 {
     GPU_INFO("Initializing state");
+    s.vram.resize(1 * 1024 * 1024);
+    s.renderer = new OpenGL();
+    Util::SetBits(s.sr, 26, 3, 0x7);
 }
 
 void Reset()
 {
     GPU_INFO("Resetting state");
+    if (s.renderer != nullptr)
+        delete s.renderer;
     s = {};
+    s.renderer = new OpenGL();
+    Util::SetBits(s.sr, 26, 3, 0x7);
+    PSX_ASSERT(s.vram.size() == 1 * 1024 * 1024); // will vram size reset?
+}
+
+void RenderFrame()
+{
+    // s.renderer->RenderSomething();
 }
 
 /*
  * Performs one step in the gpu operation. Usually this entails processing the
- * next command in the queue.
+ * next command in the queue. Returns true if new frame ready to render.
  */
-void Step()
+bool Step()
 {
-    if (s.cmd_queue.size() != 0) {
-        // we still have commands to handle
-        u32 word = s.cmd_queue.front();
-        s.cmd_queue.pop();
-        handleGP0Cmd(word);
+    // if (s.cmd_queue.size() != 0) {
+    //     // we still have commands to handle
+    //     u32 word = s.cmd_queue.front();
+    //     s.cmd_queue.pop();
+    //     handleGP0Cmd(word);
+    // }
+    // if (s.cmd == CmdType::None) {
+    //     // we are ready to receive command words
+    //     // and we are ready for dma
+    //     // and we are not busy
+    //     Util::SetBits(s.sr, 26, 3, 0x7);
+    // }
+
+    // do something i guess :/
+    // s.renderer->RenderSomething();
+
+    static u32 count = 0;
+    bool new_frame = false;
+    // if (count > 2413 * 263) {
+    if (count > 2413) {
+        new_frame = true;
+        count = 0;
+    } else {
+        count++;
+        new_frame = false;
     }
-    if (s.cmd == CmdType::None) {
-        // we are ready to receive command words
-        // and we are ready for dma
-        // and we are not busy
-        Util::SetBits(s.sr, 26, 3, 0x7);
-    }
+
+    return false;
 }
 
 // *** Read ***
@@ -177,7 +225,8 @@ void Write(T data, u32 addr)
         // write32
         if (addr == 0x1f80'1810) {
             // GP0 (Rendering and VRAM access)
-            s.cmd_queue.push(data);
+            // s.cmd_queue.push(data);
+            handleGP0Cmd(data);
         } else {
             PSX_ASSERT(addr == 0x1f80'1814);
             // GP1 (Display Control and DMA control)
@@ -282,7 +331,7 @@ void handleGP0Cmd(u32 word)
         handleMiscCmd(word);
         break;
     case CmdType::Polygon:
-        PSX_ASSERT(0);
+        handlePolygon(word);
         break;
     case CmdType::Line:
         PSX_ASSERT(0);
@@ -410,6 +459,33 @@ void handleEnvCmd(u32 word)
         GPU_FATAL("Unknown Environment Command [{:02x}]", cmd);
     }
     finishedCommand();
+}
+
+/*
+ * Polygon Builder state machine.
+ */
+void handlePolygon(u32 word)
+{
+    static Gpu::Polygon s_polygon;
+    static int s_words_left = 0;
+
+    switch (s_words_left) {
+    case 0: // start of new command
+    {
+        s_polygon.gouraud_shaded = Util::GetBits(word, 28, 1);
+        s_polygon.num_vertices = Util::GetBits(word, 27, 1) ? 4 : 3;
+        break;
+    }
+    case 1: // end of command
+        // TODO
+        s.cmd = CmdType::None;
+        break;
+    default:
+        GPU_FATAL("Unexpected number of words left in Polygon Command: {}", s_words_left);
+    }
+
+    s_words_left--;
+    PSX_ASSERT(0);
 }
 
 /*

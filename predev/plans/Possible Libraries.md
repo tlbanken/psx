@@ -12,6 +12,7 @@
 
 ### Math
 - [Eigen](http://eigen.tuxfamily.org/index.php?title=Main_Page)
+- [GLM](https://github.com/g-truc/glm)
 
 ## Audio
 - [OpenAL](https://openal.org/)

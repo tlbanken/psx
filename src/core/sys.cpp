@@ -41,6 +41,9 @@ System::System(const std::string& bios_path, bool headless_mode)
     SYS_INFO("Initializing global emu state");
     g_emu_state = {};
 
+    if (!headless_mode) {
+        ImGuiLayer::Init();
+    }
     SYS_INFO("Initializing all System Modules");
     Bus::Init();
     Ram::Init();
@@ -51,10 +54,6 @@ System::System(const std::string& bios_path, bool headless_mode)
     Gpu::Init();
     Cop0::Init();
     Bios::Init(bios_path);
-
-    if (!headless_mode) {
-        ImGuiLayer::Init();
-    }
 }
 
 System::~System()
@@ -95,66 +94,66 @@ void System::Run()
     using namespace Psx::ImGuiLayer::DbgMod;
     // <declare breakpoints here>
 
-    bool new_frame = true;
-    u64 clocks = 0;
     while (!ImGuiLayer::ShouldStop()) {
         // display current cpu emulation speed
         if (Util::OneSecPassed()) {
-            ImGuiLayer::SetTitleExtra(PSX_FMT(" -- CPU: {:.4f} MHz ({:.1f}%)", (double)clocks / 1'000'000, (double)clocks / 33'868'8));
-            clocks = 0;
+            ImGuiLayer::SetTitleExtra(PSX_FMT(" -- CPU: {:.4f} MHz ({:.1f}%)", (double)m_clocks / 1'000'000, (double)m_clocks / 33'868'8/*00*/));
+            m_clocks = 0;
         }
 
         // gui update
-        if (g_emu_state.paused || new_frame) {
-            ImGuiLayer::OnUpdate();
-            new_frame = false;
-        }
+        ImGuiLayer::OnUpdate();
 
         // system step
-        if (!g_emu_state.paused || g_emu_state.step_instr) {
-            // Some timing notes:
-            // Scanline:
-            //  CPU Cycles = 2172
-            //  GPU Cylces = 3413
-            // Frame:
-            //  CPU Cycles = 2172 * 263
-            //  GPU Cycles = 3413 * 263
-
-            // CPU (one frame's worth)
-            for (int i = 0; i < 2172 * 263; i++) {
-                Cpu::Step();
-                clocks++;
-#ifdef PSX_DEBUG
-                // check breakpoints
-                Breakpoints::Saw<Breakpoints::BrkType::PCWatch>(Cpu::GetPC());
-                if (Breakpoints::ReadyToBreak()) {
-                    ImGuiLayer::OnUpdate();
-                }
-#endif
-                if (g_emu_state.paused) {
-                    break;
-                }
+        if (g_emu_state.step_instr) {
+            Step();
+        } else {
+            // TODO: Replace this with a better timing system
+            // uint i = 0;
+            // while (i++ < 2'000'000 && !g_emu_state.paused && !ImGuiLayer::ShouldStop()) {
+            while (!g_emu_state.paused && !ImGuiLayer::ShouldStop()) {
+                // Step();
+                m_clocks++;
+                if (Step()) break;
             }
-
-            // GPU (one frame's worth)
-            for (int i = 0; i < 3413 * 263; i++) {
-                Gpu::Step();
-            }
-
-            // TODO update new_frame when gpu finishes a new frame
-            static int count = 0;
-            new_frame = count++ >= 0; // plz fix me
-            if (new_frame) count = 0;
-
-            // DMA
-            Dma::Step();
-
-
         }
+
+        // render current Gpu State
+        Gpu::RenderFrame();
 
         // reset some state
         g_emu_state.step_instr = false;
     }
+}
+
+bool System::Step()
+{
+    using namespace Psx::ImGuiLayer::DbgMod;
+    // Some timing notes:
+    // Scanline:
+    //  CPU Cycles = 2172
+    //  GPU Cylces = 3413
+    // Frame:
+    //  CPU Cycles = 2172 * 263
+    //  GPU Cycles = 3413 * 263
+
+    // CPU
+    Cpu::Step();
+#ifdef PSX_DEBUG
+    // check breakpoints
+    Breakpoints::Saw<Breakpoints::BrkType::PCWatch>(Cpu::GetPC());
+    if (Breakpoints::ReadyToBreak()) {
+        ImGuiLayer::OnUpdate();
+    }
+#endif
+
+    // GPU
+    bool time_to_render = Gpu::Step();
+    
+    // DMA
+    Dma::Step();
+    return time_to_render;
+    // return false;
 }
 
 }// end namespace

@@ -16,4 +16,7 @@ Here are some random specifics that I need to come back to at some point.
     - tons of small details in dma, will most likely cause bugs in the future.
     - could optimize this by hardcoding some values since most/all games don't
       change a lot of these more niche options
+- <GPU>
+    - We may need to be calling gpu.step() after every cpu call to make sure
+      all cmds are being handled correctly
 

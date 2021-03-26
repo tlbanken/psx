@@ -1,9 +1,7 @@
-add_subdirectory(render)
-
 target_sources(psx PRIVATE
-    gpu.cpp
+    render_opengl.cpp
 )
 
 target_sources(psx-test PRIVATE
-    gpu.cpp
+    render_opengl.cpp
 )

@@ -10,6 +10,7 @@
 #include "dma.h"
 
 #include <vector>
+#include <queue>
 
 #include "imgui/imgui.h"
 #include "mem/ram.h"
@@ -138,6 +139,9 @@ struct State {
             );
         }
     } regs;
+
+    // dma queue
+    std::queue<u8> dma_queue;
 } s;
 
 enum class Channel {
@@ -153,6 +157,7 @@ enum class Channel {
 // Protos
 u32* getRegRef(u32 addr);
 void doDma(uint channel);
+bool dmaReady(u32 channel);
 // template<class channel> void doBlockDma(uint chnum);
 
 }// end ns
@@ -175,52 +180,61 @@ void Reset()
 
 void Step()
 {
-    // return 1 if channel is ready for transfer, 0 otherwise
-    auto dmaReady = [&] (u32 channel) {
-        // a dma transfer will occur if the following conditions are met:
-        //  1. Master enable must be set (dpcr)
-        //  2. Start Bit must be set (chcr.24)
-        //  3. If syncmode == 0; then trigger bit must be set (chcr.28)
-        if (!Util::GetBits(s.regs.dpcr, 3u + (channel << 2), 1)) {
-            return false;
+
+    // queue system
+    if (s.dma_queue.size() > 0) {
+        u8 channel = s.dma_queue.front();
+
+        // if master bit not enabled, wait until it is
+        if (!Util::GetBits(s.regs.dpcr, 3u + ((uint)channel << 2), 1)) {
+            return;
         }
 
-        if (!Util::GetBits(s.regs.channels[channel].chcr, 24, 1)) {
-            return false;
+        DMA_INFO("[CH{}] Starting DMA", channel);
+        if (Util::GetBits(s.regs.channels[channel].chcr, 8, 1)) {
+            DMA_ERROR("No support for DMA Chopping mode");
+            PSX_ASSERT(0);
         }
 
-        if (!Util::GetBits(s.regs.channels[channel].chcr, 9, 2)
-            && !Util::GetBits(s.regs.channels[channel].chcr, 28, 1)) {
-            return false;
-        }
+        // clear start/trigger bit
+        Util::SetBits(s.regs.channels[channel].chcr, 28, 1, 0);
+        doDma(channel);
+        // clear start/busy bit
+        Util::SetBits(s.regs.channels[channel].chcr, 24, 1, 0);
 
-        return true;
-    };
+        // TODO: Do we clear after dma is complete?
+        Util::SetBits(s.regs.dpcr, 3u + ((uint)channel << 2), 1, 0);
+
+        // TODO: do stuff with interrupt bits
+        DMA_INFO("[CH{}] Finished DMA", channel);
+
+        s.dma_queue.pop();
+    }
 
     // TODO handle priority
     // TODO: maybe switch to queue system to improve performance
-    for (u32 channel = 0; channel < 7; channel++) {
-        if (dmaReady(channel)) {
-            DMA_INFO("[CH{}] Starting DMA", channel);
-            if (Util::GetBits(s.regs.channels[channel].chcr, 8, 1)) {
-                DMA_ERROR("No support for DMA Chopping mode");
-                PSX_ASSERT(0);
-            }
+    // for (u32 channel = 0; channel < 7; channel++) {
+    //     if (dmaReady(channel)) {
+    //         DMA_INFO("[CH{}] Starting DMA", channel);
+    //         if (Util::GetBits(s.regs.channels[channel].chcr, 8, 1)) {
+    //             DMA_ERROR("No support for DMA Chopping mode");
+    //             PSX_ASSERT(0);
+    //         }
 
-            // clear start/trigger bit
-            Util::SetBits(s.regs.channels[channel].chcr, 28, 1, 0);
-            doDma(channel);
-            // clear start/busy bit
-            Util::SetBits(s.regs.channels[channel].chcr, 24, 1, 0);
+    //         // clear start/trigger bit
+    //         Util::SetBits(s.regs.channels[channel].chcr, 28, 1, 0);
+    //         doDma(channel);
+    //         // clear start/busy bit
+    //         Util::SetBits(s.regs.channels[channel].chcr, 24, 1, 0);
 
-            // TODO: Do we clear after dma is complete?
-            Util::SetBits(s.regs.dpcr, 3u + (channel << 2), 1, 0);
+    //         // TODO: Do we clear after dma is complete?
+    //         Util::SetBits(s.regs.dpcr, 3u + (channel << 2), 1, 0);
 
-            // TODO: do stuff with interrupt bits
-            DMA_INFO("[CH{}] Finished DMA", channel);
-            break; // only do at most 1 dma request
-        }
-    }
+    //         // TODO: do stuff with interrupt bits
+    //         DMA_INFO("[CH{}] Finished DMA", channel);
+    //         break; // only do at most 1 dma request
+    //     }
+    // }
 }
 
 // *** Read ***
@@ -274,6 +288,13 @@ void Write(T data, u32 addr)
             s.regs.dicr |= (bit15 || (bit23 && bit16_22 && bit24_30)) ? 0x8000'0000 : 0;
         } else {
             *reg_ptr = data;
+            // if 
+            if (addr != 0x1f80'10f0 && addr != 0x1f80'10f4) {
+                u32 chnum = ((addr >> 4) & 0xf) - 0x8;
+                if (dmaReady(chnum)) {
+                    s.dma_queue.push(chnum);
+                }
+            }
         }
     } else {
         static_assert(!std::is_same_v<T, T>);
@@ -486,5 +507,27 @@ void doDma(uint channel)
     }
 }
 
+// return 1 if channel is ready for transfer, 0 otherwise
+bool dmaReady(u32 channel)
+{
+    // a dma transfer will occur if the following conditions are met:
+    //  1. Master enable must be set (dpcr)
+    //  2. Start Bit must be set (chcr.24)
+    //  3. If syncmode == 0; then trigger bit must be set (chcr.28)
+    // if (!Util::GetBits(s.regs.dpcr, 3u + (channel << 2), 1)) {
+    //     return false;
+    // }
+
+    if (!Util::GetBits(s.regs.channels[channel].chcr, 24, 1)) {
+        return false;
+    }
+
+    if (!Util::GetBits(s.regs.channels[channel].chcr, 9, 2)
+        && !Util::GetBits(s.regs.channels[channel].chcr, 28, 1)) {
+        return false;
+    }
+
+    return true;
+}
 
 }// end ns
