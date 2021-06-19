@@ -4,6 +4,9 @@ This is a hobby project to build on my understanding of emulators and the playst
 ## Debug Tools
 ![Debug Tools 1](demos/psx-dbg-demo1.png)
 
+## Cloning
+Use `git clone --recurse-submodules <repo>` to clone with the submodules.
+
 ## Building
 ### Linux
 1. `mkdir build` (or any name you want)  
