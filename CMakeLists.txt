@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.16)
+cmake_minimum_required(VERSION 3.19)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -60,10 +60,17 @@ add_subdirectory("${PROJECT_SOURCE_DIR}/tests")
 # configure
 configure_file(src/core/config.h.in "${PROJECT_SOURCE_DIR}/src/core/config.h")
 
-target_include_directories(psx PRIVATE "${PROJECT_SOURCE_DIR}/src" "${PROJECT_SOURCE_DIR}/extern/include")
-target_include_directories(psx-test PRIVATE "${PROJECT_SOURCE_DIR}/src" "${PROJECT_SOURCE_DIR}/extern/include")
+set(PSX_INCLUDES "${PROJECT_SOURCE_DIR}/src" "${PROJECT_SOURCE_DIR}/extern/include" "${Vulkan_INCLUDE_DIR}")
+target_include_directories(psx PRIVATE ${PSX_INCLUDES})
+target_include_directories(psx-test PRIVATE ${PSX_INCLUDES})
 
-target_link_libraries(psx fmt imgui glfw glad)
-target_link_libraries(psx-test fmt imgui glfw glad)
+set(PSX_LINKED_LIBS
+  fmt
+  imgui
+  glfw
+  ${Vulkan_LIBRARY}
+)
+target_link_libraries(psx ${PSX_LINKED_LIBS})
+target_link_libraries(psx-test ${PSX_LINKED_LIBS})
 
 

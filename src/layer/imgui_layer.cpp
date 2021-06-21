@@ -10,7 +10,7 @@
 
 #include "imgui/imgui.h"
 #include "imgui/imgui_impl_glfw.h"
-#include "imgui/imgui_impl_opengl3.h"
+#include "imgui/imgui_impl_vulkan.h"
 
 #include "layer/imgui_layer.h"
 #include "layer/dbgmod.h"
@@ -61,19 +61,13 @@ namespace ImGuiLayer {
 void Init(ImGuiLayer::Style style)
 {
     IMGUILAYER_INFO("Setting up ImGui");
+
     // setup glfw
     glfwSetErrorCallback(errorCallback);
     if (!glfwInit()) {
         IMGUILAYER_ERR("Failed to Initialize GLFW!");
         throw std::runtime_error("Failed to Initialize GLFW");
     }
-#ifdef __APPLE__
-    /* We need to explicitly ask for a 3.2 context on OS X */
-    glfwWindowHint (GLFW_CONTEXT_VERSION_MAJOR, 3);
-    glfwWindowHint (GLFW_CONTEXT_VERSION_MINOR, 2);
-    glfwWindowHint (GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
-    glfwWindowHint (GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-#endif
 
     // create window
     s.window = glfwCreateWindow(WINDOW_H, WINDOW_W, s.title_base.c_str(), nullptr, nullptr);
@@ -84,20 +78,15 @@ void Init(ImGuiLayer::Style style)
     glfwMakeContextCurrent(s.window);
     glfwSwapInterval(1); // enable vsync TODO: make this an option?
 
-    // init opengl loader
-    if (!gladLoadGL()) {
-        IMGUILAYER_ERR("Failed to Initialize OpenGL Loader!");
-        throw std::runtime_error("Failed to Initialize OpenGL Loader!");
-    }
-    // IMGUILAYER_INFO("OpenGL Version: {}", glGetString(GL_VERSION));
-
     // create imgui
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
 
     // setup OpenGL and GLFW
-    ImGui_ImplGlfw_InitForOpenGL(s.window, true);
-    ImGui_ImplOpenGL3_Init();
+    ImGui_ImplGlfw_InitForVulkan(s.window, true);
+    // TODO setup init info for ImGui_ImplVulkan_InitInfo
+    // TODO call ImGui_ImplVulkan_Init(<init info>, <render pass>);
+    // ImGui_ImplOpenGL3_Init();
 
     // set style
     if (style == ImGuiLayer::Style::Dark) {
@@ -111,7 +100,7 @@ void Shutdown()
 {
     IMGUILAYER_INFO("Shutting down");
 
-    ImGui_ImplOpenGL3_Shutdown();
+    // ImGui_ImplOpenGL3_Shutdown();
     ImGui_ImplGlfw_Shutdown();
     ImGui::DestroyContext();
 
@@ -230,7 +219,8 @@ void newFrame()
 {
     glfwPollEvents();
     // start new frame
-    ImGui_ImplOpenGL3_NewFrame();
+    // ImGui_ImplOpenGL3_NewFrame();
+    ImGui_ImplVulkan_NewFrame();
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
 }
@@ -241,8 +231,9 @@ void newFrame()
 void render()
 {
     ImGui::Render();
-    glClear(GL_COLOR_BUFFER_BIT);
-    ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+    // glClear(GL_COLOR_BUFFER_BIT);
+    // ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+    // TODO make render function
     glfwSwapBuffers(s.window);
 }
 

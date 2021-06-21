@@ -1,4 +1,16 @@
 # ==============================
+# VULKAN
+# ==============================
+message(STATUS "Looking for Vulkan...")
+find_package(Vulkan)
+if (NOT Vulkan_FOUND)
+    message(FATAL_ERROR "Failed to find Vulkan. Verify that Vulkan SDK is installed and supported.")
+    return()
+endif()
+
+# TODO SPIR-V shader tool
+
+# ==============================
 # fmtlib/fmt library
 # ==============================
 add_library(fmt STATIC
@@ -40,26 +52,6 @@ set(GLFW_HDRS
 file(COPY ${GLFW_HDRS} DESTINATION "${PROJECT_SOURCE_DIR}/extern/include/glfw")
 
 # ==============================
-# GLAD
-# ==============================
-add_library(glad STATIC
-    glad/src/glad.c
-)
-
-target_include_directories(glad PRIVATE "${PROJECT_SOURCE_DIR}/extern/glad/include/")
-
-set(GLAD_HDRS
-    ${PROJECT_SOURCE_DIR}/extern/glad/include/glad/glad.h
-)
-set(GLAD_KHR_HDRS
-    ${PROJECT_SOURCE_DIR}/extern/glad/include/KHR/khrplatform.h
-)
-
-# Copy headers to extern/include/glad
-file(COPY ${GLAD_HDRS} DESTINATION "${PROJECT_SOURCE_DIR}/extern/include/glad")
-file(COPY ${GLAD_KHR_HDRS} DESTINATION "${PROJECT_SOURCE_DIR}/extern/include/KHR")
-
-# ==============================
 # Dear ImGui Library
 # ==============================
 add_library(imgui STATIC
@@ -68,7 +60,7 @@ add_library(imgui STATIC
     imgui/imgui_draw.cpp
     imgui/imgui_tables.cpp
     imgui/imgui_widgets.cpp
-    imgui/backends/imgui_impl_opengl3.cpp
+    imgui/backends/imgui_impl_vulkan.cpp
     imgui/backends/imgui_impl_glfw.cpp
 )
 
@@ -79,6 +71,7 @@ target_include_directories(imgui PRIVATE "${PROJECT_SOURCE_DIR}/extern/imgui/")
 target_include_directories(imgui PRIVATE "${PROJECT_SOURCE_DIR}/extern/imgui/backends")
 target_include_directories(imgui PRIVATE "${PROJECT_SOURCE_DIR}/extern/glad/include/")
 target_include_directories(imgui PRIVATE "${PROJECT_SOURCE_DIR}/extern/glfw/include/")
+target_include_directories(imgui PRIVATE ${Vulkan_INCLUDE_DIRS})
 
 set(IMGUI_HDRS
     ${PROJECT_SOURCE_DIR}/extern/imgui/imgui.h
@@ -86,7 +79,7 @@ set(IMGUI_HDRS
     ${PROJECT_SOURCE_DIR}/extern/imgui/imstb_rectpack.h
     ${PROJECT_SOURCE_DIR}/extern/imgui/imstb_textedit.h
     ${PROJECT_SOURCE_DIR}/extern/imgui/imstb_truetype.h
-    ${PROJECT_SOURCE_DIR}/extern/imgui/backends/imgui_impl_opengl3.h
+    ${PROJECT_SOURCE_DIR}/extern/imgui/backends/imgui_impl_vulkan.h
     ${PROJECT_SOURCE_DIR}/extern/imgui/backends/imgui_impl_glfw.h
 )
 

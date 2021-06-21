@@ -9,8 +9,9 @@
 
 #pragma once
 
-#include "glad/glad.h"
-#include "glfw/glfw3.h" // MUST be included AFTER glad
+// #define GLFW_INCLUDE_VULKAN // must be defined before glfw3
+#include <vulkan/vulkan.h>
+#include "glfw/glfw3.h"
 
 #include <string>
 

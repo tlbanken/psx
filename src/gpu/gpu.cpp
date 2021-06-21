@@ -14,7 +14,6 @@
 #include "imgui/imgui.h"
 #include "mem/ram.h"
 #include "layer/dbgmod.h"
-#include "gpu/render/render_opengl.h"
 
 #define GPU_INFO(...) PSXLOG_INFO("GPU", __VA_ARGS__)
 #define GPU_WARN(...) PSXLOG_WARN("GPU", __VA_ARGS__)
@@ -91,7 +90,7 @@ struct State {
     // 1MB of vram
     std::vector<u8> vram;
 
-    Renderer *renderer = nullptr;
+    // Renderer *renderer = nullptr;
 }s;
 
 
@@ -123,17 +122,17 @@ void Init()
 {
     GPU_INFO("Initializing state");
     s.vram.resize(1 * 1024 * 1024);
-    s.renderer = new OpenGL();
+    // s.renderer = new OpenGL();
     Util::SetBits(s.sr, 26, 3, 0x7);
 }
 
 void Reset()
 {
     GPU_INFO("Resetting state");
-    if (s.renderer != nullptr)
-        delete s.renderer;
-    s = {};
-    s.renderer = new OpenGL();
+    // if (s.renderer != nullptr)
+    //     delete s.renderer;
+    // s = {};
+    // s.renderer = new OpenGL();
     Util::SetBits(s.sr, 26, 3, 0x7);
     PSX_ASSERT(s.vram.size() == 1 * 1024 * 1024); // will vram size reset?
 }
