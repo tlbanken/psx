@@ -33,6 +33,9 @@ typedef uint32_t u32;
 typedef uint16_t u16;
 typedef uint8_t u8;
 
+// define shorter unsigned int (for msvc)
+typedef unsigned int uint
+
 #define PSX_FANCYTITLE(title) fmt::format("┌{0:─^{2}}┐\n│{1: ^{2}}│\n└{0:─^{2}}┘\n", "", title, 20)
 
 // VA_OPT Trick Requires C++20

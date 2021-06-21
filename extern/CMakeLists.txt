@@ -51,9 +51,13 @@ target_include_directories(glad PRIVATE "${PROJECT_SOURCE_DIR}/extern/glad/inclu
 set(GLAD_HDRS
     ${PROJECT_SOURCE_DIR}/extern/glad/include/glad/glad.h
 )
+set(GLAD_KHR_HDRS
+    ${PROJECT_SOURCE_DIR}/extern/glad/include/KHR/khrplatform.h
+)
 
 # Copy headers to extern/include/glad
 file(COPY ${GLAD_HDRS} DESTINATION "${PROJECT_SOURCE_DIR}/extern/include/glad")
+file(COPY ${GLAD_KHR_HDRS} DESTINATION "${PROJECT_SOURCE_DIR}/extern/include/KHR")
 
 # ==============================
 # Dear ImGui Library

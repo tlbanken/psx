@@ -67,6 +67,13 @@ void Init(ImGuiLayer::Style style)
         IMGUILAYER_ERR("Failed to Initialize GLFW!");
         throw std::runtime_error("Failed to Initialize GLFW");
     }
+#ifdef __APPLE__
+    /* We need to explicitly ask for a 3.2 context on OS X */
+    glfwWindowHint (GLFW_CONTEXT_VERSION_MAJOR, 3);
+    glfwWindowHint (GLFW_CONTEXT_VERSION_MINOR, 2);
+    glfwWindowHint (GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
+    glfwWindowHint (GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+#endif
 
     // create window
     s.window = glfwCreateWindow(WINDOW_H, WINDOW_W, s.title_base.c_str(), nullptr, nullptr);
