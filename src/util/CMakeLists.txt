@@ -1,9 +1,9 @@
 target_sources(psx PRIVATE
-    psxlog.cpp
-    psxutil.cpp
+    psxlog.cc
+    psxutil.cc
 )
 
 target_sources(psx-test PRIVATE
-    psxlog.cpp
-    psxutil.cpp
+    psxlog.cc
+    psxutil.cc
 )

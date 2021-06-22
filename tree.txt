@@ -1,64 +1,64 @@
 src
-├── bios
-│   ├── bios.cpp
-│   ├── bios.h
-│   └── CMakeLists.txt
 ├── CMakeLists.txt
+├── bios
+│   ├── CMakeLists.txt
+│   ├── bios.cc
+│   └── bios.hh
 ├── core
 │   ├── CMakeLists.txt
-│   ├── config.h
-│   ├── config.h.in
-│   ├── globals.cpp
-│   ├── globals.h
-│   ├── main.cpp
-│   ├── sys.cpp
-│   └── sys.h
+│   ├── config.hh
+│   ├── config.hh.in
+│   ├── globals.cc
+│   ├── globals.hh
+│   ├── main.cc
+│   ├── sys.cc
+│   └── sys.hh
 ├── cpu
-│   ├── asm
-│   │   ├── asm.cpp
-│   │   ├── asm.h
-│   │   └── CMakeLists.txt
 │   ├── CMakeLists.txt
-│   ├── cop0.cpp
-│   ├── cop0.h
-│   ├── cpu.cpp
-│   ├── cpu.h
-│   └── _cpu_ops.h
+│   ├── _cpu_ops.hh
+│   ├── asm
+│   │   ├── CMakeLists.txt
+│   │   ├── asm.cc
+│   │   └── asm.hh
+│   ├── cop0.cc
+│   ├── cop0.hh
+│   ├── cpu.cc
+│   └── cpu.hh
 ├── gpu
 │   ├── CMakeLists.txt
-│   ├── gpu.cpp
-│   ├── gpu.h
-│   └── render
-│       ├── CMakeLists.txt
-│       ├── render.h
-│       ├── render_opengl.cpp
-│       └── render_opengl.h
+│   ├── gpu.cc
+│   └── gpu.hh
 ├── layer
 │   ├── CMakeLists.txt
-│   ├── dbgmod.cpp
-│   ├── dbgmod.h
-│   ├── imgui_layer.cpp
-│   └── imgui_layer.h
+│   ├── dbgmod.cc
+│   ├── dbgmod.hh
+│   ├── imgui_layer.cc
+│   └── imgui_layer.hh
 ├── mem
-│   ├── bus.cpp
-│   ├── bus.h
 │   ├── CMakeLists.txt
-│   ├── dma.cpp
-│   ├── dma.h
-│   ├── memcontrol.cpp
-│   ├── memcontrol.h
-│   ├── ram.cpp
-│   ├── ram.h
-│   ├── scratchpad.cpp
-│   └── scratchpad.h
+│   ├── bus.cc
+│   ├── bus.hh
+│   ├── dma.cc
+│   ├── dma.hh
+│   ├── memcontrol.cc
+│   ├── memcontrol.hh
+│   ├── ram.cc
+│   ├── ram.hh
+│   ├── scratchpad.cc
+│   └── scratchpad.hh
+├── render
+│   ├── CMakeLists.txt
+│   ├── vulkan.cc
+│   └── vulkan.hh
 └── util
     ├── CMakeLists.txt
-    ├── psxlog.cpp
-    ├── psxlog.h
-    ├── psxutil.cpp
-    └── psxutil.h
+    ├── psxlog.cc
+    ├── psxlog.hh
+    ├── psxutil.cc
+    └── psxutil.hh
 scripts
-├── cmake_clean_build.sh
+├── cmake_clean_build_default.sh
+├── cmake_clean_build_xcode.sh
 ├── set_clang.env
 ├── set_gcc.env
 └── update_tree.sh
@@ -71,11 +71,11 @@ predev
 │   │   ├── GTE.md
 │   │   ├── IO.md
 │   │   ├── MDEC.md
-│   │   ├── MemoryCards.md
 │   │   ├── Memory.md
-│   │   ├── PSX General Notes.md
+│   │   ├── MemoryCards.md
+│   │   ├── PSX\ General\ Notes.md
 │   │   ├── Questions.md
-│   │   ├── R3000A (CPU).md
+│   │   ├── R3000A\ (CPU).md
 │   │   ├── RootCounters.md
 │   │   └── Sound.md
 │   └── _resources
@@ -84,16 +84,16 @@ predev
 └── plans
     ├── Debug.md
     ├── Overview_old.md
-    └── Possible Libraries.md
+    └── Possible\ Libraries.md
 tests
 ├── CMakeLists.txt
-├── main.cpp
-├── psxtest_asm.cpp
-├── psxtest_asm.h
-├── psxtest_cpu.cpp
-├── psxtest_cpu.h
-├── psxtest.h
-├── psxtest_mem.cpp
-└── psxtest_mem.h
+├── main.cc
+├── psxtest.hh
+├── psxtest_asm.cc
+├── psxtest_asm.hh
+├── psxtest_cpu.cc
+├── psxtest_cpu.hh
+├── psxtest_mem.cc
+└── psxtest_mem.hh
 
 13 directories, 80 files

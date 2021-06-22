@@ -1,15 +1,15 @@
 target_sources(psx PRIVATE
-    bus.cpp
-    ram.cpp
-    memcontrol.cpp
-    scratchpad.cpp
-    dma.cpp
+    bus.cc
+    ram.cc
+    memcontrol.cc
+    scratchpad.cc
+    dma.cc
 )
 
 target_sources(psx-test PRIVATE
-    bus.cpp
-    ram.cpp
-    memcontrol.cpp
-    scratchpad.cpp
-    dma.cpp
+    bus.cc
+    ram.cc
+    memcontrol.cc
+    scratchpad.cc
+    dma.cc
 )

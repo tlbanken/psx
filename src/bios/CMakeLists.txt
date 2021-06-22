@@ -1,7 +1,7 @@
 target_sources(psx PRIVATE
-    bios.cpp
+    bios.cc
 )
 
 target_sources(psx-test PRIVATE
-    bios.cpp
+    bios.cc
 )

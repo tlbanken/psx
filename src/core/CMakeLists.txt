@@ -1,11 +1,11 @@
 target_sources(psx PRIVATE
-    main.cpp
-    globals.cpp
-    sys.cpp
+    main.cc
+    globals.cc
+    sys.cc
 )
 
 target_sources(psx-test PRIVATE
-    sys.cpp
-    globals.cpp
+    sys.cc
+    globals.cc
 )
 

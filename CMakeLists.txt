@@ -46,11 +46,14 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 add_executable(psx)
 add_executable(psx-test)
 
-add_custom_command(
-        TARGET psx POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy
-                ${CMAKE_CURRENT_BINARY_DIR}/compile_commands.json
-                ${PROJECT_SOURCE_DIR}/compile_commands.json)
+# xcode doesn't like this for some reason
+if(NOT CMAKE_GENERATOR STREQUAL Xcode)
+   add_custom_command(
+           TARGET psx POST_BUILD
+           COMMAND ${CMAKE_COMMAND} -E copy
+                   ${CMAKE_CURRENT_BINARY_DIR}/compile_commands.json
+                   ${PROJECT_SOURCE_DIR}/compile_commands.json)
+endif()
 
 # Subdirs
 add_subdirectory("${PROJECT_SOURCE_DIR}/src")
@@ -58,7 +61,7 @@ add_subdirectory("${PROJECT_SOURCE_DIR}/extern")
 add_subdirectory("${PROJECT_SOURCE_DIR}/tests")
 
 # configure
-configure_file(src/core/config.h.in "${PROJECT_SOURCE_DIR}/src/core/config.h")
+configure_file(src/core/config.hh.in "${PROJECT_SOURCE_DIR}/src/core/config.hh")
 
 set(PSX_INCLUDES "${PROJECT_SOURCE_DIR}/src" "${PROJECT_SOURCE_DIR}/extern/include" "${Vulkan_INCLUDE_DIR}")
 target_include_directories(psx PRIVATE ${PSX_INCLUDES})

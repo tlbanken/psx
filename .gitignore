@@ -8,7 +8,7 @@ games
 *.kdev4
 **/*.log
 **/*.dump
-src/core/config.h
+src/core/config.hh
 extern/include/fmt/*
 extern/include/imgui/*
 extern/include/glad/*

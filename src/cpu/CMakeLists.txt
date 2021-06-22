@@ -1,12 +1,12 @@
 add_subdirectory(asm)
 
 target_sources(psx PRIVATE
-    cpu.cpp
-    cop0.cpp
+    cpu.cc
+    cop0.cc
 )
 
 target_sources(psx-test PRIVATE
-    cpu.cpp
-    cop0.cpp
+    cpu.cc
+    cop0.cc
 )
 

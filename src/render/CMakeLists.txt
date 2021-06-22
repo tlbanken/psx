@@ -1,7 +1,7 @@
 target_sources(psx PRIVATE
-    gpu.cc
+    vulkan.cc
 )
 
 target_sources(psx-test PRIVATE
-    gpu.cc
+    vulkan.cc
 )

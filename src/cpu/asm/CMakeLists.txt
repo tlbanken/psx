@@ -1,7 +1,7 @@
 target_sources(psx PRIVATE
-    asm.cpp
+    asm.cc
 )
 
 target_sources(psx-test PRIVATE
-    asm.cpp
+    asm.cc
 )
