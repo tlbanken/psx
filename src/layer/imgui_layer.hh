@@ -27,6 +27,7 @@ void Shutdown();
 void OnUpdate();
 bool ShouldStop();
 void SetTitleExtra(const std::string& extra);
+GLFWwindow* GetWindow();
 
 }// end namespace
 }

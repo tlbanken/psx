@@ -34,7 +34,11 @@ int main()
     Psx::Log::Init(std::cerr, true);
 
     // print project name and version
+#ifdef PSX_DEBUG
+    std::cout << PSX_FANCYTITLE(PSX_FMT("{} v{}-debug", PROJECT_NAME, PROJECT_VER));
+#else
     std::cout << PSX_FANCYTITLE(PSX_FMT("{} v{}", PROJECT_NAME, PROJECT_VER));
+#endif
 
     int rc = 0;
     std::string bios_path;

@@ -129,7 +129,8 @@ void Reset()
     GPU_INFO("Resetting state");
     s = {};
     Util::SetBits(s.sr, 26, 3, 0x7);
-    PSX_ASSERT(s.vram.size() == 1 * 1024 * 1024); // will vram size reset?
+    // vram was reset, so need to resize
+    s.vram.resize(1 * 1024 * 1024);
 }
 
 void RenderFrame()

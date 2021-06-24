@@ -9,3 +9,13 @@
 
 #pragma once
 
+#include <vector>
+
+namespace Psx {
+namespace Vulkan {
+    
+void Init(std::vector<const char *> extensions);
+void Shutdown();
+
+}// end ns
+}

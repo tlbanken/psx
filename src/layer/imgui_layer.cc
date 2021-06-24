@@ -6,13 +6,14 @@
  * 
  * Layer over the Dear ImGui Framework
  */
+#include "imgui_layer.hh"
 
+#include <vector>
 
 #include "imgui/imgui.h"
 #include "imgui/imgui_impl_glfw.h"
 #include "imgui/imgui_impl_vulkan.h"
 
-#include "layer/imgui_layer.hh"
 #include "layer/dbgmod.hh"
 #include "cpu/cpu.hh"
 #include "cpu/cop0.hh"
@@ -26,6 +27,7 @@
 #include "core/globals.hh"
 #include "core/sys.hh"
 #include "gpu/gpu.hh"
+#include "render/vulkan.hh"
 
 #define WINDOW_H 1280
 #define WINDOW_W 720
@@ -83,7 +85,11 @@ void Init(ImGuiLayer::Style style)
     // get extensions
     u32 extensions_count = 0;
     const char **extensions = glfwGetRequiredInstanceExtensions(&extensions_count);
-    // TODO Setup Vulkan
+    std::vector<const char*> vec_extensions;
+    for (u32 i = 0; i < extensions_count; i++) {
+        vec_extensions.push_back(extensions[i]);
+    }
+    Vulkan::Init(vec_extensions);
 
     // create imgui
     IMGUI_CHECKVERSION();
@@ -106,6 +112,9 @@ void Init(ImGuiLayer::Style style)
 void Shutdown()
 {
     IMGUILAYER_INFO("Shutting down");
+
+    // shutdown vulkan
+    Vulkan::Shutdown();
 
     // ImGui_ImplOpenGL3_Shutdown();
     ImGui_ImplGlfw_Shutdown();
@@ -210,6 +219,10 @@ void SetTitleExtra(const std::string& extra)
     glfwSetWindowTitle(s.window, (s.title_base + extra).c_str());
 }
 
+GLFWwindow* GetWindow()
+{
+    return s.window;
+}
 
 }// end namespace
 }
