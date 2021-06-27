@@ -96,10 +96,13 @@ void Init(ImGuiLayer::Style style)
     ImGui::CreateContext();
 
     // setup OpenGL and GLFW
-    ImGui_ImplGlfw_InitForVulkan(s.window, true);
+    if (!ImGui_ImplGlfw_InitForVulkan(s.window, true)) {
+        IMGUILAYER_FATAL("Failed to initialize imgui for vulkan");
+    }
     // TODO setup init info for ImGui_ImplVulkan_InitInfo
     // TODO call ImGui_ImplVulkan_Init(<init info>, <render pass>);
     // ImGui_ImplOpenGL3_Init();
+    Vulkan::SetupImGui();
 
     // set style
     if (style == ImGuiLayer::Style::Dark) {

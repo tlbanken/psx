@@ -48,6 +48,14 @@ src
 │   └── scratchpad.hh
 ├── render
 │   ├── CMakeLists.txt
+│   ├── shaders
+│   │   ├── CMakeLists.txt
+│   │   ├── shader.frag
+│   │   ├── shader.frag.spv
+│   │   ├── shader.vert
+│   │   └── shader.vert.spv
+│   ├── utils.cc
+│   ├── utils.hh
 │   ├── vulkan.cc
 │   ├── vulkan.hh
 │   ├── vulkan_instance.cc
@@ -98,4 +106,4 @@ tests
 ├── psxtest_mem.cc
 └── psxtest_mem.hh
 
-13 directories, 82 files
+14 directories, 89 files

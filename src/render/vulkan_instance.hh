@@ -28,9 +28,13 @@ struct Details {
     struct SwapChainDetails {
         VkSwapchainKHR swap_chain;
         std::vector<VkImage> images;
+        std::vector<VkImageView> image_views;
         VkFormat format;
         VkExtent2D extent;
     }sc_deets;
+    VkPipelineLayout pipeline_layout;
+    VkRenderPass render_pass;
+    VkPipeline graphics_pipeline;
 
     VkSurfaceKHR surface;
 

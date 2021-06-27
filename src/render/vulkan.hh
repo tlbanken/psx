@@ -11,11 +11,15 @@
 
 #include <vector>
 
+#include "imgui/imgui_impl_vulkan.h"
+
 namespace Psx {
 namespace Vulkan {
     
 void Init(std::vector<const char *> extensions);
 void Shutdown();
+VkRenderPass GetRenderPass();
+void SetupImGui();
 
 }// end ns
 }
