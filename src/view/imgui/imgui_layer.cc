@@ -1,5 +1,5 @@
 /*
- * imgui_layer.cpp
+ * imgui_layer.cc
  * 
  * Travis Banken
  * 12/10/2020
@@ -11,10 +11,9 @@
 #include <vector>
 
 #include "imgui/imgui.h"
-#include "imgui/imgui_impl_glfw.h"
-#include "imgui/imgui_impl_vulkan.h"
+// #include "imgui/imgui_impl_vulkan.h"
 
-#include "layer/dbgmod.hh"
+#include "view/imgui/dbgmod.hh"
 #include "cpu/cpu.hh"
 #include "cpu/cop0.hh"
 #include "bios/bios.hh"
@@ -27,10 +26,9 @@
 #include "core/globals.hh"
 #include "core/sys.hh"
 #include "gpu/gpu.hh"
-#include "render/vulkan.hh"
 
-#define WINDOW_H 1280
-#define WINDOW_W 720
+// #define WINDOW_H 1280
+// #define WINDOW_W 720
 
 #define IMGUILAYER_INFO(...) PSXLOG_INFO("ImGui-Layer", __VA_ARGS__)
 #define IMGUILAYER_WARN(...) PSXLOG_WARN("ImGui-Layer", __VA_ARGS__)
@@ -38,93 +36,58 @@
 #define IMGUILAYER_FATAL(...) IMGUILAYER_ERR(__VA_ARGS__); throw std::runtime_error(PSX_FMT(__VA_ARGS__))
 
 namespace  {
-struct State {
-    GLFWwindow *window;
-    const std::string title_base = "PSX Emulator";
-} s;
+// struct State {
+// } s;
 
 // Protos
-void newFrame();
-void render();
+// void newFrame();
+// void render();
 
 }// end namespace
 
-/*
- * Will be called by GLFW on errors.
- */
-static void errorCallback(int error, const char* description)
-{
-    PSXLOG_ERROR("GLFW Error", "({:d}), {}", error, description);
-}
+// /*
+//  * Will be called by GLFW on errors.
+//  */
+// static void errorCallback(int error, const char* description)
+// {
+//     PSXLOG_ERROR("GLFW Error", "({:d}), {}", error, description);
+// }
 
 
 namespace Psx {
+namespace View {
 namespace ImGuiLayer {
 
-void Init(ImGuiLayer::Style style)
+void Init(Style style)
 {
     IMGUILAYER_INFO("Setting up ImGui");
-
-    // setup glfw
-    glfwSetErrorCallback(errorCallback);
-    if (!glfwInit()) {
-        IMGUILAYER_FATAL("Failed to Initialize GLFW!");
-    }
-
-    // create window
-    glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-    s.window = glfwCreateWindow(WINDOW_H, WINDOW_W, s.title_base.c_str(), nullptr, nullptr);
-    if (s.window == nullptr) {
-        IMGUILAYER_FATAL("Failed to create GLFW window!");
-    }
-    // ???
-    // glfwMakeContextCurrent(s.window);
-    // glfwSwapInterval(1); // enable vsync TODO: make this an option?
-    // ???
-
-    // get extensions
-    u32 extensions_count = 0;
-    const char **extensions = glfwGetRequiredInstanceExtensions(&extensions_count);
-    std::vector<const char*> vec_extensions;
-    for (u32 i = 0; i < extensions_count; i++) {
-        vec_extensions.push_back(extensions[i]);
-    }
-    Vulkan::Init(vec_extensions);
-
     // create imgui
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
-
-    // setup OpenGL and GLFW
-    if (!ImGui_ImplGlfw_InitForVulkan(s.window, true)) {
-        IMGUILAYER_FATAL("Failed to initialize imgui for vulkan");
-    }
-    // TODO setup init info for ImGui_ImplVulkan_InitInfo
-    // TODO call ImGui_ImplVulkan_Init(<init info>, <render pass>);
-    // ImGui_ImplOpenGL3_Init();
-    Vulkan::SetupImGui();
-
     // set style
     if (style == ImGuiLayer::Style::Dark) {
         ImGui::StyleColorsDark();
     } else {
         ImGui::StyleColorsLight();
     }
+
+    // setup OpenGL and GLFW
+    // if (!ImGui_ImplGlfw_InitForVulkan(s.window, true)) {
+    //     IMGUILAYER_FATAL("Failed to initialize imgui for vulkan");
+    // }
+    // TODO setup init info for ImGui_ImplVulkan_InitInfo
+    // TODO call ImGui_ImplVulkan_Init(<init info>, <render pass>);
+    // ImGui_ImplOpenGL3_Init();
+
 }
 
 void Shutdown()
 {
     IMGUILAYER_INFO("Shutting down");
 
-    // shutdown vulkan
-    Vulkan::Shutdown();
-
     // ImGui_ImplOpenGL3_Shutdown();
-    ImGui_ImplGlfw_Shutdown();
+    // ImGui_ImplGlfw_Shutdown();
     ImGui::DestroyContext();
-
-    glfwDestroyWindow(s.window);
-    glfwTerminate();
 }
 
 /*
@@ -143,8 +106,6 @@ void OnUpdate()
     static bool scratch_active = false;
     static bool dma_active = false;
     static bool gpu_active = false;
-
-    newFrame();
 
     // Call Modules if currently active
     if (ram_active) Ram::OnActive(&ram_active);
@@ -204,30 +165,24 @@ void OnUpdate()
 
     // Demo
     // ImGui::ShowDemoWindow();
-
-    render();
 }
 
 /*
  * Checks if the ImGui needs to terminate. This most common case being if the
  * window is closed.
  */
-bool ShouldStop()
-{
-    return glfwWindowShouldClose(s.window);
-}
+// bool ShouldStop()
+// {
+//     return glfwWindowShouldClose(s.window);
+// }
 
-void SetTitleExtra(const std::string& extra)
-{
-    glfwSetWindowTitle(s.window, (s.title_base + extra).c_str());
-}
-
-GLFWwindow* GetWindow()
-{
-    return s.window;
-}
+// void SetTitleExtra(const std::string& extra)
+// {
+//     glfwSetWindowTitle(s.window, (s.title_base + extra).c_str());
+// }
 
 }// end namespace
+}
 }
 
 namespace {
@@ -235,29 +190,29 @@ namespace {
 // ===============================================
 // PRIVATE HELPER FUNCTIONS
 // ==============================================
-/*
- * Creates a new frame in ImGui. Should be called BEFORE ImGuiLayer::render()
- */
-void newFrame()
-{
-    glfwPollEvents();
-    // start new frame
-    // ImGui_ImplOpenGL3_NewFrame();
-    ImGui_ImplVulkan_NewFrame();
-    ImGui_ImplGlfw_NewFrame();
-    ImGui::NewFrame();
-}
+// /*
+//  * Creates a new frame in ImGui. Should be called BEFORE ImGuiLayer::render()
+//  */
+// void newFrame()
+// {
+//     glfwPollEvents();
+//     // start new frame
+//     // ImGui_ImplOpenGL3_NewFrame();
+//     ImGui_ImplVulkan_NewFrame();
+//     ImGui_ImplGlfw_NewFrame();
+//     ImGui::NewFrame();
+// }
 
-/*
- * Renders the current draw data in ImGui.
- */
-void render()
-{
-    ImGui::Render();
-    // glClear(GL_COLOR_BUFFER_BIT);
-    // ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-    // TODO make render function
-    glfwSwapBuffers(s.window);
-}
+// /*
+//  * Renders the current draw data in ImGui.
+//  */
+// void render()
+// {
+//     ImGui::Render();
+//     // glClear(GL_COLOR_BUFFER_BIT);
+//     // ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+//     // TODO make render function
+//     glfwSwapBuffers(s.window);
+// }
 
 }

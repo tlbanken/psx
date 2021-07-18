@@ -28,12 +28,6 @@ src
 │   ├── CMakeLists.txt
 │   ├── gpu.cc
 │   └── gpu.hh
-├── layer
-│   ├── CMakeLists.txt
-│   ├── dbgmod.cc
-│   ├── dbgmod.hh
-│   ├── imgui_layer.cc
-│   └── imgui_layer.hh
 ├── mem
 │   ├── CMakeLists.txt
 │   ├── bus.cc
@@ -46,26 +40,45 @@ src
 │   ├── ram.hh
 │   ├── scratchpad.cc
 │   └── scratchpad.hh
-├── render
+├── util
 │   ├── CMakeLists.txt
-│   ├── shaders
-│   │   ├── CMakeLists.txt
-│   │   ├── shader.frag
-│   │   ├── shader.frag.spv
-│   │   ├── shader.vert
-│   │   └── shader.vert.spv
-│   ├── utils.cc
-│   ├── utils.hh
-│   ├── vulkan.cc
-│   ├── vulkan.hh
-│   ├── vulkan_instance.cc
-│   └── vulkan_instance.hh
-└── util
+│   ├── psxlog.cc
+│   ├── psxlog.hh
+│   ├── psxutil.cc
+│   └── psxutil.hh
+└── view
     ├── CMakeLists.txt
-    ├── psxlog.cc
-    ├── psxlog.hh
-    ├── psxutil.cc
-    └── psxutil.hh
+    ├── backend
+    │   ├── CMakeLists.txt
+    │   └── vulkan
+    │       ├── CMakeLists.txt
+    │       ├── context.cc
+    │       ├── context.hh
+    │       ├── device.cc
+    │       ├── device.hh
+    │       ├── includes.hh
+    │       ├── renderer.cc
+    │       ├── renderer.hh
+    │       ├── shaders
+    │       │   ├── CMakeLists.txt
+    │       │   ├── shader.frag
+    │       │   ├── shader.frag.spv
+    │       │   ├── shader.vert
+    │       │   └── shader.vert.spv
+    │       ├── swapchain.cc
+    │       ├── swapchain.hh
+    │       ├── util.cc
+    │       ├── util.hh
+    │       ├── window.cc
+    │       └── window.hh
+    ├── imgui
+    │   ├── CMakeLists.txt
+    │   ├── dbgmod.cc
+    │   ├── dbgmod.hh
+    │   ├── imgui_layer.cc
+    │   └── imgui_layer.hh
+    ├── view.cc
+    └── view.hh
 scripts
 ├── cmake_clean_build_default.sh
 ├── cmake_clean_build_xcode.sh
@@ -106,4 +119,4 @@ tests
 ├── psxtest_mem.cc
 └── psxtest_mem.hh
 
-14 directories, 89 files
+16 directories, 100 files

@@ -14,6 +14,7 @@
 #include "util/psxutil.hh"
 
 namespace Psx {
+namespace View {
 namespace ImGuiLayer {
 namespace DbgMod {
 
@@ -59,5 +60,6 @@ void ForceBreak(const std::string& from);
 
 
 }// end namespace
+}
 }
 }

@@ -14,7 +14,7 @@
 #include "imgui/imgui.h"
 
 #include "mem/ram.hh"
-#include "layer/dbgmod.hh"
+#include "view/imgui/dbgmod.hh"
 
 #define GPU_INFO(...) PSXLOG_INFO("GPU", __VA_ARGS__)
 #define GPU_WARN(...) PSXLOG_WARN("GPU", __VA_ARGS__)

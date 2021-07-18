@@ -14,7 +14,7 @@
 
 #include "imgui/imgui.h"
 
-#include "layer/dbgmod.hh"
+#include "view/imgui/dbgmod.hh"
 
 #define SP_INFO(...) PSXLOG_INFO("Scratchpad", __VA_ARGS__)
 #define SP_WARN(...) PSXLOG_WARN("Scratchpad", __VA_ARGS__)
@@ -24,7 +24,7 @@ namespace  {
 
 struct State {
     std::vector<u8> mem;
-    Psx::ImGuiLayer::DbgMod::HexDump hexdump;
+    Psx::View::ImGuiLayer::DbgMod::HexDump hexdump;
 } s;
 
 }//end ns

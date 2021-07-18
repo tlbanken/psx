@@ -13,7 +13,7 @@
 #include "cpu/cop0.hh"
 #include "mem/bus.hh"
 #include "core/globals.hh"
-#include "layer/dbgmod.hh"
+#include "view/imgui/dbgmod.hh"
 
 #define CPU_INFO(...) PSXLOG_INFO("CPU", __VA_ARGS__)
 #define CPU_WARN(...) PSXLOG_WARN("CPU", __VA_ARGS__)

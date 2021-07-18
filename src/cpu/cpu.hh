@@ -14,7 +14,7 @@
 #include "util/psxutil.hh"
 #include "mem/bus.hh"
 #include "cpu/asm/asm.hh"
-#include "layer/imgui_layer.hh"
+#include "view/imgui/imgui_layer.hh"
 
 
 namespace Psx {

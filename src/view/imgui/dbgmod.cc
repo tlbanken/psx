@@ -66,6 +66,7 @@ std::string hexDumpLine(u32 addr, const std::vector<u8>& mem)
 }// end namespace
 
 namespace Psx {
+namespace View {
 namespace ImGuiLayer {
 namespace DbgMod {
 HexDump::HexDump()
@@ -446,5 +447,6 @@ template void Set<BrkType::ReadWatch>(u32 addr);
 }// end breakpoints namespace
 
 }// end namespace
+}
 }
 }

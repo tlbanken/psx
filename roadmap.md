@@ -60,5 +60,7 @@
 
 ## Bonus
 - [ ] BIOS
+- [ ] Dynamic Recompiler
+- [ ] Software Renderer
 
 

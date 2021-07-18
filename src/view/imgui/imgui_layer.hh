@@ -1,5 +1,5 @@
 /*
- * imgui_layer.h
+ * imgui_layer.hh
  * 
  * Travis Banken
  * 12/10/2020
@@ -15,6 +15,7 @@
 #include <string>
 
 namespace Psx {
+namespace View {
 namespace ImGuiLayer {
 
 enum class Style {
@@ -22,12 +23,12 @@ enum class Style {
     Dark,
 };
 
-void Init(ImGuiLayer::Style style = Style::Dark);
+void Init(Style style = Style::Dark);
 void Shutdown();
 void OnUpdate();
-bool ShouldStop();
-void SetTitleExtra(const std::string& extra);
-GLFWwindow* GetWindow();
+// bool ShouldStop();
+// void SetTitleExtra(const std::string& extra);
 
 }// end namespace
+}
 }

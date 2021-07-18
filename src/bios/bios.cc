@@ -14,7 +14,7 @@
 
 #include "bios.hh"
 #include "util/psxlog.hh"
-#include "layer/dbgmod.hh"
+#include "view/imgui/dbgmod.hh"
 
 #define BIOS_INFO(...) PSXLOG_INFO("BIOS", __VA_ARGS__)
 #define BIOS_WARN(...) PSXLOG_WARN("BIOS", __VA_ARGS__)
@@ -26,7 +26,7 @@ struct State {
     std::vector<u8> rom;
     std::string bios_path;
     bool bios_loaded = false;
-    Psx::ImGuiLayer::DbgMod::HexDump hexdump;
+    Psx::View::ImGuiLayer::DbgMod::HexDump hexdump;
 } s;
 
 }// end namespace

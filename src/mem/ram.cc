@@ -13,7 +13,7 @@
 
 #include "imgui/imgui.h"
 
-#include "layer/dbgmod.hh"
+#include "view/imgui/dbgmod.hh"
 #include "cpu/cop0.hh"
 
 #define RAM_INFO(...) PSXLOG_INFO("RAM", __VA_ARGS__)
@@ -24,7 +24,7 @@
 namespace  {
 struct State {
     std::vector<u8> sysram;
-    Psx::ImGuiLayer::DbgMod::HexDump hexdump;
+    Psx::View::ImGuiLayer::DbgMod::HexDump hexdump;
 } s;
 }// end namespace
 
@@ -46,7 +46,7 @@ void Reset()
         byte = 0x00;
     }
 
-    s.hexdump = ImGuiLayer::DbgMod::HexDump();
+    s.hexdump = View::ImGuiLayer::DbgMod::HexDump();
 }
 
 // *** Read ***

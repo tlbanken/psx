@@ -20,8 +20,8 @@
 #include "mem/memcontrol.hh"
 #include "mem/scratchpad.hh"
 #include "mem/dma.hh"
-#include "layer/dbgmod.hh"
-#include "layer/imgui_layer.hh"
+#include "view/imgui/dbgmod.hh"
+#include "view/imgui/imgui_layer.hh"
 #include "gpu/gpu.hh"
 
 #define BUS_INFO(...) PSXLOG_INFO("Bus", __VA_ARGS__)
@@ -60,7 +60,7 @@ T Read(u32 addr, Bus::RWVerbosity verb)
 
     // check for breakpoint
 #ifdef PSX_DEBUG
-    using namespace ImGuiLayer::DbgMod;
+    using namespace View::ImGuiLayer::DbgMod;
     Breakpoints::Saw<Breakpoints::BrkType::ReadWatch>(addr);
 #endif
 
@@ -137,7 +137,7 @@ void Write(T data, u32 addr, Bus::RWVerbosity verb)
 
     // check for breakpoint
 #ifdef PSX_DEBUG
-    using namespace ImGuiLayer::DbgMod;
+    using namespace View::ImGuiLayer::DbgMod;
     Breakpoints::Saw<Breakpoints::BrkType::WriteWatch>(addr);
 #endif
 

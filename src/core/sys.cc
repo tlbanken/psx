@@ -12,19 +12,19 @@
 #include <random>
 
 #include "core/sys.hh"
+#include "view/view.hh"
 #include "util/psxutil.hh"
 #include "util/psxlog.hh"
 #include "mem/bus.hh"
 #include "mem/ram.hh"
 #include "cpu/cpu.hh"
 #include "cpu/cop0.hh"
-#include "layer/imgui_layer.hh"
 #include "core/globals.hh"
 #include "bios/bios.hh"
 #include "mem/memcontrol.hh"
 #include "mem/scratchpad.hh"
 #include "mem/dma.hh"
-#include "layer/dbgmod.hh"
+#include "view/imgui/dbgmod.hh"
 #include "cpu/asm/asm.hh"
 #include "gpu/gpu.hh"
 
@@ -42,7 +42,7 @@ System::System(const std::string& bios_path, bool headless_mode)
     g_emu_state = {};
 
     if (!headless_mode) {
-        ImGuiLayer::Init();
+        View::Init();
     }
     SYS_INFO("Initializing all System Modules");
     Bus::Init();
@@ -61,7 +61,7 @@ System::~System()
     SYS_INFO("Shutting Down all system modules");
     Bios::Shutdown();
     if (!m_headless_mode) {
-        ImGuiLayer::Shutdown();
+        View::Shutdown();
     }
 }
 
@@ -91,18 +91,18 @@ void System::Run()
 
     // DEBUG
     g_emu_state.paused = true;
-    using namespace Psx::ImGuiLayer::DbgMod;
+    // using namespace Psx::ImGuiLayer::DbgMod;
     // <declare breakpoints here>
 
-    while (!ImGuiLayer::ShouldStop()) {
+    while (!View::ShouldClose()) {
         // display current cpu emulation speed
         if (Util::OneSecPassed()) {
-            ImGuiLayer::SetTitleExtra(PSX_FMT(" -- CPU: {:.4f} MHz ({:.1f}%)", (double)m_clocks / 1'000'000, (double)m_clocks / 33'868'8/*00*/));
+            View::SetTitleExtra(PSX_FMT(" -- CPU: {:.4f} MHz ({:.1f}%)", (double)m_clocks / 1'000'000, (double)m_clocks / 33'868'8/*00*/));
             m_clocks = 0;
         }
 
         // gui update
-        ImGuiLayer::OnUpdate();
+        View::OnUpdate();
 
         // system step
         if (g_emu_state.step_instr) {
@@ -111,7 +111,7 @@ void System::Run()
             // TODO: Replace this with a better timing system
             // uint i = 0;
             // while (i++ < 2'000'000 && !g_emu_state.paused && !ImGuiLayer::ShouldStop()) {
-            while (!g_emu_state.paused && !ImGuiLayer::ShouldStop()) {
+            while (!g_emu_state.paused && !View::ShouldClose()) {
                 // Step();
                 m_clocks++;
                 if (Step()) break;
@@ -128,7 +128,7 @@ void System::Run()
 
 bool System::Step()
 {
-    using namespace Psx::ImGuiLayer::DbgMod;
+    using namespace Psx::View::ImGuiLayer::DbgMod;
     // Some timing notes:
     // Scanline:
     //  CPU Cycles = 2172
@@ -143,7 +143,7 @@ bool System::Step()
     // check breakpoints
     Breakpoints::Saw<Breakpoints::BrkType::PCWatch>(Cpu::GetPC());
     if (Breakpoints::ReadyToBreak()) {
-        ImGuiLayer::OnUpdate();
+        View::OnUpdate();
     }
 #endif
 
