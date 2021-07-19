@@ -3,6 +3,7 @@ target_sources(psx PRIVATE
     context.cc
     device.cc
     swapchain.cc
+    pipeline.cc
     util.cc
 )
 
@@ -11,6 +12,7 @@ target_sources(psx-test PRIVATE
     context.cc
     device.cc
     swapchain.cc
+    pipeline.cc
     util.cc
 )
 

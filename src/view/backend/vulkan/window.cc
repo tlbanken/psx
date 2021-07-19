@@ -11,7 +11,7 @@
 
 #include <imgui/imgui.h>
 #include <imgui/imgui_impl_vulkan.h>
-#include <imgui/imgui_impl_glfw.h>
+#include <imgui/imgui_impl_sdl.h>
 
 #include <vector>
 
@@ -22,19 +22,6 @@
 #define VWINDOW_ERROR(...) PSXLOG_ERROR("Vulkan Window", __VA_ARGS__)
 #define VWINDOW_FATAL(...) VWINDOW_ERROR(__VA_ARGS__); throw std::runtime_error(PSX_FMT(__VA_ARGS__))
 
-
-// *** PRIVATE STUFF ***
-namespace {
-
-/*
- * Will be called by GLFW on errors.
- */
-void errorCallback(int error, const char* description)
-{
-    PSXLOG_ERROR("GLFW Error", "({:d}), {}", error, description);
-}
-}// end ns
-
 namespace Psx {
 namespace Vulkan {
 
@@ -43,34 +30,49 @@ Window::Window(int width, int height, const std::string& title)
 {
     VWINDOW_INFO("Initializing window with Vulkan backend");
 
-    // setup glfw
-    glfwSetErrorCallback(errorCallback);
-    if (!glfwInit()) {
-        VWINDOW_FATAL("Failed to initialize GLFW!");
+    // setup sdl2
+    if (SDL_Init(SDL_INIT_VIDEO)) {
+        VWINDOW_FATAL("Failed to initialize SDL2: {}", SDL_GetError());
     }
 
     // create window
-    glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-    m_window = glfwCreateWindow(width, height, title.c_str(), nullptr, nullptr);
+    SDL_WindowFlags window_flags = (SDL_WindowFlags)(SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
+    m_window = SDL_CreateWindow(
+        m_title_base.c_str(), 
+        SDL_WINDOWPOS_CENTERED, 
+        SDL_WINDOWPOS_CENTERED, 
+        width, 
+        height, 
+        window_flags
+    );
     if (m_window == nullptr) {
-        VWINDOW_FATAL("Failed to create GLFW window!");
+        VWINDOW_FATAL("Failed to create SDL Window: {}", SDL_GetError());
     }
 
     // get extensions
     u32 extensions_count = 0;
-    const char **extensions = glfwGetRequiredInstanceExtensions(&extensions_count);
+    SDL_Vulkan_GetInstanceExtensions(m_window, &extensions_count, NULL);
+    const char **extensions = new const char*[extensions_count];
+    SDL_Vulkan_GetInstanceExtensions(m_window, &extensions_count, extensions);
     std::vector<const char*> vec_extensions;
     for (u32 i = 0; i < extensions_count; i++) {
         vec_extensions.push_back(extensions[i]);
     }
     m_context.reset(new Context(vec_extensions, m_window));
+    delete[] extensions;
+
+    Psx::View::ImGuiLayer::Init();
+    m_context->InitializeImGui(m_window);
 }
 
 Window::~Window()
 {
     VWINDOW_INFO("Destroying Vulkan Window");
     ImGui_ImplVulkan_Shutdown();
+    ImGui_ImplSDL2_Shutdown();
     Psx::View::ImGuiLayer::Shutdown();
+    SDL_DestroyWindow(m_window);
+    SDL_Quit();
 }
 
 /*
@@ -78,7 +80,17 @@ Window::~Window()
  */
 bool Window::ShouldClose()
 {
-    return glfwWindowShouldClose(m_window);
+    SDL_Event event;
+    bool done = false;
+    while (SDL_PollEvent(&event))
+    {
+        ImGui_ImplSDL2_ProcessEvent(&event);
+        if (event.type == SDL_QUIT)
+            done = true;
+        if (event.type == SDL_WINDOWEVENT && event.window.event == SDL_WINDOWEVENT_CLOSE && event.window.windowID == SDL_GetWindowID(m_window))
+            done = true;
+    }
+    return done;
 }
 
 /*
@@ -86,7 +98,7 @@ bool Window::ShouldClose()
  */
 void Window::SetTitleExtra(const std::string& extra)
 {
-    glfwSetWindowTitle(m_window, (m_title_base + extra).c_str());
+    SDL_SetWindowTitle(m_window, (m_title_base + extra).c_str());
 }
 
 /*
@@ -94,9 +106,9 @@ void Window::SetTitleExtra(const std::string& extra)
  */
 void Window::NewFrame()
 {
-    glfwPollEvents();
+    // glfwPollEvents(); // TODO handle events
     ImGui_ImplVulkan_NewFrame();
-    ImGui_ImplGlfw_NewFrame();
+    ImGui_ImplSDL2_NewFrame(m_window);
     ImGui::NewFrame();
 }
 
@@ -106,7 +118,7 @@ void Window::NewFrame()
 void Window::Render()
 {
     ImGui::Render();
-    glfwSwapBuffers(m_window);
+    // glfwSwapBuffers(m_window);
 }
 
 /*

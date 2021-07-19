@@ -28,7 +28,7 @@ public:
     void OnUpdate();
 
 private:
-    GLFWwindow *m_window;
+    SDL_Window *m_window;
     std::string m_title_base;
     std::unique_ptr<Context> m_context;
 };

@@ -11,9 +11,9 @@
 
 #include "view/backend/vulkan/window.hh"
 
-#define VIEW_INFO(...) PSXLOG_INFO("Vulkan Backend", __VA_ARGS__)
-#define VIEW_WARN(...) PSXLOG_WARN("Vulkan Backend", __VA_ARGS__)
-#define VIEW_ERROR(...) PSXLOG_ERROR("Vulkan Backend", __VA_ARGS__)
+#define VIEW_INFO(...) PSXLOG_INFO("View", __VA_ARGS__)
+#define VIEW_WARN(...) PSXLOG_WARN("View", __VA_ARGS__)
+#define VIEW_ERROR(...) PSXLOG_ERROR("View", __VA_ARGS__)
 #define VIEW_FATAL(...) VIEW_ERROR(__VA_ARGS__); throw std::runtime_error(PSX_FMT(__VA_ARGS__))
 
 // window size

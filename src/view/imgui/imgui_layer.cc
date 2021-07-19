@@ -35,25 +35,6 @@
 #define IMGUILAYER_ERR(...) PSXLOG_ERROR("ImGui-Layer", __VA_ARGS__)
 #define IMGUILAYER_FATAL(...) IMGUILAYER_ERR(__VA_ARGS__); throw std::runtime_error(PSX_FMT(__VA_ARGS__))
 
-namespace  {
-// struct State {
-// } s;
-
-// Protos
-// void newFrame();
-// void render();
-
-}// end namespace
-
-// /*
-//  * Will be called by GLFW on errors.
-//  */
-// static void errorCallback(int error, const char* description)
-// {
-//     PSXLOG_ERROR("GLFW Error", "({:d}), {}", error, description);
-// }
-
-
 namespace Psx {
 namespace View {
 namespace ImGuiLayer {
@@ -70,23 +51,11 @@ void Init(Style style)
     } else {
         ImGui::StyleColorsLight();
     }
-
-    // setup OpenGL and GLFW
-    // if (!ImGui_ImplGlfw_InitForVulkan(s.window, true)) {
-    //     IMGUILAYER_FATAL("Failed to initialize imgui for vulkan");
-    // }
-    // TODO setup init info for ImGui_ImplVulkan_InitInfo
-    // TODO call ImGui_ImplVulkan_Init(<init info>, <render pass>);
-    // ImGui_ImplOpenGL3_Init();
-
 }
 
 void Shutdown()
 {
     IMGUILAYER_INFO("Shutting down");
-
-    // ImGui_ImplOpenGL3_Shutdown();
-    // ImGui_ImplGlfw_Shutdown();
     ImGui::DestroyContext();
 }
 
@@ -167,52 +136,6 @@ void OnUpdate()
     // ImGui::ShowDemoWindow();
 }
 
-/*
- * Checks if the ImGui needs to terminate. This most common case being if the
- * window is closed.
- */
-// bool ShouldStop()
-// {
-//     return glfwWindowShouldClose(s.window);
-// }
-
-// void SetTitleExtra(const std::string& extra)
-// {
-//     glfwSetWindowTitle(s.window, (s.title_base + extra).c_str());
-// }
-
 }// end namespace
 }
-}
-
-namespace {
-
-// ===============================================
-// PRIVATE HELPER FUNCTIONS
-// ==============================================
-// /*
-//  * Creates a new frame in ImGui. Should be called BEFORE ImGuiLayer::render()
-//  */
-// void newFrame()
-// {
-//     glfwPollEvents();
-//     // start new frame
-//     // ImGui_ImplOpenGL3_NewFrame();
-//     ImGui_ImplVulkan_NewFrame();
-//     ImGui_ImplGlfw_NewFrame();
-//     ImGui::NewFrame();
-// }
-
-// /*
-//  * Renders the current draw data in ImGui.
-//  */
-// void render()
-// {
-//     ImGui::Render();
-//     // glClear(GL_COLOR_BUFFER_BIT);
-//     // ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-//     // TODO make render function
-//     glfwSwapBuffers(s.window);
-// }
-
 }

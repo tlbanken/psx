@@ -42,14 +42,20 @@ file(COPY ${FMT_HDRS} DESTINATION "${PROJECT_SOURCE_DIR}/extern/include/fmt")
 # ==============================
 # GLFW
 # ==============================
-add_subdirectory(glfw)
+# GLFW DOES NOT WORK FOR M1 MACS :(
+# add_subdirectory(glfw)
 
-set(GLFW_HDRS
-    ${PROJECT_SOURCE_DIR}/extern/glfw/include/GLFW/glfw3.h
-)
+# set(GLFW_HDRS
+#     ${PROJECT_SOURCE_DIR}/extern/glfw/include/GLFW/glfw3.h
+# )
 
-# Copy headers to extern/include/glfw
-file(COPY ${GLFW_HDRS} DESTINATION "${PROJECT_SOURCE_DIR}/extern/include/glfw")
+# # Copy headers to extern/include/glfw
+# file(COPY ${GLFW_HDRS} DESTINATION "${PROJECT_SOURCE_DIR}/extern/include/glfw")
+
+# ==============================
+# SDL2
+# ==============================
+add_subdirectory(SDL) # link against SDL2-static
 
 # ==============================
 # Dear ImGui Library
@@ -61,26 +67,19 @@ add_library(imgui STATIC
     imgui/imgui_tables.cpp
     imgui/imgui_widgets.cpp
     imgui/backends/imgui_impl_vulkan.cpp
-    imgui/backends/imgui_impl_glfw.cpp
+    imgui/backends/imgui_impl_sdl.cpp
 )
-
-# use GLAD
-add_compile_definitions(IMGUI_IMPL_OPENGL_LOADER_GLAD)
 
 target_include_directories(imgui PRIVATE "${PROJECT_SOURCE_DIR}/extern/imgui/")
 target_include_directories(imgui PRIVATE "${PROJECT_SOURCE_DIR}/extern/imgui/backends")
-target_include_directories(imgui PRIVATE "${PROJECT_SOURCE_DIR}/extern/glad/include/")
-target_include_directories(imgui PRIVATE "${PROJECT_SOURCE_DIR}/extern/glfw/include/")
+target_include_directories(imgui PRIVATE "${PROJECT_SOURCE_DIR}/extern/SDL/include")
 target_include_directories(imgui PRIVATE ${Vulkan_INCLUDE_DIRS})
 
 set(IMGUI_HDRS
     ${PROJECT_SOURCE_DIR}/extern/imgui/imgui.h
-    ${PROJECT_SOURCE_DIR}/extern/imgui/imconfig.h
-    ${PROJECT_SOURCE_DIR}/extern/imgui/imstb_rectpack.h
-    ${PROJECT_SOURCE_DIR}/extern/imgui/imstb_textedit.h
-    ${PROJECT_SOURCE_DIR}/extern/imgui/imstb_truetype.h
     ${PROJECT_SOURCE_DIR}/extern/imgui/backends/imgui_impl_vulkan.h
-    ${PROJECT_SOURCE_DIR}/extern/imgui/backends/imgui_impl_glfw.h
+    # ${PROJECT_SOURCE_DIR}/extern/imgui/backends/imgui_impl_glfw.h
+    ${PROJECT_SOURCE_DIR}/extern/imgui/backends/imgui_impl_sdl.h
 )
 
 # Copy headers to extern/include/imgui

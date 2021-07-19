@@ -57,6 +57,8 @@ src
     │       ├── device.cc
     │       ├── device.hh
     │       ├── includes.hh
+    │       ├── pipeline.cc
+    │       ├── pipeline.hh
     │       ├── renderer.cc
     │       ├── renderer.hh
     │       ├── shaders
@@ -119,4 +121,4 @@ tests
 ├── psxtest_mem.cc
 └── psxtest_mem.hh
 
-16 directories, 100 files
+16 directories, 102 files

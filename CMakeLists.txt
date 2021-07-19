@@ -71,7 +71,7 @@ target_include_directories(psx-test PRIVATE ${PSX_INCLUDES})
 set(PSX_LINKED_LIBS
   fmt
   imgui
-  glfw
+  SDL2-static
   ${Vulkan_LIBRARY}
 )
 target_link_libraries(psx ${PSX_LINKED_LIBS})

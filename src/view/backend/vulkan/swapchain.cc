@@ -22,9 +22,9 @@ namespace Vulkan {
 // **********************
 // *** PUBLIC METHODS ***
 // **********************
-Swapchain::Swapchain(GLFWwindow *window, Device device, VkSurfaceKHR surface)
+Swapchain::Swapchain(int width, int height, Device device, VkSurfaceKHR surface)
 {
-    createSwapChain(window, device, surface);
+    createSwapChain(width, height, device, surface);
     createImageViews(device);
 }
 
@@ -51,19 +51,30 @@ VkSwapchainKHR Swapchain::GetVkSwapchainKHR()
     return m_swapchain;
 }
 
+u32 Swapchain::GetMinImageCount()
+{
+    return m_min_image_count;
+}
+
+u32 Swapchain::GetImageCount()
+{
+    return m_image_count;
+}
+
 // ***********************
 // *** PRIVATE METHODS ***
 // ***********************
 /*
  * Create and return the swap chain for the device and surface given.
  */
-void Swapchain::createSwapChain(GLFWwindow *window, Device device, VkSurfaceKHR surface)
+void Swapchain::createSwapChain(int width, int height, Device device, VkSurfaceKHR surface)
 {
+    VSWAPCHAIN_INFO("Creating swapchain");
     Util::SwapChainSupportDetails details = Util::QuerySwapChainSupport(device.GetPhysicalDevice(), surface);
 
     VkSurfaceFormatKHR surface_format = chooseSwapSurfaceFormat(details.formats);
     VkPresentModeKHR present_mode = chooseSwapPresentMode(details.preset_modes);
-    VkExtent2D extent = chooseSwapExtent(details.capabilities, window);
+    VkExtent2D extent = chooseSwapExtent(details.capabilities, width, height);
 
     // we want the minimum number of images + 1 in the swap chain
     // if we are allowed to
@@ -72,6 +83,7 @@ void Swapchain::createSwapChain(GLFWwindow *window, Device device, VkSurfaceKHR 
         // clamp
         image_count = details.capabilities.maxImageCount;
     }
+    m_min_image_count = image_count;
 
     // config the swap chain
     VkSwapchainCreateInfoKHR create_info{};
@@ -114,6 +126,7 @@ void Swapchain::createSwapChain(GLFWwindow *window, Device device, VkSurfaceKHR 
     vkGetSwapchainImagesKHR(device.GetLogicalDevice(), m_swapchain, &image_count, m_images.data());
     m_format = surface_format.format;
     m_extent = extent;
+    m_image_count = image_count;
 }
 
 /*
@@ -121,16 +134,19 @@ void Swapchain::createSwapChain(GLFWwindow *window, Device device, VkSurfaceKHR 
  */
 VkSurfaceFormatKHR Swapchain::chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& available_formats)
 {
+    VSWAPCHAIN_INFO("Choosing Swap Surface Format");
     // look for a format with 24-bit + transparency color with sRGB color space
     for (const auto& format : available_formats) {
         if (format.format == VK_FORMAT_B8G8R8A8_SRGB 
             && format.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR)
         {
+            VSWAPCHAIN_INFO("Ideal Swap Surface found");
             return format;
         }
     }
     // if none are perfect, just return the first one.
     // Could also rank the formats and return the best one.
+    VSWAPCHAIN_WARN("Ideal Swap Surface not found, defaulting to first available surface");
     return available_formats[0];
 }
 
@@ -139,6 +155,7 @@ VkSurfaceFormatKHR Swapchain::chooseSwapSurfaceFormat(const std::vector<VkSurfac
  */
 VkPresentModeKHR Swapchain::chooseSwapPresentMode(const std::vector<VkPresentModeKHR>& available_present_modes)
 {
+    VSWAPCHAIN_INFO("Choosing Swap Present Mode");
     // we want Mailbox mode which will allows for the smallest latency
     // (similar to unlocked fps with little screen tearing)
     for (const auto& present_mode : available_present_modes) {
@@ -156,14 +173,13 @@ VkPresentModeKHR Swapchain::chooseSwapPresentMode(const std::vector<VkPresentMod
 /*
  * Return the swap extent limited by our capabilities and window.
  */
-VkExtent2D Swapchain::chooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities, GLFWwindow *window)
+VkExtent2D Swapchain::chooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities, int width, int height)
 {
+    VSWAPCHAIN_INFO("Choosing Swap Extent");
     if (capabilities.currentExtent.width != UINT32_MAX) {
+        VSWAPCHAIN_WARN("Surface capabilities is UINT32_MAX, ignoring specified width/height");
         return capabilities.currentExtent;
     } else {
-        int width, height;
-        glfwGetFramebufferSize(window, &width, &height);
-
         VkExtent2D actual_extent = {
             static_cast<u32>(width),
             static_cast<u32>(height)
@@ -183,6 +199,7 @@ VkExtent2D Swapchain::chooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilit
  */
 void Swapchain::createImageViews(Device device)
 {
+    VSWAPCHAIN_INFO("Creating Image Views");
     m_image_views.resize(m_images.size());
     for (size_t i = 0; i < m_images.size(); i++) {
         VkImageViewCreateInfo create_info{};

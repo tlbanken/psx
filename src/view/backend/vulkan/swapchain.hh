@@ -19,13 +19,16 @@ namespace Vulkan {
 class Swapchain {
 public:
     Swapchain() {}
-    Swapchain(GLFWwindow *window, Device device, VkSurfaceKHR surface);
+    Swapchain(int width, int height, Device device, VkSurfaceKHR surface);
 
     VkSwapchainKHR GetVkSwapchainKHR();
     std::vector<VkImageView> GetImageViews();
     VkFormat GetFormat();
     VkExtent2D GetExtent();
-    // TODO: recreate swap chain function
+    u32 GetImageCount();
+    u32 GetMinImageCount();
+    // TODO: Aquire next image index
+    // TODO: Swapchain Present
 private:
     struct SwapChainSupportDetails {
         VkSurfaceCapabilitiesKHR capabilities;
@@ -39,12 +42,14 @@ private:
     std::vector<VkImageView> m_image_views;
     VkFormat m_format;
     VkExtent2D m_extent;
+    u32 m_image_count;
+    u32 m_min_image_count;
 
     // private member functions
-    void createSwapChain(GLFWwindow *window, Device device, VkSurfaceKHR surface);
+    void createSwapChain(int width, int height, Device device, VkSurfaceKHR surface);
     VkSurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& available_formats);
     VkPresentModeKHR chooseSwapPresentMode(const std::vector<VkPresentModeKHR>& available_present_modes);
-    VkExtent2D chooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities, GLFWwindow *window);
+    VkExtent2D chooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities, int width, int height);
     void createImageViews(Device device);
 };
 

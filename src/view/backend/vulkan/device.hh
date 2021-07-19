@@ -24,11 +24,17 @@ public:
 
     VkPhysicalDevice GetPhysicalDevice();
     VkDevice GetLogicalDevice();
+    VkQueue GetGraphicsQueue();
+    u32 GetGraphicsQueueFamily();
 private:
 
     VkPhysicalDevice m_physical_device = VK_NULL_HANDLE;
     VkDevice m_logical_device = VK_NULL_HANDLE;
     std::vector<const char*> m_extensions;
+    VkQueue m_graphics_queue;
+    VkQueue m_present_queue;
+    u32 m_graphics_queue_family;
+    u32 m_present_queue_family;
 
     // logical device
     void createLogicalDevice(VkSurfaceKHR surface);

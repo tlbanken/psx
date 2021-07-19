@@ -9,5 +9,7 @@
  */
 #pragma once
 
+#include <SDL.h>
+#include <SDL_vulkan.h>
 #include <vulkan/vulkan.h>
-#include "glfw/glfw3.h" // This needs to be declared after vulkan.h
+// #include "glfw/glfw3.h" // This needs to be declared after vulkan.h

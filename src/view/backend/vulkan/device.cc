@@ -40,6 +40,16 @@ VkDevice Device::GetLogicalDevice()
     return m_logical_device;
 }
 
+u32 Device::GetGraphicsQueueFamily()
+{
+    return m_graphics_queue_family;
+}
+
+VkQueue Device::GetGraphicsQueue()
+{
+    return m_graphics_queue;
+}
+
 // ***********************
 // *** PRIVATE METHODS ***
 // ***********************
@@ -75,9 +85,11 @@ void Device::pickPhysicalDevice(VkInstance instance, VkSurfaceKHR surface)
     if (dev_candidates.rbegin()->first == 0) {
         VDEVICE_FATAL("Physical devices found, but none are usable");
     }
-    VDEVICE_INFO("Physical device chosen! Score: {}", dev_candidates.rbegin()->first);
     m_physical_device = dev_candidates.rbegin()->second;
     PSX_ASSERT(m_physical_device != VK_NULL_HANDLE);
+    VkPhysicalDeviceProperties properties;
+    vkGetPhysicalDeviceProperties(m_physical_device, &properties);
+    VDEVICE_INFO("Physical device: {}, Score: {}", properties.deviceName, dev_candidates.rbegin()->first);
 
     // When running on portibility layer (like MoltenVK), we need to enable
     // VK_KHR_portability_subset extension
@@ -201,9 +213,11 @@ void Device::createLogicalDevice(VkSurfaceKHR surface)
         VDEVICE_FATAL("Failed to create logical device [rc: {}]", res);
     }
 
-    // Do this later??
-    // vkGetDeviceQueue(device, indices.graphics_family.value(), 0, &s.graphics_queue);
-    // vkGetDeviceQueue(device, indices.present_family.value(), 0, &s.present_queue);
+    m_graphics_queue_family = indices.graphics_family.value();
+    m_present_queue_family = indices.graphics_family.value();
+    // get our queues
+    vkGetDeviceQueue(m_logical_device, indices.graphics_family.value(), 0, &m_graphics_queue);
+    vkGetDeviceQueue(m_logical_device, indices.present_family.value(), 0, &m_present_queue);
 }
 
 }// end ns

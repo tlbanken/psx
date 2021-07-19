@@ -9,6 +9,10 @@
 
 #include "context.hh"
 
+#include "imgui/imgui.h"
+#include "imgui/imgui_impl_vulkan.h"
+#include "imgui/imgui_impl_sdl.h"
+
 #include <map>
 #include <set>
 
@@ -50,7 +54,7 @@ namespace Vulkan {
 // **********************
 // *** PUBLIC METHODS ***
 // **********************
-Context::Context(std::vector<const char*> extensions, GLFWwindow* window)
+Context::Context(std::vector<const char*> extensions, SDL_Window* window)
 {
     createInstance(extensions);
 #ifdef PSX_DEBUG
@@ -59,10 +63,15 @@ Context::Context(std::vector<const char*> extensions, GLFWwindow* window)
 #endif
     createSurface(window);
     m_device = Device(m_instance, m_surface);
-    m_swapchain = Swapchain(window, m_device, m_surface);
+    int w, h;
+    SDL_GetWindowSize(window, &w, &h);
+    m_swapchain = Swapchain(w, h, m_device, m_surface);
     createRenderPass();
     const std::string shader_folder("/src/view/backend/vulkan/shaders/");
-    createGraphicsPipeline(
+    m_pipeline = Pipeline(
+        m_device.GetLogicalDevice(),
+        m_render_pass,
+        m_swapchain.GetExtent(),
         std::string(PROJECT_ROOT_PATH) + shader_folder + "shader.vert.spv", 
         std::string(PROJECT_ROOT_PATH) + shader_folder + "shader.frag.spv" 
     );
@@ -70,14 +79,16 @@ Context::Context(std::vector<const char*> extensions, GLFWwindow* window)
 
 Context::~Context()
 {
+    VCTX_INFO("Destoying Vulkan Context");
 #ifdef PSX_DEBUG
     auto func = (PFN_vkDestroyDebugUtilsMessengerEXT) vkGetInstanceProcAddr(m_instance, "vkDestroyDebugUtilsMessengerEXT");
     if (func != nullptr) {
         func(m_instance, m_debug_messenger, nullptr);
     }
 #endif
-    vkDestroyPipeline(m_device.GetLogicalDevice(), m_graphics_pipeline.ptr, nullptr);
-    vkDestroyPipelineLayout(m_device.GetLogicalDevice(), m_graphics_pipeline.layout, nullptr);
+    vkDestroyDescriptorPool(m_device.GetLogicalDevice(), m_imgui_descriptor_pool, nullptr);
+    vkDestroyPipeline(m_device.GetLogicalDevice(), m_pipeline.GetPipeline(), nullptr);
+    vkDestroyPipelineLayout(m_device.GetLogicalDevice(), m_pipeline.GetLayout(), nullptr);
     vkDestroyRenderPass(m_device.GetLogicalDevice(), m_render_pass, nullptr);
     for (auto image_view : m_swapchain.GetImageViews()) {
         vkDestroyImageView(m_device.GetLogicalDevice(), image_view, nullptr);
@@ -86,6 +97,57 @@ Context::~Context()
     vkDestroyDevice(m_device.GetLogicalDevice(), nullptr);
     vkDestroySurfaceKHR(m_instance, m_surface, nullptr);
     vkDestroyInstance(m_instance, nullptr);
+}
+
+/*
+ * Initialize ImGui for vulkan.
+ * https://github.com/blurrypiano/littleVulkanEngine/blob/c25099a7da6770072fdfc9ec3bd4d38aa9380906/littleVulkanEngine/imguiDemo/lve_imgui.cpp
+ */
+void Context::InitializeImGui(SDL_Window *window)
+{
+    VCTX_INFO("Intializing ImGui for vulkan");
+    // set up a descriptor pool stored on this instance
+    VkDescriptorPoolSize pool_sizes[] = {
+        {VK_DESCRIPTOR_TYPE_SAMPLER, 1000},
+        {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1000},
+        {VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 1000},
+        {VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1000},
+        {VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, 1000},
+        {VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, 1000},
+        {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1000},
+        {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1000},
+        {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 1000},
+        {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 1000},
+        {VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, 1000}
+    };
+    VkDescriptorPoolCreateInfo pool_info = {};
+    pool_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+    pool_info.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
+    pool_info.maxSets = 1000 * IM_ARRAYSIZE(pool_sizes);
+    pool_info.poolSizeCount = (uint32_t)IM_ARRAYSIZE(pool_sizes);
+    pool_info.pPoolSizes = pool_sizes;
+    if (vkCreateDescriptorPool(m_device.GetLogicalDevice(), &pool_info, nullptr, &m_imgui_descriptor_pool) != VK_SUCCESS) {
+        VCTX_FATAL("Failed to set up descriptor pool for imgui");
+    }
+
+    // Setup Platform/Renderer backends
+    // Initialize imgui for vulkan
+    ImGui_ImplSDL2_InitForVulkan(window);
+    ImGui_ImplVulkan_InitInfo init_info = {};
+    init_info.Instance = m_instance;
+    init_info.PhysicalDevice = m_device.GetPhysicalDevice();
+    init_info.Device = m_device.GetLogicalDevice();
+    init_info.QueueFamily = m_device.GetGraphicsQueueFamily();
+    init_info.Queue = m_device.GetGraphicsQueue();
+
+    // pipeline cache is a potential future optimization, ignoring for now
+    init_info.PipelineCache = VK_NULL_HANDLE;
+    init_info.DescriptorPool = m_imgui_descriptor_pool;
+    init_info.Allocator = VK_NULL_HANDLE; // TODO: Implement allocator (like VMA)
+    init_info.MinImageCount = m_swapchain.GetMinImageCount();
+    init_info.ImageCount = m_swapchain.GetImageCount();
+    init_info.CheckVkResultFn = nullptr;// TODO: do I need this?
+    ImGui_ImplVulkan_Init(&init_info, m_render_pass);
 }
 
 // ***********************
@@ -196,10 +258,9 @@ void Context::setupDebugMessenger()
 /*
  * Create a surface for the given instance.
  */
-void Context::createSurface(GLFWwindow *window)
+void Context::createSurface(SDL_Window *window)
 {
-    VkResult res = glfwCreateWindowSurface(m_instance, window, nullptr, &m_surface);
-    if (res != VK_SUCCESS) {
+    if (!SDL_Vulkan_CreateSurface(window, m_instance, &m_surface)) {
         VCTX_FATAL("Failed to create surface!");
     }
 }
@@ -236,213 +297,6 @@ void Context::createRenderPass()
     if (res != VK_SUCCESS) {
         VCTX_FATAL("Failed to create Render Pass");
     }
-}
-
-/*
- * Create a graphics pipeline.
- */
-void Context::createGraphicsPipeline(const std::string& vs_path, const std::string& fs_path)
-{
-    auto vert_shader_bytes = readSPVFile(vs_path);
-    auto frag_shader_bytes = readSPVFile(fs_path);
-
-    VkShaderModule vert_shader = 
-        createShaderModule(vert_shader_bytes, m_device.GetLogicalDevice());
-    VkShaderModule frag_shader = 
-        createShaderModule(frag_shader_bytes, m_device.GetLogicalDevice());
-
-    // create shader stage infos
-    // vertex shader module
-    VkPipelineShaderStageCreateInfo vs_stage_info{};
-    vs_stage_info.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-    vs_stage_info.stage = VK_SHADER_STAGE_VERTEX_BIT;
-    vs_stage_info.module = vert_shader;
-    vs_stage_info.pName = "main";
-    // fragment shader module
-    VkPipelineShaderStageCreateInfo fs_stage_info{};
-    fs_stage_info.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-    fs_stage_info.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
-    fs_stage_info.module = frag_shader;
-    fs_stage_info.pName = "main";
-
-    VkPipelineShaderStageCreateInfo shader_stage_infos[] = {vs_stage_info, fs_stage_info};
-
-    // Vertex Input
-    VkPipelineVertexInputStateCreateInfo vi_state_info{};
-    vi_state_info.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-    vi_state_info.vertexBindingDescriptionCount = 0;
-    vi_state_info.pVertexBindingDescriptions = nullptr;
-    vi_state_info.vertexAttributeDescriptionCount = 0;
-    vi_state_info.pVertexAttributeDescriptions = nullptr;
-
-    // Input Assembly
-    VkPipelineInputAssemblyStateCreateInfo ia_state_info{};
-    ia_state_info.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
-    ia_state_info.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
-    ia_state_info.primitiveRestartEnable = VK_FALSE;
-
-    // Viewport
-    VkViewport viewport{};
-    viewport.x = 0.0f;
-    viewport.y = 0.0f;
-    viewport.width = (float) m_swapchain.GetExtent().width;
-    viewport.height = (float) m_swapchain.GetExtent().height;
-    viewport.minDepth = 0.0f;
-    viewport.maxDepth = 1.0f;
-    // Scissor
-    VkRect2D scissor{};
-    scissor.offset = {0, 0};
-    scissor.extent = m_swapchain.GetExtent();
-    // Viewport State
-    VkPipelineViewportStateCreateInfo vp_state_info{};
-    vp_state_info.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
-    vp_state_info.viewportCount = 1;
-    vp_state_info.pViewports = &viewport;
-    vp_state_info.scissorCount = 1;
-    vp_state_info.pScissors = &scissor;
-
-    // Rasterizer
-    VkPipelineRasterizationStateCreateInfo rasterizer{};
-    rasterizer.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
-    rasterizer.depthClampEnable = VK_FALSE;
-    rasterizer.rasterizerDiscardEnable = VK_FALSE;
-    rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
-    rasterizer.lineWidth = 1.0f;
-    rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;
-    rasterizer.frontFace = VK_FRONT_FACE_CLOCKWISE;
-    rasterizer.depthBiasEnable = VK_FALSE;
-    rasterizer.depthBiasConstantFactor = 0.0f; // Optional
-    rasterizer.depthBiasClamp = 0.0f; // Optional
-    rasterizer.depthBiasSlopeFactor = 0.0f; // Optional
-
-    // Multisampling
-    VkPipelineMultisampleStateCreateInfo multisampling{};
-    multisampling.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
-    multisampling.sampleShadingEnable = VK_FALSE; // disable for now
-    multisampling.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
-    multisampling.minSampleShading = 1.0f; // Optional
-    multisampling.pSampleMask = nullptr; // Optional
-    multisampling.alphaToCoverageEnable = VK_FALSE; // Optional
-    multisampling.alphaToOneEnable = VK_FALSE; // Optional
-
-    // Depth and Stencil testing
-    // None for now
-
-    // Color Blending
-    // attachment
-    VkPipelineColorBlendAttachmentState color_blend_attachment{};
-    color_blend_attachment.colorWriteMask =
-        VK_COLOR_COMPONENT_R_BIT |
-        VK_COLOR_COMPONENT_G_BIT |
-        VK_COLOR_COMPONENT_B_BIT |
-        VK_COLOR_COMPONENT_A_BIT;
-    color_blend_attachment.blendEnable = VK_FALSE; // turned off
-    color_blend_attachment.srcColorBlendFactor = VK_BLEND_FACTOR_ONE; // Optional
-    color_blend_attachment.dstColorBlendFactor = VK_BLEND_FACTOR_ZERO; // Optional
-    color_blend_attachment.colorBlendOp = VK_BLEND_OP_ADD; // Optional
-    color_blend_attachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE; // Optional
-    color_blend_attachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO; // Optional
-    color_blend_attachment.alphaBlendOp = VK_BLEND_OP_ADD; // Optional
-    // info
-    VkPipelineColorBlendStateCreateInfo color_blend_info{};
-    color_blend_info.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
-    color_blend_info.logicOpEnable = VK_FALSE;
-    color_blend_info.logicOp = VK_LOGIC_OP_COPY; // Optional
-    color_blend_info.attachmentCount = 1;
-    color_blend_info.pAttachments = &color_blend_attachment;
-    color_blend_info.blendConstants[0] = 0.0f; // Optional
-    color_blend_info.blendConstants[1] = 0.0f; // Optional
-    color_blend_info.blendConstants[2] = 0.0f; // Optional
-    color_blend_info.blendConstants[3] = 0.0f; // Optional
-    
-    // Not using Dynamic State right now
-    // VkPipelineDynamicStateCreateInfo dynamicState{};
-    // ...
-
-    // Pipeline Layout
-    // Turing it off for now
-    VkPipelineLayoutCreateInfo layout_info{};
-    layout_info.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-    layout_info.setLayoutCount = 0; // Optional
-    layout_info.pSetLayouts = nullptr; // Optional
-    layout_info.pushConstantRangeCount = 0; // Optional
-    layout_info.pPushConstantRanges = nullptr; // Optional
-    VkResult res = vkCreatePipelineLayout(m_device.GetLogicalDevice(), &layout_info, nullptr, &m_graphics_pipeline.layout);
-    if (res != VK_SUCCESS) {
-        VCTX_FATAL("Failed to create Pipeline Layout");
-    }
-
-    // Finally, Create the Graphics Pipeline
-    // first, setup info
-    VkGraphicsPipelineCreateInfo gp_info{};
-    gp_info.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-    gp_info.stageCount = 2;
-    gp_info.pStages = shader_stage_infos;
-    gp_info.pVertexInputState = &vi_state_info;
-    gp_info.pInputAssemblyState = &ia_state_info;
-    gp_info.pViewportState = &vp_state_info;
-    gp_info.pRasterizationState = &rasterizer;
-    gp_info.pMultisampleState = &multisampling;
-    gp_info.pDepthStencilState = nullptr; // Optional
-    gp_info.pColorBlendState = &color_blend_info;
-    gp_info.pDynamicState = nullptr; // Optional
-    gp_info.layout = m_graphics_pipeline.layout;
-    gp_info.renderPass = m_render_pass;
-    gp_info.subpass = 0;
-    gp_info.basePipelineHandle = VK_NULL_HANDLE; // Optional
-    gp_info.basePipelineIndex = -1; // Optional
-    // create the object
-    res = vkCreateGraphicsPipelines(m_device.GetLogicalDevice(), VK_NULL_HANDLE, 1, &gp_info, nullptr, &m_graphics_pipeline.ptr);
-    if (res != VK_SUCCESS) {
-        VCTX_FATAL("Failed to create Graphics Pipeline");
-    }
-
-    vkDestroyShaderModule(m_device.GetLogicalDevice(), vert_shader, nullptr);
-    vkDestroyShaderModule(m_device.GetLogicalDevice(), frag_shader, nullptr);
-}
-
-/*
- * Open and read a given file and return the data in a byte vector.
- */
-std::vector<char> Context::readSPVFile(const std::string& filepath)
-{
-    // open file in binary mode, starting at the end (to get file size)
-    std::ifstream file(filepath, std::ios::ate | std::ios::binary);
-    if (!file.is_open()) {
-        VCTX_FATAL("Failed to open file: {}", filepath);
-    }
-
-    // get file size, then seek to beginning
-    size_t filesize = (size_t) file.tellg();
-    std::vector<char> bytes(filesize);
-    file.seekg(0);
-
-    // read the data
-    file.read(bytes.data(), (std::streamsize)filesize);
-    
-    file.close();
-    PSX_ASSERT(!bytes.empty()); // probably expecting the shader to be non-empty
-    PSX_ASSERT(bytes[0] != 0x00); // first 4 bytes are a magic number, make sure we didn't read all 0's
-    return bytes;
-}
-
-/*
- * Create and return a shader module from the given byte code and device.
- */
-VkShaderModule Context::createShaderModule(std::vector<char>& bytecode, VkDevice device)
-{
-    VkShaderModuleCreateInfo info{};
-    info.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-    info.codeSize = bytecode.size();
-    info.pCode = reinterpret_cast<u32*>(bytecode.data());
-
-    VkShaderModule smod;
-    VkResult res = vkCreateShaderModule(device, &info, nullptr, &smod);
-    if (res != VK_SUCCESS) {
-        VCTX_FATAL("Failed to create shader module!");
-    }
-
-    return smod;
 }
 
 }// end ns

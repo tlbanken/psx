@@ -9,9 +9,6 @@
 
 #pragma once
 
-#include <vulkan/vulkan.h> // must be defined before glfw3
-#include "glfw/glfw3.h"
-
 #include <string>
 
 namespace Psx {
