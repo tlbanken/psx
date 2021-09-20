@@ -27,6 +27,8 @@ public:
     VkExtent2D GetExtent();
     u32 GetImageCount();
     u32 GetMinImageCount();
+    void CreateFrameBuffers(VkDevice device, VkRenderPass render_pass);
+    std::vector<VkFramebuffer> GetFrameBuffers();
     // TODO: Aquire next image index
     // TODO: Swapchain Present
 private:
@@ -44,6 +46,7 @@ private:
     VkExtent2D m_extent;
     u32 m_image_count;
     u32 m_min_image_count;
+    std::vector<VkFramebuffer> m_framebuffers;
 
     // private member functions
     void createSwapChain(int width, int height, Device device, VkSurfaceKHR surface);

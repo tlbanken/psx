@@ -15,6 +15,13 @@
 #include <memory>
 #include <string>
 
+// for sleep
+#ifdef _WIN32
+#include <Windows.h>
+#else
+#include <unistd.h>
+#endif
+
 #include "util/psxlog.hh"
 #include "util/psxutil.hh"
 #include "core/sys.hh"
@@ -38,6 +45,14 @@ int main()
     std::cout << PSX_FANCYTITLE(PSX_FMT("{} v{}-debug", PROJECT_NAME, PROJECT_VER));
 #else
     std::cout << PSX_FANCYTITLE(PSX_FMT("{} v{}", PROJECT_NAME, PROJECT_VER));
+#endif
+
+#ifdef PSX_DEBUG_WAIT_FOR_ATTACH
+    volatile int done = 0;
+    while (!done) {
+        MAIN_INFO("Waiting for debugger to attach...");
+        sleep(1);
+    }
 #endif
 
     int rc = 0;

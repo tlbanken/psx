@@ -19,4 +19,5 @@ Here are some random specifics that I need to come back to at some point.
 - <GPU>
     - We may need to be calling gpu.step() after every cpu call to make sure
       all cmds are being handled correctly
-
+- <BUS>
+  - Implement "fastmem": https://wheremyfoodat.github.io/software-fastmem/

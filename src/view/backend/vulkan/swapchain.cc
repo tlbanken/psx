@@ -61,6 +61,36 @@ u32 Swapchain::GetImageCount()
     return m_image_count;
 }
 
+void Swapchain::CreateFrameBuffers(VkDevice device, VkRenderPass render_pass)
+{
+    VSWAPCHAIN_INFO("Creating framebuffers");
+    m_framebuffers.resize(m_image_views.size());
+    for (int i = 0; i < m_image_views.size(); i++) {
+        VkImageView attachments[] = {
+            m_image_views[i]
+        };
+
+        VkFramebufferCreateInfo info{};
+        info.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+        info.renderPass = render_pass;
+        info.attachmentCount = 1;
+        info.pAttachments = attachments;
+        info.width = m_extent.width;
+        info.height = m_extent.height;
+        info.layers = 1;
+
+        VkResult res = vkCreateFramebuffer(device, &info, nullptr, &m_framebuffers[i]);
+        if (res != VK_SUCCESS) {
+            VSWAPCHAIN_FATAL("Failed to create framebuffer! [rc: {}]", res);
+        }
+    }
+}
+
+std::vector<VkFramebuffer> Swapchain::GetFrameBuffers()
+{
+    return m_framebuffers;
+}
+
 // ***********************
 // *** PRIVATE METHODS ***
 // ***********************

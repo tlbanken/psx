@@ -27,9 +27,6 @@
 #include "core/sys.hh"
 #include "gpu/gpu.hh"
 
-// #define WINDOW_H 1280
-// #define WINDOW_W 720
-
 #define IMGUILAYER_INFO(...) PSXLOG_INFO("ImGui-Layer", __VA_ARGS__)
 #define IMGUILAYER_WARN(...) PSXLOG_WARN("ImGui-Layer", __VA_ARGS__)
 #define IMGUILAYER_ERR(...) PSXLOG_ERROR("ImGui-Layer", __VA_ARGS__)
@@ -45,6 +42,7 @@ void Init(Style style)
     // create imgui
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
+
     // set style
     if (style == ImGuiLayer::Style::Dark) {
         ImGui::StyleColorsDark();
