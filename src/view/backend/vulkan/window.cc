@@ -22,7 +22,7 @@
 #define VWINDOW_ERROR(...) PSXLOG_ERROR("Vulkan Window", __VA_ARGS__)
 #define VWINDOW_FATAL(...) VWINDOW_ERROR(__VA_ARGS__); throw std::runtime_error(PSX_FMT(__VA_ARGS__))
 
-#define CLEAR_COLOR {1.0, 1.0, 1.0, 1.0}
+#define CLEAR_COLOR {0.0, 0.0, 0.0, 1.0}
 
 // *** PRIVATE NAMESPACE ***
 namespace {
@@ -106,6 +106,8 @@ Window::Window(int width, int height, const std::string& title)
 Window::~Window()
 {
     VWINDOW_INFO("Destroying Vulkan Window");
+    vkDeviceWaitIdle(m_dd->logidata.dev);
+    vkQueueWaitIdle(m_dd->physdata.graphics_queue);
     ImGui_ImplVulkan_Shutdown();
     ImGui_ImplSDL2_Shutdown();
     Psx::View::ImGuiLayer::Shutdown();
@@ -183,6 +185,9 @@ using namespace Psx::Vulkan;
 void frameRender(Builder::WindowData *wd, Builder::DeviceData *dd, ImDrawData *draw_data)
 {
     VkResult res;
+    PSX_ASSERT(draw_data != nullptr);
+    PSX_ASSERT(wd != nullptr);
+    PSX_ASSERT(dd != nullptr);
 
     VkSemaphore image_acquired_semaphore = wd->frame_semaphores[wd->semaphore_index].image_acquire;
     VkSemaphore render_complete_semaphore = wd->frame_semaphores[wd->semaphore_index].render_complete;
@@ -193,6 +198,7 @@ void frameRender(Builder::WindowData *wd, Builder::DeviceData *dd, ImDrawData *d
     }
     else if (res == VK_SUBOPTIMAL_KHR) {
         // TODO may want to rebuild swap chain here as well
+        VWINDOW_WARN("Not rebuilding swapchain when suggested!!\n");
     }
     else if (res != VK_SUCCESS) {
         VWINDOW_FATAL("Failed to acquire next image. [rc: {}]", res);
@@ -200,7 +206,7 @@ void frameRender(Builder::WindowData *wd, Builder::DeviceData *dd, ImDrawData *d
 
     Builder::FrameData *fd = &wd->frames[wd->frame_index];
 
-    // TODO wait for fences
+    // wait for fences
     res = vkWaitForFences(dd->logidata.dev, 1, &fd->fence, VK_TRUE, UINT64_MAX);
     if (res != VK_SUCCESS) {
         VWINDOW_FATAL("Failed to wait for fences. [rc: {}]", res);

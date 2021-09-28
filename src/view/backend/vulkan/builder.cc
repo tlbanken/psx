@@ -109,19 +109,23 @@ void Destroy(WindowData *wd, DeviceData *dd, VkInstance instance)
     VBUILDER_INFO("Destroying WindowData obj@{}", static_cast<void*>(wd));
     VBUILDER_INFO("Destroying DeviceData obj@{}", static_cast<void*>(dd));
 
-#ifndef PSX_DEBUG
+#ifdef PSX_DEBUG
     auto func = (PFN_vkDestroyDebugUtilsMessengerEXT) vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT");
     if (func != nullptr) {
         func(instance, s.debug_messenger, s.allocator);
     }
 #endif
 
-    vkDeviceWaitIdle(dd->logidata.dev);
 
     // frame data and semaphores
     for (u32 i = 0; i < wd->image_count; i++) {
         FrameData *fd = &wd->frames[i];
         FrameSemaphores *fs = &wd->frame_semaphores[i];
+
+        // wait for command buffers to be done
+        vkWaitForFences(dd->logidata.dev, 1, &fd->fence, VK_TRUE, UINT64_MAX);
+        vkResetFences(dd->logidata.dev, 1, &fd->fence);
+        vkResetCommandPool(dd->logidata.dev, fd->command_pool, VK_COMMAND_POOL_RESET_RELEASE_RESOURCES_BIT);
 
         // semaphores
         vkDestroySemaphore(dd->logidata.dev, fs->image_acquire, s.allocator);

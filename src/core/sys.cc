@@ -152,8 +152,8 @@ bool System::Step()
     
     // DMA
     Dma::Step();
-    return time_to_render;
-    // return false;
+    // return time_to_render;
+    return true;
 }
 
 }// end namespace

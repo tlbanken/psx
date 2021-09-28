@@ -31,9 +31,9 @@ set(FMT_HDRS
     ${PROJECT_SOURCE_DIR}/extern/fmt/include/fmt/locale.h
     ${PROJECT_SOURCE_DIR}/extern/fmt/include/fmt/os.h
     ${PROJECT_SOURCE_DIR}/extern/fmt/include/fmt/ostream.h
-    ${PROJECT_SOURCE_DIR}/extern/fmt/include/fmt/posix.h
     ${PROJECT_SOURCE_DIR}/extern/fmt/include/fmt/printf.h
     ${PROJECT_SOURCE_DIR}/extern/fmt/include/fmt/ranges.h
+    ${PROJECT_SOURCE_DIR}/extern/fmt/include/fmt/xchar.h
 )
 
 # Copy headers to /extern/include/fmt dir
