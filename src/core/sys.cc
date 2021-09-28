@@ -94,7 +94,8 @@ void System::Run()
     // using namespace Psx::ImGuiLayer::DbgMod;
     // <declare breakpoints here>
 
-    while (!View::ShouldClose()) {
+    bool should_close = false;
+    while (!should_close) {
         // display current cpu emulation speed
         if (Util::OneSecPassed()) {
             View::SetTitleExtra(PSX_FMT(" -- CPU: {:.4f} MHz ({:.1f}%)", (double)m_clocks / 1'000'000, (double)m_clocks / 33'868'8/*00*/));
@@ -111,9 +112,10 @@ void System::Run()
             // TODO: Replace this with a better timing system
             // uint i = 0;
             // while (i++ < 2'000'000 && !g_emu_state.paused && !ImGuiLayer::ShouldStop()) {
-            while (!g_emu_state.paused && !View::ShouldClose()) {
+            while (!g_emu_state.paused && !should_close) {
                 // Step();
                 m_clocks++;
+                should_close = View::ShouldClose();
                 if (Step()) break;
             }
         }
@@ -123,6 +125,7 @@ void System::Run()
 
         // reset some state
         g_emu_state.step_instr = false;
+        should_close = should_close ? true : View::ShouldClose();
     }
 }
 
