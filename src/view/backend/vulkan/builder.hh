@@ -49,6 +49,8 @@ struct WindowData {
     u32 semaphore_index;
     std::vector<FrameData> frames;
     std::vector<FrameSemaphores> frame_semaphores;
+    VkBuffer vertex_buffer;
+    VkDeviceMemory vertex_buffer_memory;
 
     WindowData()
     {
@@ -86,11 +88,18 @@ void BuildDeviceData(DeviceData *dd, VkInstance instance, VkSurfaceKHR surface);
 void BuildPhysicalDeviceData(DeviceData *dd, VkInstance instance, VkSurfaceKHR surface);
 void BuildLogicalDeviceData(DeviceData *dd, VkSurfaceKHR surface);
 void BuildSwapchainData(WindowData *wd, DeviceData *dd, int width, int height);
+void RebuildSwapchain(
+    WindowData *wd, DeviceData *dd,
+    int width, int height,
+    const std::string& vert_shader_path, 
+    const std::string& frag_shader_path);
+void DestroySwapchain(WindowData *wd, DeviceData *dd);
 void BuildImageViews(WindowData *wd, DeviceData *dd);
 void BuildRenderPassData(WindowData *wd, DeviceData *dd);
 void BuildPipelineData(WindowData *wd, DeviceData *dd, const std::string& vs_path, const std::string& fs_path);
 void BuildFrameBuffersData(WindowData *wd, DeviceData *dd);
 void BuildCommandBuffersData(WindowData *wd, DeviceData *dd);
+void BuildVertexBuffer(WindowData *wd, DeviceData *dd);
 
 
 }// end ns

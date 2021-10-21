@@ -72,6 +72,7 @@ set(PSX_LINKED_LIBS
   fmt
   imgui
   SDL2-static
+  glm
   ${Vulkan_LIBRARY}
 )
 target_link_libraries(psx ${PSX_LINKED_LIBS})

@@ -16,6 +16,7 @@
 #include <vector>
 
 #include "view/imgui/imgui_layer.hh"
+#include "view/backend/vulkan/render.hh"
 
 #define VWINDOW_INFO(...) PSXLOG_INFO("Vulkan Window", __VA_ARGS__)
 #define VWINDOW_WARN(...) PSXLOG_WARN("Vulkan Window", __VA_ARGS__)
@@ -97,6 +98,7 @@ Window::Window(int width, int height, const std::string& title)
     Builder::BuildPipelineData(m_wd, m_dd, vs_path, fs_path);
     Builder::BuildFrameBuffersData(m_wd, m_dd);
     Builder::BuildCommandBuffersData(m_wd, m_dd);
+    Builder::BuildVertexBuffer(m_wd, m_dd);
 
     Psx::View::ImGuiLayer::Init();
     Builder::InitializeImGuiVulkan(m_wd, m_dd, m_instance, m_window);
@@ -239,6 +241,20 @@ void frameRender(Builder::WindowData *wd, Builder::DeviceData *dd, ImDrawData *d
     rp_info.pClearValues = &wd->clear_value;
     vkCmdBeginRenderPass(fd->command_buffer, &rp_info, VK_SUBPASS_CONTENTS_INLINE);
 
+    // ------------------------
+    // Render PSX Graphics here
+    // ------------------------
+
+    // just draw a basic triangle for now
+    vkCmdBindPipeline(fd->command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, wd->pipeline);
+
+    VkBuffer vertex_buffers[] = {wd->vertex_buffer};
+    VkDeviceSize offsets[] = {0};
+    vkCmdBindVertexBuffers(fd->command_buffer, 0, 1, vertex_buffers, offsets);
+
+    vkCmdDraw(fd->command_buffer, 3, 1, 0, 0);
+
+    // ------------------------
 
     // imgui primitives
     ImGui_ImplVulkan_RenderDrawData(draw_data, fd->command_buffer);
@@ -281,6 +297,7 @@ void framePresent(Builder::WindowData *wd, Builder::DeviceData *dd)
     if (res == VK_ERROR_OUT_OF_DATE_KHR || res == VK_SUBOPTIMAL_KHR) {
         // TODO need to rebuild swap chain
         VWINDOW_FATAL("No support for rebuilding of swapchain!!\n");
+        // Builder::RebuildSwapchain(wd, dd, ...);
     }
     if (res != VK_SUCCESS) {
         VWINDOW_FATAL("Failed to present queue. [rc: {}]", res);

@@ -14,6 +14,9 @@
 
 #include <map>
 #include <set>
+#include <cstring>
+
+#include "view/backend/vulkan/render.hh"
 
 #define VBUILDER_INFO(...) PSXLOG_INFO("Vulkan Builder", __VA_ARGS__)
 #define VBUILDER_WARN(...) PSXLOG_WARN("Vulkan Builder", __VA_ARGS__)
@@ -47,6 +50,9 @@ struct SwapChainSupportDetails {
 struct State {
     VkAllocationCallbacks *allocator;
     VkDebugUtilsMessengerEXT debug_messenger;
+
+    std::string vert_shader_path;
+    std::string frag_shader_path;
     
     // TODO Figure out what to do with this
     VkDescriptorPool imgui_descriptor_pool;
@@ -64,6 +70,7 @@ VkPresentModeKHR chooseSwapPresentMode(const std::vector<VkPresentModeKHR>& avai
 VkExtent2D chooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities, int width, int height);
 std::vector<char> readSPVFile(const std::string& filepath);
 VkShaderModule createShaderModule(std::vector<char>& bytecode, VkDevice device);
+u32 findMemoryType(Psx::Vulkan::Builder::DeviceData *dd, u32 type_filter, VkMemoryMapFlags properties);
 
 /*
  * Callback function for debug messages from Vulkan.
@@ -116,46 +123,15 @@ void Destroy(WindowData *wd, DeviceData *dd, VkInstance instance)
     }
 #endif
 
+    // swapchain and related data
+    DestroySwapchain(wd, dd);
 
-    // frame data and semaphores
-    for (u32 i = 0; i < wd->image_count; i++) {
-        FrameData *fd = &wd->frames[i];
-        FrameSemaphores *fs = &wd->frame_semaphores[i];
-
-        // wait for command buffers to be done
-        vkWaitForFences(dd->logidata.dev, 1, &fd->fence, VK_TRUE, UINT64_MAX);
-        vkResetFences(dd->logidata.dev, 1, &fd->fence);
-        vkResetCommandPool(dd->logidata.dev, fd->command_pool, VK_COMMAND_POOL_RESET_RELEASE_RESOURCES_BIT);
-
-        // semaphores
-        vkDestroySemaphore(dd->logidata.dev, fs->image_acquire, s.allocator);
-        vkDestroySemaphore(dd->logidata.dev, fs->render_complete, s.allocator);
-
-        // fence
-        vkDestroyFence(dd->logidata.dev, fd->fence, s.allocator);
-
-        // frame buffers
-        vkDestroyFramebuffer(dd->logidata.dev, fd->framebuffer, s.allocator);
-
-        // command pool
-        vkDestroyCommandPool(dd->logidata.dev, fd->command_pool, s.allocator);
-
-        // image views
-        vkDestroyImageView(dd->logidata.dev, fd->backbuffer_view, s.allocator);
-    }
+    // destroy vertex buffer
+    vkDestroyBuffer(dd->logidata.dev, wd->vertex_buffer, s.allocator);
+    vkFreeMemory(dd->logidata.dev, wd->vertex_buffer_memory, s.allocator);
 
     // TODO Descriptor pool
     vkDestroyDescriptorPool(dd->logidata.dev, s.imgui_descriptor_pool, s.allocator);
-
-    // pipeline
-    vkDestroyPipeline(dd->logidata.dev, wd->pipeline, s.allocator);
-    vkDestroyPipelineLayout(dd->logidata.dev, wd->pipeline_layout, s.allocator);
-
-    // render pass
-    vkDestroyRenderPass(dd->logidata.dev, wd->render_pass, s.allocator);
-
-    // swapchain
-    vkDestroySwapchainKHR(dd->logidata.dev, wd->swapchain, s.allocator);
 
     // device
     vkDestroyDevice(dd->logidata.dev, s.allocator);
@@ -503,6 +479,82 @@ void BuildSwapchainData(WindowData *wd, DeviceData *dd, int width, int height)
 }
 
 /*
+ * Destroys the swap chain associated with the given window and device data.
+ */
+void DestroySwapchain(WindowData *wd, DeviceData *dd)
+{
+    PSX_ASSERT(wd != nullptr);
+    PSX_ASSERT(dd != nullptr);
+
+    // frame data and semaphores
+    for (u32 i = 0; i < wd->image_count; i++) {
+        FrameData *fd = &wd->frames[i];
+        FrameSemaphores *fs = &wd->frame_semaphores[i];
+
+        // wait for command buffers to be done
+        vkWaitForFences(dd->logidata.dev, 1, &fd->fence, VK_TRUE, UINT64_MAX);
+        vkResetFences(dd->logidata.dev, 1, &fd->fence);
+        vkResetCommandPool(dd->logidata.dev, fd->command_pool, VK_COMMAND_POOL_RESET_RELEASE_RESOURCES_BIT);
+
+        // semaphores
+        vkDestroySemaphore(dd->logidata.dev, fs->image_acquire, s.allocator);
+        vkDestroySemaphore(dd->logidata.dev, fs->render_complete, s.allocator);
+
+        // fence
+        vkDestroyFence(dd->logidata.dev, fd->fence, s.allocator);
+
+        // frame buffers (Destroyed in swap chain)
+        vkDestroyFramebuffer(dd->logidata.dev, fd->framebuffer, s.allocator);
+
+        // command buffers
+        vkFreeCommandBuffers(dd->logidata.dev, fd->command_pool, 1, &fd->command_buffer);
+
+        // command pool
+        vkDestroyCommandPool(dd->logidata.dev, fd->command_pool, s.allocator);
+
+        // image views (Destroyed in swapchain)
+        vkDestroyImageView(dd->logidata.dev, fd->backbuffer_view, s.allocator);
+    }
+
+    // pipeline
+    vkDestroyPipeline(dd->logidata.dev, wd->pipeline, s.allocator);
+    vkDestroyPipelineLayout(dd->logidata.dev, wd->pipeline_layout, s.allocator);
+
+    // render pass
+    vkDestroyRenderPass(dd->logidata.dev, wd->render_pass, s.allocator);
+
+    // swapchain
+    vkDestroySwapchainKHR(dd->logidata.dev, wd->swapchain, s.allocator);
+}
+
+/*
+ * Destroy and rebuild the swapchain as well as it's
+ * dependencies.
+ */
+void RebuildSwapchain(
+    WindowData *wd, DeviceData *dd,
+    int width, int height,
+    const std::string& vert_shader_path, 
+    const std::string& frag_shader_path)
+{
+    PSX_ASSERT(wd != nullptr);
+    PSX_ASSERT(dd != nullptr);
+
+    vkDeviceWaitIdle(dd->logidata.dev);
+
+    // clean up old swap chain
+    DestroySwapchain(wd, dd);
+
+    // rebuild swapchain and everything that depends on it
+    BuildSwapchainData(wd, dd, width, height);
+    BuildImageViews(wd, dd);
+    BuildRenderPassData(wd, dd);
+    BuildPipelineData(wd, dd, vert_shader_path, frag_shader_path);
+    BuildFrameBuffersData(wd, dd);
+    BuildCommandBuffersData(wd, dd);
+}
+
+/*
  * Modifies WindowData:
  *  1. Set Image Views
  */
@@ -612,12 +664,14 @@ void BuildPipelineData(
     VkPipelineShaderStageCreateInfo shader_stage_infos[] = {vs_stage_info, fs_stage_info};
 
     // Vertex Input
+    auto binding_description = Render::Vertex::GetBindingDescription();
+    auto attribute_description = Render::Vertex::GetAttributeDescriptions();
     VkPipelineVertexInputStateCreateInfo vi_state_info{};
     vi_state_info.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-    vi_state_info.vertexBindingDescriptionCount = 0;
-    vi_state_info.pVertexBindingDescriptions = nullptr;
-    vi_state_info.vertexAttributeDescriptionCount = 0;
-    vi_state_info.pVertexAttributeDescriptions = nullptr;
+    vi_state_info.vertexBindingDescriptionCount = 1;
+    vi_state_info.pVertexBindingDescriptions = &binding_description;
+    vi_state_info.vertexAttributeDescriptionCount = (u32) attribute_description.size();
+    vi_state_info.pVertexAttributeDescriptions = attribute_description.data();
 
     // Input Assembly
     VkPipelineInputAssemblyStateCreateInfo ia_state_info{};
@@ -831,6 +885,55 @@ void BuildCommandBuffersData(WindowData *wd, DeviceData *dd)
             VBUILDER_FATAL("Failed to create image acquire semaphore. [rc: {}]", res);
         }
     }
+}
+
+void BuildVertexBuffer(WindowData *wd, DeviceData *dd)
+{
+    // -------------------------
+    // TODO: Don't hardcode me
+    const std::vector<Render::Vertex> vertices = {
+        {{0.0f, -0.5f}, {1.0f, 1.0f, 1.0f}},
+        {{0.5f, 0.5f}, {0.0f, 1.0f, 0.0f}},
+        {{-0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}}
+    };
+    // -------------------------
+
+    VkBufferCreateInfo buffer_info{};
+    buffer_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+    buffer_info.size = sizeof(vertices[0]) * vertices.size();
+    buffer_info.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+    buffer_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+    VkResult res = vkCreateBuffer(dd->logidata.dev, &buffer_info, s.allocator, &wd->vertex_buffer);
+    if (res != VK_SUCCESS) {
+        VBUILDER_FATAL("Failed to create vertex buffer. [rc: {}]", res);
+    }
+
+    VkMemoryRequirements mem_reqs;
+    vkGetBufferMemoryRequirements(dd->logidata.dev, wd->vertex_buffer, &mem_reqs);
+
+    VkMemoryAllocateInfo alloc_info{};
+    alloc_info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+    alloc_info.allocationSize = mem_reqs.size;
+    alloc_info.memoryTypeIndex = findMemoryType(
+        dd,
+        mem_reqs.memoryTypeBits,
+        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
+    );
+
+    // allocate the memory
+    res = vkAllocateMemory(dd->logidata.dev, &alloc_info, s.allocator, &wd->vertex_buffer_memory);
+    if (res != VK_SUCCESS) {
+        VBUILDER_FATAL("Failed to allocate vertex buffer memory. [rc: %d]", res);
+    }
+
+    vkBindBufferMemory(dd->logidata.dev, wd->vertex_buffer, wd->vertex_buffer_memory, 0);
+
+    // TODO: don't hardcode this here
+    void *data;
+    vkMapMemory(dd->logidata.dev, wd->vertex_buffer_memory, 0, buffer_info.size, 0, &data);
+    memcpy(data, vertices.data(), (size_t) buffer_info.size);
+    vkUnmapMemory(dd->logidata.dev, wd->vertex_buffer_memory);
 }
 
 }// end ns
@@ -1114,6 +1217,20 @@ VkShaderModule createShaderModule(std::vector<char>& bytecode, VkDevice device)
     }
 
     return smod;
+}
+
+u32 findMemoryType(Psx::Vulkan::Builder::DeviceData *dd, u32 type_filter, VkMemoryMapFlags properties)
+{
+    VkPhysicalDeviceMemoryProperties mem_props;
+    vkGetPhysicalDeviceMemoryProperties(dd->physdata.dev, &mem_props);
+
+    for (u32 i = 0; i < mem_props.memoryTypeCount; i++) {
+        if ((type_filter & (1 << i)) && (mem_props.memoryTypes[i].propertyFlags & properties) == properties) {
+            return i;
+        }
+    }
+    VBUILDER_FATAL("Failed to find suitable device memory type!");
+    return (u32)-1;
 }
 
 }// end private ns

@@ -40,7 +40,7 @@ static std::string getCurrentTimestamp()
 
     using std::chrono::system_clock;
     auto currentTime = std::chrono::system_clock::now();
-    auto transformed = currentTime.time_since_epoch().count() / 1000000;
+    auto transformed = currentTime.time_since_epoch().count() / 1'000;
 
     auto millis = transformed;
     if (first_ms == 0) {

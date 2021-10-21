@@ -11,7 +11,6 @@
 
 #include "util/psxutil.hh"
 #include "view/backend/vulkan/includes.hh"
-// #include "view/backend/vulkan/renderer.hh"
 #include "view/backend/vulkan/builder.hh"
 
 namespace Psx {

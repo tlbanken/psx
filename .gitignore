@@ -14,5 +14,6 @@ extern/include/imgui/*
 extern/include/glad/*
 extern/include/glfw/*
 extern/include/KHR/*
+extern/include/SDL/*
 compile_commands.json
 bios/*
