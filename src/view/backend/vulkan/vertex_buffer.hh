@@ -1,22 +1,24 @@
 /*
- * render.hh
+ * vertex_buffer.hh
  *
  * Travis Banken
- * 10/10/2021
+ * 10/23/2021
  * 
- * Renderer helper functions for vulkan rendering.
+ * Vertex Buffer class for vulkan.
  */
 #pragma once
 
+#include "util/psxutil.hh"
+
 #include <array>
+#include <vector>
 
 #include <glm/glm.hpp>
 
-#include "view/backend/vulkan/includes.hh"
+#include "includes.hh"
 
 namespace Psx {
 namespace Vulkan {
-namespace Render {
 
 struct Vertex {
     glm::vec2 pos;
@@ -53,6 +55,34 @@ struct Vertex {
     }
 };
 
+class VertexBuffer {
+public:
+    VertexBuffer();
+    VertexBuffer(VkDevice device, VkPhysicalDevice physical_device,
+                size_t size, VkAllocationCallbacks *allocator);
+    ~VertexBuffer() {}
+
+    void Resize(VkDevice device, VkPhysicalDevice physical_device,
+                size_t new_size, VkAllocationCallbacks *allocator);
+    void Destroy(VkDevice device, VkAllocationCallbacks *allocator);
+    size_t Size();
+    bool SetVertex(const Vertex& vert, size_t index);
+    bool PushVertex(const Vertex& vert);
+    bool DeleteVertex(size_t index);
+    void Draw(VkCommandBuffer command_buffer);
+    void Clear();
+    Vertex& At(size_t index);
+
+private:
+    u32 findMemoryType(VkPhysicalDevice dev, u32 type_filter, VkMemoryMapFlags properties);
+    void initialize(VkDevice device, VkPhysicalDevice physical_device,
+                size_t size, VkAllocationCallbacks *allocator);
+
+    std::vector<Vertex> m_vertices;
+    void *m_raw_memory;
+    VkBuffer m_buffer;
+    VkDeviceMemory m_buffer_memory;
+};
+
 } // end ns
-}
 }

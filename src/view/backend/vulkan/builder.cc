@@ -16,7 +16,7 @@
 #include <set>
 #include <cstring>
 
-#include "view/backend/vulkan/render.hh"
+#include "view/backend/vulkan/vertex_buffer.hh"
 
 #define VBUILDER_INFO(...) PSXLOG_INFO("Vulkan Builder", __VA_ARGS__)
 #define VBUILDER_WARN(...) PSXLOG_WARN("Vulkan Builder", __VA_ARGS__)
@@ -127,8 +127,9 @@ void Destroy(WindowData *wd, DeviceData *dd, VkInstance instance)
     DestroySwapchain(wd, dd);
 
     // destroy vertex buffer
-    vkDestroyBuffer(dd->logidata.dev, wd->vertex_buffer, s.allocator);
-    vkFreeMemory(dd->logidata.dev, wd->vertex_buffer_memory, s.allocator);
+    wd->vertex_buffer->Destroy(dd->logidata.dev, s.allocator);
+    delete wd->vertex_buffer;
+    wd->vertex_buffer = nullptr;
 
     // TODO Descriptor pool
     vkDestroyDescriptorPool(dd->logidata.dev, s.imgui_descriptor_pool, s.allocator);
@@ -142,7 +143,6 @@ void Destroy(WindowData *wd, DeviceData *dd, VkInstance instance)
     // instance
     vkDestroyInstance(instance, s.allocator);
 }
-
 
 VkInstance CreateInstance(std::vector<const char*> extensions)
 {
@@ -664,8 +664,8 @@ void BuildPipelineData(
     VkPipelineShaderStageCreateInfo shader_stage_infos[] = {vs_stage_info, fs_stage_info};
 
     // Vertex Input
-    auto binding_description = Render::Vertex::GetBindingDescription();
-    auto attribute_description = Render::Vertex::GetAttributeDescriptions();
+    auto binding_description = Vertex::GetBindingDescription();
+    auto attribute_description = Vertex::GetAttributeDescriptions();
     VkPipelineVertexInputStateCreateInfo vi_state_info{};
     vi_state_info.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
     vi_state_info.vertexBindingDescriptionCount = 1;
@@ -889,51 +889,14 @@ void BuildCommandBuffersData(WindowData *wd, DeviceData *dd)
 
 void BuildVertexBuffer(WindowData *wd, DeviceData *dd)
 {
-    // -------------------------
-    // TODO: Don't hardcode me
-    const std::vector<Render::Vertex> vertices = {
-        {{0.0f, -0.5f}, {1.0f, 1.0f, 1.0f}},
-        {{0.5f, 0.5f}, {0.0f, 1.0f, 0.0f}},
-        {{-0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}}
-    };
-    // -------------------------
-
-    VkBufferCreateInfo buffer_info{};
-    buffer_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-    buffer_info.size = sizeof(vertices[0]) * vertices.size();
-    buffer_info.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
-    buffer_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-
-    VkResult res = vkCreateBuffer(dd->logidata.dev, &buffer_info, s.allocator, &wd->vertex_buffer);
-    if (res != VK_SUCCESS) {
-        VBUILDER_FATAL("Failed to create vertex buffer. [rc: {}]", res);
-    }
-
-    VkMemoryRequirements mem_reqs;
-    vkGetBufferMemoryRequirements(dd->logidata.dev, wd->vertex_buffer, &mem_reqs);
-
-    VkMemoryAllocateInfo alloc_info{};
-    alloc_info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-    alloc_info.allocationSize = mem_reqs.size;
-    alloc_info.memoryTypeIndex = findMemoryType(
-        dd,
-        mem_reqs.memoryTypeBits,
-        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
-    );
-
-    // allocate the memory
-    res = vkAllocateMemory(dd->logidata.dev, &alloc_info, s.allocator, &wd->vertex_buffer_memory);
-    if (res != VK_SUCCESS) {
-        VBUILDER_FATAL("Failed to allocate vertex buffer memory. [rc: %d]", res);
-    }
-
-    vkBindBufferMemory(dd->logidata.dev, wd->vertex_buffer, wd->vertex_buffer_memory, 0);
-
-    // TODO: don't hardcode this here
-    void *data;
-    vkMapMemory(dd->logidata.dev, wd->vertex_buffer_memory, 0, buffer_info.size, 0, &data);
-    memcpy(data, vertices.data(), (size_t) buffer_info.size);
-    vkUnmapMemory(dd->logidata.dev, wd->vertex_buffer_memory);
+    wd->vertex_buffer = new VertexBuffer(dd->logidata.dev, dd->physdata.dev, 6, s.allocator);
+    wd->vertex_buffer->Resize(dd->logidata.dev, dd->physdata.dev, 3, s.allocator);
+    wd->vertex_buffer->At(0) = {{0.0f, -0.5f}, {1.0f, 1.0f, 1.0f}};
+    wd->vertex_buffer->At(1) = {{0.5f,  0.5f}, {1.0f, 1.0f, 1.0f}};
+    wd->vertex_buffer->At(2) = {{-0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}};
+    // wd->vertex_buffer->At(3) = {{0.3f, -0.5f}, {1.0f, 1.0f, 1.0f}};
+    // wd->vertex_buffer->At(4) = {{0.8f,  0.2f}, {1.0f, 1.0f, 1.0f}};
+    // wd->vertex_buffer->At(5) = {{-0.1f, 0.5f}, {1.0f, 1.0f, 1.0f}};
 }
 
 }// end ns

@@ -16,7 +16,6 @@
 #include <vector>
 
 #include "view/imgui/imgui_layer.hh"
-#include "view/backend/vulkan/render.hh"
 
 #define VWINDOW_INFO(...) PSXLOG_INFO("Vulkan Window", __VA_ARGS__)
 #define VWINDOW_WARN(...) PSXLOG_WARN("Vulkan Window", __VA_ARGS__)
@@ -248,11 +247,24 @@ void frameRender(Builder::WindowData *wd, Builder::DeviceData *dd, ImDrawData *d
     // just draw a basic triangle for now
     vkCmdBindPipeline(fd->command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, wd->pipeline);
 
-    VkBuffer vertex_buffers[] = {wd->vertex_buffer};
-    VkDeviceSize offsets[] = {0};
-    vkCmdBindVertexBuffers(fd->command_buffer, 0, 1, vertex_buffers, offsets);
+    // TESTING
+    static float r = 0.9f;
+    static float g = 0.5f;
+    static float b = 0.0f;
+    static float rstep = 0.05;
+    static float gstep = 0.05;
+    static float bstep = 0.05;
+    wd->vertex_buffer->At(0).col = {r, 1.0 - g, b};
+    wd->vertex_buffer->At(1).col = {1.0 - r, g, b};
+    wd->vertex_buffer->At(2).col = {r, g, 1.0 - b};
+    r += rstep;
+    if (r > 1.0 || r < 0.0) rstep *= -1.0;
+    g += gstep;
+    if (g > 1.0 || g < 0.0) gstep *= -1.0;
+    b += bstep;
+    if (b > 1.0 || b < 0.0) bstep *= -1.0;
 
-    vkCmdDraw(fd->command_buffer, 3, 1, 0, 0);
+    wd->vertex_buffer->Draw(fd->command_buffer);
 
     // ------------------------
 

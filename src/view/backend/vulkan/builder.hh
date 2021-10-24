@@ -10,6 +10,7 @@
 
 #include "view/backend/vulkan/includes.hh"
 #include "util/psxutil.hh"
+#include "view/backend/vulkan/vertex_buffer.hh"
 
 #include <vector>
 
@@ -49,8 +50,7 @@ struct WindowData {
     u32 semaphore_index;
     std::vector<FrameData> frames;
     std::vector<FrameSemaphores> frame_semaphores;
-    VkBuffer vertex_buffer;
-    VkDeviceMemory vertex_buffer_memory;
+    VertexBuffer *vertex_buffer;
 
     WindowData()
     {
