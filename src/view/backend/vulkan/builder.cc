@@ -1107,6 +1107,10 @@ VkPresentModeKHR chooseSwapPresentMode(const std::vector<VkPresentModeKHR>& avai
             VBUILDER_INFO("Using Mailbox Present Mode");
             return present_mode;
         }
+        if (present_mode == VK_PRESENT_MODE_IMMEDIATE_KHR) {
+            VBUILDER_INFO("Using Immediate Present Mode");
+            return present_mode;
+        }
     }
 
     // settle for FIFO mode (similar to V-Sync)

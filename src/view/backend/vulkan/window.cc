@@ -86,7 +86,9 @@ Window::Window(int width, int height, const std::string& title)
     }
     // set clear color
     m_wd->clear_value = {{CLEAR_COLOR}};
+#ifdef PSX_DEBUG
     Builder::SetupDebugMessenger(m_instance);
+#endif
     Builder::BuildDeviceData(m_dd, m_instance, m_wd->surface);
     Builder::BuildSwapchainData(m_wd, m_dd, width, height);
     Builder::BuildImageViews(m_wd, m_dd);

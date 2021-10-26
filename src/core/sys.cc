@@ -32,6 +32,8 @@
 #define SYS_WARN(...) PSXLOG_WARN("System", __VA_ARGS__)
 #define SYS_ERROR(...) PSXLOG_ERROR("System", __VA_ARGS__)
 
+#define CPU_MAX_CLOCK_RATE (33'868'800)
+
 namespace Psx {
 
 System::System(const std::string& bios_path, bool headless_mode)
@@ -95,11 +97,15 @@ void System::Run()
     // <declare breakpoints here>
 
     bool should_close = false;
+    long long delta_ns = 0;
+    const long long frame_time_ns = (1.0 / 60.0) * 1'000'000'000; // nano seconds in 1 frame for 60 fps
+    u64 clocks = 0;
+    SYS_INFO("Target Frame Time: {} ns", frame_time_ns);
     while (!should_close) {
         // display current cpu emulation speed
         if (Util::OneSecPassed()) {
-            View::SetTitleExtra(PSX_FMT(" -- CPU: {:.4f} MHz ({:.1f}%)", (double)m_clocks / 1'000'000, (double)m_clocks / 33'868'8/*00*/));
-            m_clocks = 0;
+            View::SetTitleExtra(PSX_FMT(" -- CPU: {:.4f} MHz ({:.1f}%)", (double)clocks / 1'000'000, (double)clocks / 33'868'8/*00*/));
+            clocks = 0;
         }
 
         // gui update
@@ -109,23 +115,17 @@ void System::Run()
         if (g_emu_state.step_instr) {
             Step();
         } else {
-            // TODO: Replace this with a better timing system
-            // uint i = 0;
-            // while (i++ < 2'000'000 && !g_emu_state.paused && !ImGuiLayer::ShouldStop()) {
-            while (!g_emu_state.paused && !should_close) {
-                // Step();
-                m_clocks++;
-                should_close = View::ShouldClose();
-                if (Step()) break;
+            while (!g_emu_state.paused && delta_ns < frame_time_ns && clocks <= CPU_MAX_CLOCK_RATE) {
+                Step();
+                clocks++;
+                delta_ns += Util::GetDeltaTime();
             }
         }
 
-        // render current Gpu State
-        Gpu::RenderFrame();
-
         // reset some state
+        delta_ns = 0;
         g_emu_state.step_instr = false;
-        should_close = should_close ? true : View::ShouldClose();
+        should_close = View::ShouldClose();
     }
 }
 
@@ -155,7 +155,6 @@ bool System::Step()
     
     // DMA
     Dma::Step();
-    // return time_to_render;
     return true;
 }
 

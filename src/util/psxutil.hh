@@ -75,5 +75,7 @@ inline u32 GetBits(u32 word, uint index, uint size)
  */
 bool OneSecPassed();
 
+long long GetDeltaTime();
+
 }// end ns
 }

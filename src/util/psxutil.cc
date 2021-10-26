@@ -17,7 +17,6 @@ namespace Util {
 bool OneSecPassed()
 {
     static auto last_sec = std::chrono::system_clock::now();
-    // using std::chrono::system_clock;
     auto cur_sec = std::chrono::system_clock::now();
 
     if ((cur_sec - last_sec) > std::chrono::duration<double>(1.0)) {
@@ -26,6 +25,16 @@ bool OneSecPassed()
     }
 
     return false;
+}
+
+long long GetDeltaTime()
+{
+    using namespace std::chrono;
+    static auto last = std::chrono::high_resolution_clock::now();
+    auto now = std::chrono::high_resolution_clock::now();
+    auto ns = duration_cast<nanoseconds>(now - last);
+    last = now;
+    return ns.count();
 }
 
 }// end ns
