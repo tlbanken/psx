@@ -98,18 +98,22 @@ void System::Run()
 
     bool should_close = false;
     long long delta_ns = 0;
+    int fps = 0;
     const long long frame_time_ns = (1.0 / 60.0) * 1'000'000'000; // nano seconds in 1 frame for 60 fps
     u64 clocks = 0;
     SYS_INFO("Target Frame Time: {} ns", frame_time_ns);
     while (!should_close) {
         // display current cpu emulation speed
         if (Util::OneSecPassed()) {
-            View::SetTitleExtra(PSX_FMT(" -- CPU: {:.4f} MHz ({:.1f}%)", (double)clocks / 1'000'000, (double)clocks / 33'868'8/*00*/));
+            View::SetTitleExtra(PSX_FMT(" -- CPU: {:.4f} MHz ({:.1f}%) -- FPS: {}",
+                (double)clocks / 1'000'000, (double)clocks / 33'868'8/*00*/, fps));
             clocks = 0;
+            fps = 0;
         }
 
         // gui update
         View::OnUpdate();
+        fps++;
 
         // system step
         if (g_emu_state.step_instr) {

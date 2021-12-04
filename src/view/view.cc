@@ -10,6 +10,7 @@
 #include "view.hh"
 
 #include "view/backend/vulkan/window.hh"
+#include "view/geometry.hh"
 
 #define VIEW_INFO(...) PSXLOG_INFO("View", __VA_ARGS__)
 #define VIEW_WARN(...) PSXLOG_WARN("View", __VA_ARGS__)
@@ -63,6 +64,11 @@ void SetTitleExtra(const std::string& extra)
 void OnUpdate()
 {
     s.window->OnUpdate();
+}
+
+void DrawPolygon(const Geometry::Polygon& polygon)
+{
+    s.window->DrawPolygon(polygon);
 }
 
 } // end ns

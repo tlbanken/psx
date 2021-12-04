@@ -15,6 +15,7 @@
 
 #include "mem/ram.hh"
 #include "view/imgui/dbgmod.hh"
+#include "view/geometry.hh"
 
 #define GPU_INFO(...) PSXLOG_INFO("GPU", __VA_ARGS__)
 #define GPU_WARN(...) PSXLOG_WARN("GPU", __VA_ARGS__)
@@ -98,7 +99,7 @@ void handleGP0Cmd(u32 cmd);
 void handleGP1Cmd(u32 word);
 void handleMiscCmd(u32 word);
 void handleEnvCmd(u32 word);
-void handlePolygon(u32 word);
+void handlePolygon(u32 word, bool reset_state = false);
 void softReset();
 void resetCmdQueue();
 void ackIrq();
@@ -127,6 +128,7 @@ void Init()
 void Reset()
 {
     GPU_INFO("Resetting state");
+    handlePolygon(0, true);
     s = {};
     Util::SetBits(s.sr, 26, 3, 0x7);
     // vram was reset, so need to resize
@@ -459,28 +461,105 @@ void handleEnvCmd(u32 word)
 /*
  * Polygon Builder state machine.
  */
-void handlePolygon(u32 word)
+void handlePolygon(u32 word, bool reset_state)
 {
-    static Gpu::Polygon s_polygon;
+    // state machine data
+    enum class WordType {
+        None,
+        Color,
+        Vertex,
+        Texture,
+    };
+    static Geometry::Polygon s_polygon;
     static int s_words_left = 0;
+    static int s_vertex_index = 0;
+    static WordType s_word_type = WordType::None;
 
-    switch (s_words_left) {
-    case 0: // start of new command
-    {
-        s_polygon.gouraud_shaded = Util::GetBits(word, 28, 1);
-        s_polygon.num_vertices = Util::GetBits(word, 27, 1) ? 4 : 3;
-        break;
-    }
-    case 1: // end of command
-        // TODO
+    auto resetLocalState = [&]() {
+        s_words_left = 0;
         s.cmd = CmdType::None;
-        break;
-    default:
-        GPU_FATAL("Unexpected number of words left in Polygon Command: {}", s_words_left);
+        s_vertex_index = 0;
+        s_word_type = WordType::None;
+    };
+
+    // forced reset
+    if (reset_state) {
+        resetLocalState();
+        return;
     }
 
+    switch (s_word_type) {
+    case WordType::None:
+    {
+        // start of new command
+        s_polygon.gouraud_shaded = Util::GetBits(word, 28, 1);
+        s_polygon.num_vertices   = Util::GetBits(word, 27, 1) ? 4 : 3;
+        s_polygon.textured       = Util::GetBits(word, 26, 1);
+        s_polygon.transparent    = Util::GetBits(word, 25, 1);
+        s_polygon.blend_texture  = Util::GetBits(word, 24, 1);
+
+        // TODO set words left
+        s_words_left = s_polygon.num_vertices + 1;
+
+        if (s_polygon.gouraud_shaded) {
+            // first color value is stored in this word
+            s_polygon.vertices[s_vertex_index].color = Geometry::Color(word);
+            s_words_left += (s_polygon.num_vertices - 1);
+        }
+        if (s_polygon.textured) {
+            s_words_left += s_polygon.num_vertices;
+        }
+
+        s_word_type = WordType::Vertex;
+        GPU_ERROR("Started new command with {} words left", s_words_left - 1);
+        break;
+    }
+    case WordType::Color:
+    {
+        s_polygon.vertices[s_vertex_index].color = Geometry::Color(word);
+        s_word_type = WordType::Vertex;
+        GPU_ERROR("Adding color [{:x}] to polygon", word);
+        break;
+    }
+    case WordType::Vertex:
+    {
+        s_polygon.vertices[s_vertex_index].x = static_cast<i16>(Util::GetBits(word, 0, 16));
+        s_polygon.vertices[s_vertex_index].y = static_cast<i16>(Util::GetBits(word, 16, 16));
+
+        if (s_polygon.textured) {
+            s_word_type = WordType::Texture;
+        } else if (s_polygon.gouraud_shaded) {
+            s_vertex_index++;
+            s_word_type = WordType::Color;
+        } else {
+            s_vertex_index++;
+            s_word_type = WordType::Vertex;
+        }
+        GPU_ERROR("Adding Vertex [{:x}] to polygon", word);
+        break;
+    }
+    case WordType::Texture:
+    {
+        // TODO
+        s_vertex_index++;
+        if (s_polygon.gouraud_shaded) {
+            s_word_type = WordType::Color;
+        } else {
+            s_word_type = WordType::Vertex;
+        }
+        GPU_ERROR("Adding texture [{:x}] to polygon", word);
+        break;
+    }
+    }
+
+    // check if finished with command
     s_words_left--;
-    PSX_ASSERT(0);
+    if (s_words_left <= 0) {
+        resetLocalState();
+        // TODO build the polygon
+        GPU_ERROR("Finished Polygon command");
+        // PSX_ASSERT(0);
+    }
 }
 
 /*
@@ -489,8 +568,9 @@ void handlePolygon(u32 word)
 void softReset()
 {
     GPU_INFO("Software Reset");
-    // clear fifo
+    // clear fifo and reset state machines
     resetCmdQueue();
+    handlePolygon(0, true);
     // ack irq (0)
     ackIrq();
     // display off (1)

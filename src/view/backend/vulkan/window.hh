@@ -12,6 +12,7 @@
 #include "util/psxutil.hh"
 #include "view/backend/vulkan/includes.hh"
 #include "view/backend/vulkan/builder.hh"
+#include "view/geometry.hh"
 
 namespace Psx {
 namespace Vulkan {
@@ -27,6 +28,7 @@ public:
     void NewFrame();
     void Render();
     void OnUpdate();
+    void DrawPolygon(const Geometry::Polygon& polygon);
 
 private:
     SDL_Window *m_window = nullptr;

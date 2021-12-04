@@ -178,6 +178,14 @@ void Window::OnUpdate()
     Render();
 }
 
+/*
+ * Draw the given polygon to the screen.
+ */
+void Window::DrawPolygon(const Geometry::Polygon& polygon)
+{
+    // TODO
+}
+
 }// end ns
 }
 
