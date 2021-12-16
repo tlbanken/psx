@@ -18,8 +18,8 @@
 #define VIEW_FATAL(...) VIEW_ERROR(__VA_ARGS__); throw std::runtime_error(PSX_FMT(__VA_ARGS__))
 
 // window size
-#define WINDOW_H 1280
-#define WINDOW_W 720
+#define WINDOW_W 1280
+#define WINDOW_H 720
 
 namespace {
 
@@ -43,7 +43,7 @@ void Init()
     VIEW_INFO("Initializing view");
 
     // create window
-    s.window = new Psx::Vulkan::Window(WINDOW_H, WINDOW_W, s.title_base.c_str());
+    s.window = new Psx::Vulkan::Window(WINDOW_W, WINDOW_H, s.title_base.c_str());
 }
 
 void Shutdown()

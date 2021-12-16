@@ -430,7 +430,9 @@ void doBlockDma()
     } else if constexpr (channel == Channel::Ch1) {
         PSX_ASSERT(0);
     } else if constexpr (channel == Channel::Ch2) {
-        PSX_ASSERT(0);
+        // PSX_ASSERT(0);
+        // TODO
+        DMA_WARN("Block DMA for channel 2 not supported!");
     } else if constexpr (channel == Channel::Ch3) {
         PSX_ASSERT(0);
     } else if constexpr (channel == Channel::Ch4) {

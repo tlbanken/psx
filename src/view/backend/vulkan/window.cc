@@ -23,6 +23,8 @@
 #define VWINDOW_FATAL(...) VWINDOW_ERROR(__VA_ARGS__); throw std::runtime_error(PSX_FMT(__VA_ARGS__))
 
 #define CLEAR_COLOR {0.0, 0.0, 0.0, 1.0}
+#define VIEWPORT_WIDTH (1024)
+#define VIEWPORT_HEIGHT (512)
 
 // *** PRIVATE NAMESPACE ***
 namespace {
@@ -32,6 +34,7 @@ using namespace Psx::Vulkan;
 void frameRender(Builder::WindowData *wd, Builder::DeviceData *dd, ImDrawData *draw_data);
 void framePresent(Builder::WindowData *wd, Builder::DeviceData *dd);
 void uploadImGuiFonts(Builder::WindowData *wd, Builder::DeviceData *dd);
+float convertToViewPortSpace(int x, int viewport_size, int window_size);
 
 }// end private ns
 
@@ -40,7 +43,7 @@ namespace Psx {
 namespace Vulkan {
 
 Window::Window(int width, int height, const std::string& title)
-    : m_title_base(title)
+    : m_title_base(title), m_win_height(height), m_win_width(width)
 {
     VWINDOW_INFO("Initializing window with Vulkan backend");
 
@@ -51,7 +54,7 @@ Window::Window(int width, int height, const std::string& title)
     }
 
     // create window
-    SDL_WindowFlags window_flags = (SDL_WindowFlags)(SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
+    SDL_WindowFlags window_flags = (SDL_WindowFlags)(SDL_WINDOW_VULKAN | SDL_WINDOW_ALLOW_HIGHDPI);
     m_window = SDL_CreateWindow(
         m_title_base.c_str(), 
         SDL_WINDOWPOS_CENTERED, 
@@ -183,7 +186,51 @@ void Window::OnUpdate()
  */
 void Window::DrawPolygon(const Geometry::Polygon& polygon)
 {
-    // TODO
+    // TODO REMOVE ME
+    // Geometry::Polygon test_polygon = polygon;
+    // test_polygon.vertices[0].x = 0;
+    // test_polygon.vertices[0].y = 0;
+    // test_polygon.vertices[1].x = VIEWPORT_WIDTH;
+    // test_polygon.vertices[1].y = 0;
+    // test_polygon.vertices[2].x = VIEWPORT_WIDTH / 2;
+    // test_polygon.vertices[2].y = VIEWPORT_HEIGHT;
+    // test_polygon.vertices[3].x = 0;
+    // test_polygon.vertices[3].y = 0;
+
+    // TODO: split into "drawTriangle and drawQuad"
+    for (int i = 0; i < polygon.num_vertices; i++) {
+        Geometry::Vertex gv = polygon.vertices[i];
+        Psx::Vulkan::Vertex vv;
+
+        // convert coordinates to work with vulkan
+        float vspace_x = convertToViewPortSpace(gv.x, VIEWPORT_WIDTH, m_win_width);
+        float vspace_y = convertToViewPortSpace(gv.y, VIEWPORT_HEIGHT, m_win_height);
+
+        vv.pos = glm::vec2(vspace_x, vspace_y);
+        // vv.col = glm::vec3(
+        //     (float)gv.color.red / 256.0,
+        //     (float)gv.color.green / 256.0,
+        //     (float)gv.color.blue / 256.0
+        // );
+        vv.col = glm::vec3(
+            1.0,
+            0.0,
+            0.0
+        );
+        VWINDOW_ERROR("Drawing Pos({}, {}) -> ({}, {}), Col({}, {}, {})", 
+            gv.x, gv.y,
+            vv.pos.x, vv.pos.y, 
+            vv.col.x, vv.col.y, vv.col.z);
+            // gv.color.red, gv.color.green, gv.color.blue);
+        if (!m_wd->vertex_buffer->PushVertex(vv)) {
+            // render early, flush buffer and try again
+            VWINDOW_INFO("Vertex buffer full, flushing...");
+            Render();
+            m_wd->vertex_buffer->Flush();
+            bool res = m_wd->vertex_buffer->PushVertex(vv);
+            PSX_ASSERT(res == true);
+        }
+    }
 }
 
 }// end ns
@@ -258,21 +305,21 @@ void frameRender(Builder::WindowData *wd, Builder::DeviceData *dd, ImDrawData *d
     vkCmdBindPipeline(fd->command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, wd->pipeline);
 
     // TESTING
-    static float r = 0.9f;
-    static float g = 0.5f;
-    static float b = 0.0f;
-    static float rstep = 0.05;
-    static float gstep = 0.05;
-    static float bstep = 0.05;
-    wd->vertex_buffer->At(0).col = {r, 1.0 - g, b};
-    wd->vertex_buffer->At(1).col = {1.0 - r, g, b};
-    wd->vertex_buffer->At(2).col = {r, g, 1.0 - b};
-    r += rstep;
-    if (r > 1.0 || r < 0.0) rstep *= -1.0;
-    g += gstep;
-    if (g > 1.0 || g < 0.0) gstep *= -1.0;
-    b += bstep;
-    if (b > 1.0 || b < 0.0) bstep *= -1.0;
+    // static float r = 0.9f;
+    // static float g = 0.5f;
+    // static float b = 0.0f;
+    // static float rstep = 0.05;
+    // static float gstep = 0.05;
+    // static float bstep = 0.05;
+    // wd->vertex_buffer->At(0).col = {r, 1.0 - g, b};
+    // wd->vertex_buffer->At(1).col = {1.0 - r, g, b};
+    // wd->vertex_buffer->At(2).col = {r, g, 1.0 - b};
+    // r += rstep;
+    // if (r > 1.0 || r < 0.0) rstep *= -1.0;
+    // g += gstep;
+    // if (g > 1.0 || g < 0.0) gstep *= -1.0;
+    // b += bstep;
+    // if (b > 1.0 || b < 0.0) bstep *= -1.0;
 
     wd->vertex_buffer->Draw(fd->command_buffer);
 
@@ -366,6 +413,26 @@ void uploadImGuiFonts(Builder::WindowData *wd, Builder::DeviceData *dd)
         VWINDOW_FATAL("Failed vkDeviceWaitIdle. [rc: {}]", res);
     }
     ImGui_ImplVulkan_DestroyFontUploadObjects();
+}
+
+// TODO: Maybe move this function to the vertex shader??
+float convertToViewPortSpace(int x, int viewport_size, int window_size)
+{
+    PSX_ASSERT(window_size >= viewport_size);
+    auto scale = [&](float p) -> float {
+        return (float)p * 2.0f / (float)window_size;
+    };
+
+    // scale x in [0, window_size] -> [0, 2]
+    float vp_x = scale((float)x);
+
+    // translate to center the view
+    vp_x = vp_x + scale((float)(window_size - viewport_size) / 2.0f);
+    
+    // move to [-1, 1]
+    vp_x -= 1.0f;
+
+    return vp_x;
 }
 
 }// end ns

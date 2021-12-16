@@ -37,6 +37,8 @@ private:
     Builder::DeviceData *m_dd = nullptr;
     VkInstance m_instance;
     VkAllocationCallbacks *m_allocator_callbacks = nullptr;
+    int m_win_height;
+    int m_win_width;
 };
 
 }// end ns

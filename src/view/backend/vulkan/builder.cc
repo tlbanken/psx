@@ -889,11 +889,12 @@ void BuildCommandBuffersData(WindowData *wd, DeviceData *dd)
 
 void BuildVertexBuffer(WindowData *wd, DeviceData *dd)
 {
-    wd->vertex_buffer = new VertexBuffer(dd->logidata.dev, dd->physdata.dev, 6, s.allocator);
-    wd->vertex_buffer->Resize(dd->logidata.dev, dd->physdata.dev, 3, s.allocator);
-    wd->vertex_buffer->At(0) = {{0.0f, -0.5f}, {1.0f, 1.0f, 1.0f}};
-    wd->vertex_buffer->At(1) = {{0.5f,  0.5f}, {1.0f, 1.0f, 1.0f}};
-    wd->vertex_buffer->At(2) = {{-0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}};
+    const size_t vb_size = 1024 * 512; // TODO pick a real size
+    wd->vertex_buffer = new VertexBuffer(dd->logidata.dev, dd->physdata.dev, vb_size, s.allocator);
+    // wd->vertex_buffer->Resize(dd->logidata.dev, dd->physdata.dev, 3, s.allocator);
+    // wd->vertex_buffer->At(0) = {{0.0f, -0.5f}, {1.0f, 1.0f, 1.0f}};
+    // wd->vertex_buffer->At(1) = {{0.5f,  0.5f}, {1.0f, 1.0f, 1.0f}};
+    // wd->vertex_buffer->At(2) = {{-0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}};
     // wd->vertex_buffer->At(3) = {{0.3f, -0.5f}, {1.0f, 1.0f, 1.0f}};
     // wd->vertex_buffer->At(4) = {{0.8f,  0.2f}, {1.0f, 1.0f, 1.0f}};
     // wd->vertex_buffer->At(5) = {{-0.1f, 0.5f}, {1.0f, 1.0f, 1.0f}};

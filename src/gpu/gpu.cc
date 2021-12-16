@@ -16,6 +16,7 @@
 #include "mem/ram.hh"
 #include "view/imgui/dbgmod.hh"
 #include "view/geometry.hh"
+#include "view/view.hh"
 
 #define GPU_INFO(...) PSXLOG_INFO("GPU", __VA_ARGS__)
 #define GPU_WARN(...) PSXLOG_WARN("GPU", __VA_ARGS__)
@@ -100,6 +101,7 @@ void handleGP1Cmd(u32 word);
 void handleMiscCmd(u32 word);
 void handleEnvCmd(u32 word);
 void handlePolygon(u32 word, bool reset_state = false);
+void handleLoadImage(u32 word);
 void softReset();
 void resetCmdQueue();
 void ackIrq();
@@ -402,13 +404,19 @@ void handleMiscCmd(u32 word)
     switch (cmd) {
     case 0x00: // NOP
         finishedCommand();
-        // s.cmd = CmdType::None;
         break;
     case 0x01: // clear cache
-        PSX_ASSERT(0);
+        // TODO
+        GPU_WARN("Cache not supported! Skipping clear cache command...");
+        finishedCommand();
         break;
     case 0x02: // quick rectangle fill
         PSX_ASSERT(0);
+        break;
+    case 0xa0: // Load Image
+        // TODO: need to build a state machine for the image transfer cmd
+        handleLoadImage(word);
+        finishedCommand();
         break;
     default:
         GPU_FATAL("Unknown GPU Misc Command [{:02x}]", cmd);
@@ -557,9 +565,23 @@ void handlePolygon(u32 word, bool reset_state)
     if (s_words_left <= 0) {
         resetLocalState();
         // TODO build the polygon
+        Psx::View::DrawPolygon(s_polygon);
         GPU_ERROR("Finished Polygon command");
         // PSX_ASSERT(0);
     }
+}
+
+// Load Image Command State Machine
+void handleLoadImage(u32 word)
+{
+    // TODO
+    // GP0(80h) - Copy Rectangle (VRAM to VRAM)
+    //   1st  Command           (Cc000000h)
+    //   2nd  Source Coord      (YyyyXxxxh)  ;Xpos counted in halfwords
+    //   3rd  Destination Coord (YyyyXxxxh)  ;Xpos counted in halfwords
+    //   4th  Width+Height      (YsizXsizh)  ;Xsiz counted in halfwords
+    // Copys data within framebuffer. The transfer is affected by Mask setting.
+    GPU_WARN("Load Image command not supported! Skipping word [{:08x}]...", word);
 }
 
 /*
@@ -642,7 +664,12 @@ void vertDisplayRange(u32 word)
 void displayMode(u32 word)
 {
     Util::SetBits(s.sr, 17, 2, word);
-    Util::SetBits(s.sr, 19, 1, word >> 2);
+
+    // TODO force bit 20 to 0 to get around having to implement interlaced
+    // support for now. NEED to fix this later!
+    // Util::SetBits(s.sr, 19, 1, word >> 2);
+    Util::SetBits(s.sr, 19, 1, 0);
+
     Util::SetBits(s.sr, 20, 1, word >> 3);
     Util::SetBits(s.sr, 21, 1, word >> 4);
     Util::SetBits(s.sr, 22, 1, word >> 5);

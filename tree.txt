@@ -52,27 +52,22 @@ src
     │   ├── CMakeLists.txt
     │   └── vulkan
     │       ├── CMakeLists.txt
-    │       ├── context.cc
-    │       ├── context.hh
-    │       ├── device.cc
-    │       ├── device.hh
+    │       ├── builder.cc
+    │       ├── builder.hh
     │       ├── includes.hh
-    │       ├── pipeline.cc
-    │       ├── pipeline.hh
-    │       ├── renderer.cc
-    │       ├── renderer.hh
     │       ├── shaders
     │       │   ├── CMakeLists.txt
     │       │   ├── shader.frag
     │       │   ├── shader.frag.spv
     │       │   ├── shader.vert
     │       │   └── shader.vert.spv
-    │       ├── swapchain.cc
-    │       ├── swapchain.hh
-    │       ├── util.cc
-    │       ├── util.hh
+    │       ├── vertex_buffer.cc
+    │       ├── vertex_buffer.hh
+    │       ├── vram.cc
+    │       ├── vram.hh
     │       ├── window.cc
     │       └── window.hh
+    ├── geometry.hh
     ├── imgui
     │   ├── CMakeLists.txt
     │   ├── dbgmod.cc
@@ -121,4 +116,4 @@ tests
 ├── psxtest_mem.cc
 └── psxtest_mem.hh
 
-16 directories, 102 files
+16 directories, 97 files

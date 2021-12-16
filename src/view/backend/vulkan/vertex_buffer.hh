@@ -65,10 +65,9 @@ public:
     void Resize(VkDevice device, VkPhysicalDevice physical_device,
                 size_t new_size, VkAllocationCallbacks *allocator);
     void Destroy(VkDevice device, VkAllocationCallbacks *allocator);
-    size_t Size();
     bool SetVertex(const Vertex& vert, size_t index);
     bool PushVertex(const Vertex& vert);
-    bool DeleteVertex(size_t index);
+    void Flush();
     void Draw(VkCommandBuffer command_buffer);
     void Clear();
     Vertex& At(size_t index);
@@ -82,6 +81,7 @@ private:
     void *m_raw_memory;
     VkBuffer m_buffer;
     VkDeviceMemory m_buffer_memory;
+    size_t m_next_index;
 };
 
 } // end ns

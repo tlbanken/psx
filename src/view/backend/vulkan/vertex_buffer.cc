@@ -40,14 +40,6 @@ void VertexBuffer::Destroy(VkDevice device, VkAllocationCallbacks *allocator)
     vkFreeMemory(device, m_buffer_memory, allocator);
 }
 
-/*
- * Return the number of vertices in the buffer.
- */
-size_t VertexBuffer::Size()
-{
-    return m_vertices.size();
-}
-
 bool VertexBuffer::SetVertex(const Vertex& vert, size_t index)
 {
     if (index >= m_vertices.size()) {
@@ -63,20 +55,26 @@ Vertex& VertexBuffer::At(size_t index)
     return m_vertices[index];
 }
 
+/*
+ * Attempt to add a vertext to the buffer. If there is no room, signal
+ * to the caller that it is time to flush the buffer.
+ */
 bool VertexBuffer::PushVertex(const Vertex& vert)
 {
-    m_vertices.push_back(vert);
-    // TODO resize??
+    if (m_next_index >= m_vertices.size()) {
+        return false;
+    }
+    m_vertices[m_next_index++] = vert;
     return true;
 }
 
-bool VertexBuffer::DeleteVertex(size_t index)
+void VertexBuffer::Flush()
 {
-    if (index >= m_vertices.size()) {
-        return false;
-    }
-    m_vertices.erase(m_vertices.begin() + index);
-    return true;
+    size_t size = m_vertices.size();
+    m_vertices.clear();
+    m_vertices.resize(size);
+    // TODO: may need to "zero" out the vectors
+    m_next_index = 0;
 }
 
 /*
@@ -85,18 +83,13 @@ bool VertexBuffer::DeleteVertex(size_t index)
 void VertexBuffer::Draw(VkCommandBuffer command_buffer)
 {
     // TODO: Only do this on vertex change
-    memcpy(m_raw_memory, m_vertices.data(), m_vertices.size() * sizeof(Vertex));
+    memcpy(m_raw_memory, m_vertices.data(), m_next_index * sizeof(Vertex));
 
     VkBuffer vertex_buffers[] = {m_buffer};
     VkDeviceSize offsets[] = {0};
     vkCmdBindVertexBuffers(command_buffer, 0, 1, vertex_buffers, offsets);
 
-    vkCmdDraw(command_buffer, (u32)m_vertices.size(), 1, 0, 0);
-}
-
-void VertexBuffer::Clear()
-{
-    m_vertices.clear();
+    vkCmdDraw(command_buffer, (u32)m_next_index, 1, 0, 0);
 }
 
 // *** PRIVATE METHODS ***
@@ -106,6 +99,7 @@ void VertexBuffer::initialize(VkDevice device, VkPhysicalDevice physical_device,
 {
     VBUFFER_INFO("Creating buffer for {} vertices.", size);
     m_vertices.resize(size);
+    m_next_index = 0;
 
     VkBufferCreateInfo buffer_info{};
     buffer_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
