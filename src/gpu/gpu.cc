@@ -351,7 +351,7 @@ void handleGP0Cmd(u32 word)
         handleEnvCmd(word);
         break;
     default:
-        GPU_FATAL("Unknown GP0 command: {:02x}", s.cmd);
+        GPU_FATAL("Unknown GP0 command: {:02x}", (u8)s.cmd);
     }
 }
 
