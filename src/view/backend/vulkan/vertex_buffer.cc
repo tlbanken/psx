@@ -34,7 +34,7 @@ void VertexBuffer::Resize(VkDevice device, VkPhysicalDevice physical_device,
 
 void VertexBuffer::Destroy(VkDevice device, VkAllocationCallbacks *allocator)
 {
-    VBUFFER_INFO("Destroying buffer with {} vertices", m_vertices.size());
+    VBUFFER_INFO("Destroying buffer with {} vertices", m_next_index);
     vkUnmapMemory(device, m_buffer_memory);
     vkDestroyBuffer(device, m_buffer, allocator);
     vkFreeMemory(device, m_buffer_memory, allocator);
@@ -83,7 +83,8 @@ void VertexBuffer::Flush()
 void VertexBuffer::Draw(VkCommandBuffer command_buffer)
 {
     // TODO: Only do this on vertex change
-    memcpy(m_raw_memory, m_vertices.data(), m_next_index * sizeof(Vertex));
+    // memcpy(m_raw_memory, m_vertices.data(), m_next_index * sizeof(Vertex));
+    memcpy(m_raw_memory, m_vertices.data(), m_vertices.size() * sizeof(Vertex));
 
     VkBuffer vertex_buffers[] = {m_buffer};
     VkDeviceSize offsets[] = {0};

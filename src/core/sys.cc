@@ -28,6 +28,8 @@
 #include "cpu/asm/asm.hh"
 #include "gpu/gpu.hh"
 
+#include "view/geometry.hh"
+
 #define SYS_INFO(...) PSXLOG_INFO("System", __VA_ARGS__)
 #define SYS_WARN(...) PSXLOG_WARN("System", __VA_ARGS__)
 #define SYS_ERROR(...) PSXLOG_ERROR("System", __VA_ARGS__)

@@ -18,7 +18,7 @@
 #define VIEW_FATAL(...) VIEW_ERROR(__VA_ARGS__); throw std::runtime_error(PSX_FMT(__VA_ARGS__))
 
 // window size
-#define WINDOW_W 1280
+#define WINDOW_W 960
 #define WINDOW_H 720
 
 namespace {

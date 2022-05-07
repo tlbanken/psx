@@ -420,6 +420,7 @@ void doBlockDma()
 {
     constexpr uint chnum = static_cast<uint>(channel);
     bool dir_from_ram = s.regs.channels[chnum].chcr & 0x1;
+    bool increment = !Util::GetBits(s.regs.channels[chnum].chcr, 1, 1);
     u32 num_words = s.regs.channels[chnum].bcr & 0xffff;
     if (num_words == 0) num_words = 0x1'0000;
     u32 words_remaining = num_words;
@@ -430,9 +431,20 @@ void doBlockDma()
     } else if constexpr (channel == Channel::Ch1) {
         PSX_ASSERT(0);
     } else if constexpr (channel == Channel::Ch2) {
-        // PSX_ASSERT(0);
         // TODO
-        DMA_WARN("Block DMA for channel 2 not supported!");
+        PSX_ASSERT(dir_from_ram);
+        u32 addr = base_addr;
+        while (words_remaining > 0) {
+            // TODO: where word?
+            u32 word = Ram::Read<u32>(addr);
+            Gpu::DoGP0Cmd(word);
+            if (increment) {
+                addr += 4;
+            } else {
+                addr -= 4;
+            }
+            words_remaining--;
+        }
     } else if constexpr (channel == Channel::Ch3) {
         PSX_ASSERT(0);
     } else if constexpr (channel == Channel::Ch4) {
@@ -477,8 +489,10 @@ void doDma(uint channel)
         u32 sync_mode = Util::GetBits(s.regs.channels[2].chcr, 9, 2);
 
         if (sync_mode == 0 || sync_mode == 1) {
+            DMA_INFO("DMA MODE BLOCK");
             doBlockDma<Channel::Ch2>();
         } else {
+            DMA_INFO("DMA MODE LL");
             PSX_ASSERT(sync_mode == 2);
             bool dir_from_ram = s.regs.channels[2].chcr & 0x1;
             u32 base_addr = s.regs.channels[2].madr & 0x00ff'ffff;

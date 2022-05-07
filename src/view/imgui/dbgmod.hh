@@ -51,7 +51,7 @@ template <BrkType type> void Set(u32 addr);
 void ForceBreak(const std::string& from);
 
 #ifdef PSX_DEBUG
-#define PSX_BREAK Psx::ImGuiLayer::DbgMod::Breakpoints::ForceBreak(PSX_FMT("{}:{}", __FILE__, __LINE__))
+#define PSX_BREAK ::Psx::View::ImGuiLayer::DbgMod::Breakpoints::ForceBreak(PSX_FMT("{}:{}", __FILE__, __LINE__))
 #else
 #define PSX_BREAK assert(0 && "PSX_DEBUG is turned off, no support for forced breaks!");
 #endif

@@ -23,9 +23,12 @@
 #define GPU_ERROR(...) PSXLOG_ERROR("GPU", __VA_ARGS__)
 #define GPU_FATAL(...) GPU_ERROR(__VA_ARGS__); throw std::runtime_error(PSX_FMT(__VA_ARGS__))
 
+#define GPU_CMD_NONE 0xff
+
+namespace Psx {
+namespace Gpu {
 // *** Private Data ***
 namespace {
-using namespace Psx;
 enum class CmdType {
     Misc      = 0,
     Polygon   = 1,
@@ -38,9 +41,18 @@ enum class CmdType {
     None      = 0xff,
 };
 
-enum class Shading {
-    Flat = 0,
-    Gouraud = 1,
+// Polygon states
+enum class PolyState {
+    Ready,
+    Color,
+    Vertex,
+    Texture,
+    LoadImage,
+};
+
+struct PolyConfig {
+    u8 num_vertices = 0;
+    // TODO
 };
 
 struct State {
@@ -48,7 +60,8 @@ struct State {
     u32 sr = 0;
 
     // current command being processed
-    CmdType cmd = CmdType::None;
+    u8 cmd = GPU_CMD_NONE;
+    PolyState poly_state = PolyState::Ready;
 
     struct DrawingEnv {
         // texture flip
@@ -81,27 +94,14 @@ struct State {
         u16 range_y2 = 0;
     } display;
 
-    struct RenderFlags {
-        Shading shading;
-        bool textured;
-        bool transparent;
-    } render_flags;
-
-    // Command queue
-    std::queue<u32> cmd_queue = {};
-
     // 1MB of vram
     std::vector<u8> vram;
 }s;
 
 
 // Prototypes
-void handleGP0Cmd(u32 cmd);
 void handleGP1Cmd(u32 word);
-void handleMiscCmd(u32 word);
-void handleEnvCmd(u32 word);
-void handlePolygon(u32 word, bool reset_state = false);
-void handleLoadImage(u32 word);
+void copyRectangleCpuToVram(u32 word);
 void softReset();
 void resetCmdQueue();
 void ackIrq();
@@ -113,13 +113,16 @@ void vertDisplayRange(u32 word);
 void displayMode(u32 word);
 void displayEnvInfo();
 void displayStatusRegister();
+void finishedCommand();
+// poly commands
+void handleMonoPoly(u32 word, const PolyConfig& config);
+void handleShadedPoly(u32 word, const PolyConfig& config);
+void handleMonoTexturedPoly(u32 word, const PolyConfig& config);
+void handleShadedTexturedPoly(u32 word, const PolyConfig& config);
 
 } // end ns
 
-// *** Public Data ***
-namespace Psx {
-namespace Gpu {
-
+// *** Public ***
 void Init()
 {
     GPU_INFO("Initializing state");
@@ -130,7 +133,8 @@ void Init()
 void Reset()
 {
     GPU_INFO("Resetting state");
-    handlePolygon(0, true);
+    // handlePolygon(0, true);
+    s.poly_state = PolyState::Ready;
     s = {};
     Util::SetBits(s.sr, 26, 3, 0x7);
     // vram was reset, so need to resize
@@ -225,10 +229,12 @@ void Write(T data, u32 addr)
         if (addr == 0x1f80'1810) {
             // GP0 (Rendering and VRAM access)
             // s.cmd_queue.push(data);
-            handleGP0Cmd(data);
+            GPU_INFO("Direct GP0Cmd: {:08x}", data);
+            DoGP0Cmd(data);
         } else {
             PSX_ASSERT(addr == 0x1f80'1814);
             // GP1 (Display Control and DMA control)
+            GPU_INFO("Direct GP1Cmd: {:08x}", data);
             handleGP1Cmd(data);
         }
     } else {
@@ -257,7 +263,7 @@ void DoDmaCmds(u32 addr)
             addr = (addr + 4) & 0x1f'fffc;
             u32 cmd = Ram::Read<u32>(addr);
             GPU_INFO("LL COMMAND: 0x{:08x}", cmd);
-            handleGP0Cmd(cmd);
+            DoGP0Cmd(cmd);
             num_words--;
         }
 
@@ -302,58 +308,151 @@ void OnActive(bool *active)
     ImGui::End();
 }
 
-} // end ns
+/*
+ * Handle the next gpu command. This acts as a state machine, a full gpu
+ * cmd sequence will take multiple calls to this function.
+ */
+void DoGP0Cmd(u32 word)
+{
+    // If no cmd in progress, read the command
+    if (s.cmd == GPU_CMD_NONE) {
+        s.cmd = Util::GetBits(word, 24, 8);
+    }
+    switch (s.cmd) {
+    case 0x00: // NOP
+        finishedCommand();
+        break;
+    case 0x01: // clear cache
+        // TODO
+        GPU_WARN("Cache not supported! Skipping clear cache command...");
+        finishedCommand();
+        break;
+    case 0x02: // quick rectangle fill
+        PSX_ASSERT(0);
+        break;
+    case 0xa0: // copy rectangle (CPU TO VRAM)
+        // TODO: need to build a state machine for the image transfer cmd
+        copyRectangleCpuToVram(word);
+        break;
+    case 0x1f: // interrupt request
+        GPU_ERROR("No support for interrupt request!");
+        finishedCommand();
+        PSX_ASSERT(0);
+        break;
+    // ** MONOCHROME POLYS **
+    case 0x20: // Monochrome three-point polygon, opaque
+        PSX_ASSERT(0);
+        break;
+    case 0x22: // Monochrome three-point polygon, semi-transparent
+        PSX_ASSERT(0);
+        break;
+    case 0x28: // Monochrome four-point polygon, opaque
+        handleMonoPoly(word, {.num_vertices = 4});
+        break;
+    case 0x2a: // Monochrome four-point polygon, semi-transparent
+        PSX_ASSERT(0);
+        break;
+    // ** TEXTURED POLYS **
+    case 0x24: // Textured three-point polygon, opaque, texture-blending
+        PSX_ASSERT(0);
+        break;
+    case 0x25: // Textured three-point polygon, opaque, raw-texture
+        PSX_ASSERT(0);
+        break;
+    case 0x26: // Textured three-point polygon, semi-transparent, texture-blending
+        PSX_ASSERT(0);
+        break;
+    case 0x27: // Textured three-point polygon, semi-transparent, raw-texture
+        PSX_ASSERT(0);
+        break;
+    case 0x2c: // Textured four-point polygon, opaque, texture-blending
+        // TODO: config needs work
+        handleMonoTexturedPoly(word, {.num_vertices = 4});
+        break;
+    case 0x2d: // Textured four-point polygon, opaque, raw-texture
+        PSX_ASSERT(0);
+        break;
+    case 0x2e: // Textured four-point polygon, semi-transparent, texture-blending
+        PSX_ASSERT(0);
+        break;
+    case 0x2f: // Textured four-point polygon, semi-transparent, raw-texture
+        PSX_ASSERT(0);
+        break;
+    // ** SHADED POLYS **
+    case 0x30: // Shaded three-point polygon, opaque
+        handleShadedPoly(word, {.num_vertices = 3});
+        break;
+    case 0x32: // Shaded three-point polygon, semi-transparent
+        PSX_ASSERT(0);
+        break;
+    case 0x38: // Shaded four-point polygon, opaque
+        handleShadedPoly(word, {.num_vertices = 4});
+        break;
+    case 0x3a: // Shaded four-point polygon, semi-transparent
+        PSX_ASSERT(0);
+        break;
+    case 0x34: // Shaded Textured three-point polygon, opaque, texture-blending
+        PSX_ASSERT(0);
+        break;
+    case 0x36: // Shaded Textured three-point polygon, semi-transparent, tex-blend
+        PSX_ASSERT(0);
+        break;
+    case 0x3c: // Shaded Textured four-point polygon, opaque, texture-blending
+        PSX_ASSERT(0);
+        break;
+    case 0x3e: // Shaded Textured four-point polygon, semi-transparent, tex-blend
+        PSX_ASSERT(0);
+        break;
+    // ** ENV CMDS **
+    case 0xe1: // Draw Mode setting (aka "Texpage")
+        Util::SetBits(s.sr, 0, 10, (word >> 10) & 0x3ff);
+        Util::SetBits(s.sr, 15, 1, (word >> 11) & 0x1);
+        s.env.texture_rect_flip_x = (word >> 12) & 0x1;
+        s.env.texture_rect_flip_y = (word >> 13) & 0x1;
+        finishedCommand();
+        break;
+    case 0xe2: // Texture Window Setting
+        s.env.texture_win_mask_x = (word >> 0) & 0x1f;
+        s.env.texture_win_mask_y = (word >> 5) & 0x1f;
+        s.env.texture_win_offset_x = (word >> 10) & 0x1f;
+        s.env.texture_win_offset_y = (word >> 15) & 0x1f;
+        finishedCommand();
+        break;
+    case 0xe3: // Drawing area (Top Left)
+    case 0xe4: // Drawing area (Bottom Right)
+    {
+        u8 corner = s.cmd - 0xe3;
+        s.env.draw_area[corner].x = (word >> 0) & 0x3ff;
+        // TODO: if new gpu, y is 10 bits, if old, y is 9 bits
+        s.env.draw_area[corner].y = (word >> 10) & 0x3ff;
+        // s.env.draw_area[corner].y = (word >> 10) & 0x1ff;
+        finishedCommand();
+        break;
+    }
+    case 0xe5: // Draw offset
+        s.env.draw_offset_x = (word >> 0) & 0x7ff;
+        s.env.draw_offset_y = (word >> 11) & 0x7ff;
+        finishedCommand();
+        break;
+    case 0xe6: // Mask Bit Setting
+        Util::SetBits(s.sr, 11, 1, word & 0x1);
+        Util::SetBits(s.sr, 12, 1, (word >> 1) & 0x1);
+        finishedCommand();
+        break;
+    default:
+        GPU_FATAL("Unknown GP0 command: {:02x} from word [{:08x}]", s.cmd, word);
+    }
 }
 
 // *** Private Functions ***
 namespace {
 
-using namespace Psx;
-
 inline void finishedCommand()
 {
-    s.cmd = CmdType::None;
+    s.cmd = GPU_CMD_NONE;
+    s.poly_state = PolyState::Ready;
 }
 
-/*
- * Handle the next gpu command. This acts as a state machine, a full gpu
- * cmd sequence will take multiple calls to this function.
- */
-void handleGP0Cmd(u32 word)
-{
-    // If no cmd in progress, read the command
-    if (s.cmd == CmdType::None) {
-        s.cmd = static_cast<CmdType>((word >> 29) & 0x7);
-    }
-    switch (s.cmd) {
-    case CmdType::Misc:
-        handleMiscCmd(word);
-        break;
-    case CmdType::Polygon:
-        handlePolygon(word);
-        break;
-    case CmdType::Line:
-        PSX_ASSERT(0);
-        break;
-    case CmdType::Rectangle:
-        PSX_ASSERT(0);
-        break;
-    case CmdType::VVBlit:
-        PSX_ASSERT(0);
-        break;
-    case CmdType::CVBlit:
-        PSX_ASSERT(0);
-        break;
-    case CmdType::VCBlit:
-        PSX_ASSERT(0);
-        break;
-    case CmdType::EnvCmds:
-        handleEnvCmd(word);
-        break;
-    default:
-        GPU_FATAL("Unknown GP0 command: {:02x}", (u8)s.cmd);
-    }
-}
 
 /*
  * Handle GP1 Command. These commands are executed immediately, rather than
@@ -395,193 +494,160 @@ void handleGP1Cmd(u32 word)
     }
 }
 
-/*
- * Handle Misc Commands.
- */
-void handleMiscCmd(u32 word)
+void handleMonoPoly(u32 word, const PolyConfig& config)
 {
-    u8 cmd = (word >> 24) & 0xff;
-    switch (cmd) {
-    case 0x00: // NOP
-        finishedCommand();
+    static Geometry::Polygon s_poly;
+    static Geometry::Color s_mono_col;
+
+    switch (s.poly_state) {
+    case PolyState::Ready:
+        GPU_INFO("Starting Mono Polygon command");
+        s_mono_col = Geometry::Color(word);
+        s.poly_state = PolyState::Vertex;
         break;
-    case 0x01: // clear cache
-        // TODO
-        GPU_WARN("Cache not supported! Skipping clear cache command...");
-        finishedCommand();
-        break;
-    case 0x02: // quick rectangle fill
-        PSX_ASSERT(0);
-        break;
-    case 0xa0: // Load Image
-        // TODO: need to build a state machine for the image transfer cmd
-        handleLoadImage(word);
-        finishedCommand();
+    case PolyState::Vertex:
+        s_poly.vertices[s_poly.num_vertices++] = Geometry::Vertex(word, s_mono_col);
+        // stay in vertex state
         break;
     default:
-        GPU_FATAL("Unknown GPU Misc Command [{:02x}]", cmd);
+        GPU_FATAL("Unknown Polygon State: {}", (int)s.poly_state);
+    }
+    if (s_poly.num_vertices == config.num_vertices) {
+        // draw!
+        Psx::View::DrawPolygon(s_poly);
+        finishedCommand();
+        GPU_INFO("Finished Mono Polygon command");
     }
 }
 
-/*
- * Handle Environment commands.
- */
-void handleEnvCmd(u32 word)
+void handleShadedPoly(u32 word, const PolyConfig& config)
 {
-    u8 cmd = (word >> 24) & 0xff;
-    switch (cmd) {
-    case 0xe1: // Draw Mode setting (aka "Texpage")
-        Util::SetBits(s.sr, 0, 10, (word >> 10) & 0x3ff);
-        Util::SetBits(s.sr, 15, 1, (word >> 11) & 0x1);
-        s.env.texture_rect_flip_x = (word >> 12) & 0x1;
-        s.env.texture_rect_flip_y = (word >> 13) & 0x1;
+    static Geometry::Polygon s_poly;
+
+    switch (s.poly_state) {
+    case PolyState::Ready:
+        GPU_INFO("Starting Shaded Polygon command");
+        s.poly_state = PolyState::Vertex;
+        // TODO first color
         break;
-    case 0xe2: // Texture Window Setting
-        s.env.texture_win_mask_x = (word >> 0) & 0x1f;
-        s.env.texture_win_mask_y = (word >> 5) & 0x1f;
-        s.env.texture_win_offset_x = (word >> 10) & 0x1f;
-        s.env.texture_win_offset_y = (word >> 15) & 0x1f;
+    case PolyState::Vertex:
+        s_poly.vertices[s_poly.num_vertices].x = (word >>  0) & 0xffff;
+        s_poly.vertices[s_poly.num_vertices].y = (word >> 16) & 0xffff;
+        s_poly.num_vertices++;
+        s.poly_state = PolyState::Color;
         break;
-    case 0xe3: // Drawing area (Top Left)
-    case 0xe4: // Drawing area (Bottom Right)
-    {
-        u8 corner = cmd - 0xe3;
-        s.env.draw_area[corner].x = (word >> 0) & 0x3ff;
-        // TODO: if new gpu, y is 10 bits, if old, y is 9 bits
-        s.env.draw_area[corner].y = (word >> 10) & 0x3ff;
-        // s.env.draw_area[corner].y = (word >> 10) & 0x1ff;
-        break;
-    }
-    case 0xe5: // Draw offset
-        s.env.draw_offset_x = (word >> 0) & 0x7ff;
-        s.env.draw_offset_y = (word >> 11) & 0x7ff;
-        break;
-    case 0xe6: // Mask Bit Setting
-        Util::SetBits(s.sr, 11, 1, word & 0x1);
-        Util::SetBits(s.sr, 12, 1, (word >> 1) & 0x1);
+    case PolyState::Color:
+        s_poly.vertices[s_poly.num_vertices].color = Geometry::Color(word);
+        s.poly_state = PolyState::Vertex;
         break;
     default:
-        GPU_FATAL("Unknown Environment Command [{:02x}]", cmd);
+        GPU_FATAL("Unknown Polygon State: {}", (int)s.poly_state);
     }
-    finishedCommand();
+    if (s_poly.num_vertices == config.num_vertices) {
+        // draw!
+        Psx::View::DrawPolygon(s_poly);
+        finishedCommand();
+        GPU_INFO("Finished Shaded Polygon command");
+    }
 }
 
-/*
- * Polygon Builder state machine.
- */
-void handlePolygon(u32 word, bool reset_state)
+void handleMonoTexturedPoly(u32 word, const PolyConfig& config)
 {
-    // state machine data
-    enum class WordType {
-        None,
-        Color,
-        Vertex,
-        Texture,
-    };
-    static Geometry::Polygon s_polygon;
-    static int s_words_left = 0;
-    static int s_vertex_index = 0;
-    static WordType s_word_type = WordType::None;
+    static Geometry::Polygon s_poly;
+    static Geometry::Color s_mono_col;
 
-    auto resetLocalState = [&]() {
-        s_words_left = 0;
-        s.cmd = CmdType::None;
-        s_vertex_index = 0;
-        s_word_type = WordType::None;
-    };
-
-    // forced reset
-    if (reset_state) {
-        resetLocalState();
-        return;
-    }
-
-    switch (s_word_type) {
-    case WordType::None:
-    {
-        // start of new command
-        s_polygon.gouraud_shaded = Util::GetBits(word, 28, 1);
-        s_polygon.num_vertices   = Util::GetBits(word, 27, 1) ? 4 : 3;
-        s_polygon.textured       = Util::GetBits(word, 26, 1);
-        s_polygon.transparent    = Util::GetBits(word, 25, 1);
-        s_polygon.blend_texture  = Util::GetBits(word, 24, 1);
-
-        // TODO set words left
-        s_words_left = s_polygon.num_vertices + 1;
-
-        if (s_polygon.gouraud_shaded) {
-            // first color value is stored in this word
-            s_polygon.vertices[s_vertex_index].color = Geometry::Color(word);
-            s_words_left += (s_polygon.num_vertices - 1);
-        }
-        if (s_polygon.textured) {
-            s_words_left += s_polygon.num_vertices;
-        }
-
-        s_word_type = WordType::Vertex;
-        GPU_ERROR("Started new command with {} words left", s_words_left - 1);
+    switch (s.poly_state) {
+    case PolyState::Ready:
+        GPU_INFO("Starting Mono Textured Polygon command");
+        s_mono_col = Geometry::Color(word);
+        s.poly_state = PolyState::Vertex;
         break;
-    }
-    case WordType::Color:
-    {
-        s_polygon.vertices[s_vertex_index].color = Geometry::Color(word);
-        s_word_type = WordType::Vertex;
-        GPU_ERROR("Adding color [{:x}] to polygon", word);
+    case PolyState::Vertex:
+        s_poly.vertices[s_poly.num_vertices] = Geometry::Vertex(word, s_mono_col);
+        // stay in vertex state
         break;
-    }
-    case WordType::Vertex:
-    {
-        s_polygon.vertices[s_vertex_index].x = static_cast<i16>(Util::GetBits(word, 0, 16));
-        s_polygon.vertices[s_vertex_index].y = static_cast<i16>(Util::GetBits(word, 16, 16));
-
-        if (s_polygon.textured) {
-            s_word_type = WordType::Texture;
-        } else if (s_polygon.gouraud_shaded) {
-            s_vertex_index++;
-            s_word_type = WordType::Color;
-        } else {
-            s_vertex_index++;
-            s_word_type = WordType::Vertex;
-        }
-        GPU_ERROR("Adding Vertex [{:x}] to polygon", word);
-        break;
-    }
-    case WordType::Texture:
-    {
+    case PolyState::Texture:
         // TODO
-        s_vertex_index++;
-        if (s_polygon.gouraud_shaded) {
-            s_word_type = WordType::Color;
-        } else {
-            s_word_type = WordType::Vertex;
-        }
-        GPU_ERROR("Adding texture [{:x}] to polygon", word);
+        s_poly.num_vertices++;
         break;
+    default:
+        GPU_FATAL("Unknown Polygon State: {}", (int)s.poly_state);
     }
-    }
+    if (s_poly.num_vertices == config.num_vertices) {
+        // draw!
+        Psx::View::DrawPolygon(s_poly);
+        finishedCommand();
+        GPU_INFO("Finished Mono Textured Polygon command");
+    } 
+}
 
-    // check if finished with command
-    s_words_left--;
-    if (s_words_left <= 0) {
-        resetLocalState();
-        // TODO build the polygon
-        Psx::View::DrawPolygon(s_polygon);
-        GPU_ERROR("Finished Polygon command");
-        // PSX_ASSERT(0);
+void handleShadedTexturedPoly(u32 word, const PolyConfig& config)
+{
+    static Geometry::Polygon s_poly;
+
+    switch (s.poly_state) {
+    case PolyState::Ready:
+        GPU_INFO("Starting Shaded Textured Polygon command");
+        s.poly_state = PolyState::Vertex;
+        // TODO first color
+        break;
+    case PolyState::Vertex:
+        s_poly.vertices[s_poly.num_vertices].x = (word >>  0) & 0xffff;
+        s_poly.vertices[s_poly.num_vertices].y = (word >> 16) & 0xffff;
+        s.poly_state = PolyState::Color;
+        break;
+    case PolyState::Color:
+        s_poly.vertices[s_poly.num_vertices].color = Geometry::Color(word);
+        s.poly_state = PolyState::Vertex;
+        break;
+    case PolyState::Texture:
+        // TODO
+        s_poly.num_vertices++;
+        break;
+    default:
+        GPU_FATAL("Unknown Polygon State: {}", (int)s.poly_state);
+    }
+    if (s_poly.num_vertices == config.num_vertices) {
+        // draw!
+        Psx::View::DrawPolygon(s_poly);
+        finishedCommand();
+        GPU_INFO("Finished Shaded Textured Polygon command");
     }
 }
 
 // Load Image Command State Machine
-void handleLoadImage(u32 word)
+void copyRectangleCpuToVram(u32 word)
 {
-    // TODO
-    // GP0(80h) - Copy Rectangle (VRAM to VRAM)
+    // GP0(A0h) - Copy Rectangle (CPU to VRAM)
     //   1st  Command           (Cc000000h)
-    //   2nd  Source Coord      (YyyyXxxxh)  ;Xpos counted in halfwords
-    //   3rd  Destination Coord (YyyyXxxxh)  ;Xpos counted in halfwords
-    //   4th  Width+Height      (YsizXsizh)  ;Xsiz counted in halfwords
-    // Copys data within framebuffer. The transfer is affected by Mask setting.
-    GPU_WARN("Load Image command not supported! Skipping word [{:08x}]...", word);
+    //   2nd  Destination Coord (YyyyXxxxh)  ;Xpos counted in halfwords
+    //   3rd  Width+Height      (YsizXsizh)  ;Xsiz counted in halfwords
+    //   ...  Data              (...)      <--- usually transferred via DMA
+
+    // just implementing something to consume commands
+    static u32 i = 1;
+    static u32 n = 0;
+    GPU_WARN("Load Image (CPU TO VRAM) [state: {}] command not supported! Skipping word [{:08x}]...",i, word);
+    if (i == 3) {
+        u32 w = word & 0xffff;
+        u32 h = (word >> 16) & 0xffff;
+        u32 img_size = w * h;
+        if (img_size % 2 == 1) {
+            // if img size is odd, round up
+            img_size++;
+        }
+        n = i + img_size;
+        GPU_INFO("Expecting {} more commands for Load Image (CPU TO VRAM)", n - i);
+    }
+    if (i == n) {
+        i = 1;
+        i = 0;
+        GPU_INFO("Load Image Done!");
+        finishedCommand();
+    } else {
+        s.poly_state = PolyState::LoadImage;
+        i++;
+    }
 }
 
 /*
@@ -592,7 +658,6 @@ void softReset()
     GPU_INFO("Software Reset");
     // clear fifo and reset state machines
     resetCmdQueue();
-    handlePolygon(0, true);
     // ack irq (0)
     ackIrq();
     // display off (1)
@@ -614,18 +679,17 @@ void softReset()
     // display mode 320x200 NTSC (0)
     displayMode(0x0000'0001);
     // rendering attributes (0)
-    handleEnvCmd(0xe100'0000);
-    handleEnvCmd(0xe200'0000);
-    handleEnvCmd(0xe300'0000);
-    handleEnvCmd(0xe400'0000);
-    handleEnvCmd(0xe500'0000);
-    handleEnvCmd(0xe600'0000);
+    DoGP0Cmd(0xe100'0000);
+    DoGP0Cmd(0xe200'0000);
+    DoGP0Cmd(0xe300'0000);
+    DoGP0Cmd(0xe400'0000);
+    DoGP0Cmd(0xe500'0000);
+    DoGP0Cmd(0xe600'0000);
 }
 
 void resetCmdQueue()
 {
-    s.cmd_queue = {};
-    s.cmd = CmdType::None;
+    finishedCommand();
 }
 
 void ackIrq()
@@ -726,3 +790,5 @@ void displayStatusRegister()
 }
 
 } // end private ns
+} // end ns
+}

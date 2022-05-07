@@ -35,6 +35,13 @@ struct Vertex {
     i16 x = 0;
     i16 y = 0;
     Color color;
+    Vertex() {}
+    Vertex(u32 raw_coord, Color col)
+    {
+        x = (raw_coord >>  0) & 0xffff;
+        y = (raw_coord >> 16) & 0xffff;
+        color = col;
+    }
 };
 
 struct Polygon {

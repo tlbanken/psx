@@ -39,6 +39,9 @@ private:
     VkAllocationCallbacks *m_allocator_callbacks = nullptr;
     int m_win_height;
     int m_win_width;
+
+    void drawTri(const Geometry::Polygon& tri);
+    void drawQuad(const Geometry::Polygon& quad);
 };
 
 }// end ns

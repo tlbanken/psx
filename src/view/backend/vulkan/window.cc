@@ -22,9 +22,12 @@
 #define VWINDOW_ERROR(...) PSXLOG_ERROR("Vulkan Window", __VA_ARGS__)
 #define VWINDOW_FATAL(...) VWINDOW_ERROR(__VA_ARGS__); throw std::runtime_error(PSX_FMT(__VA_ARGS__))
 
-#define CLEAR_COLOR {0.0, 0.0, 0.0, 1.0}
-#define VIEWPORT_WIDTH (1024)
-#define VIEWPORT_HEIGHT (512)
+#define CLEAR_COLOR {0.005, 0.005, 0.005, 1.0}
+
+// TODO: this should be determined by the gpu
+#define VIEWPORT_WIDTH (640)
+#define VIEWPORT_HEIGHT (480)
+// #define VIEWPORT_HEIGHT (240)
 
 // *** PRIVATE NAMESPACE ***
 namespace {
@@ -186,20 +189,18 @@ void Window::OnUpdate()
  */
 void Window::DrawPolygon(const Geometry::Polygon& polygon)
 {
-    // TODO REMOVE ME
-    // Geometry::Polygon test_polygon = polygon;
-    // test_polygon.vertices[0].x = 0;
-    // test_polygon.vertices[0].y = 0;
-    // test_polygon.vertices[1].x = VIEWPORT_WIDTH;
-    // test_polygon.vertices[1].y = 0;
-    // test_polygon.vertices[2].x = VIEWPORT_WIDTH / 2;
-    // test_polygon.vertices[2].y = VIEWPORT_HEIGHT;
-    // test_polygon.vertices[3].x = 0;
-    // test_polygon.vertices[3].y = 0;
+    if (polygon.num_vertices == 3) {
+        drawTri(polygon);
+    } else {
+        drawQuad(polygon);
+    }
+}
 
-    // TODO: split into "drawTriangle and drawQuad"
-    for (int i = 0; i < polygon.num_vertices; i++) {
-        Geometry::Vertex gv = polygon.vertices[i];
+void Window::drawTri(const Geometry::Polygon& tri)
+{
+    PSX_ASSERT(tri.num_vertices == 3);
+    for (int i = 0; i < tri.num_vertices; i++) {
+        Geometry::Vertex gv = tri.vertices[i];
         Psx::Vulkan::Vertex vv;
 
         // convert coordinates to work with vulkan
@@ -207,16 +208,16 @@ void Window::DrawPolygon(const Geometry::Polygon& polygon)
         float vspace_y = convertToViewPortSpace(gv.y, VIEWPORT_HEIGHT, m_win_height);
 
         vv.pos = glm::vec2(vspace_x, vspace_y);
-        // vv.col = glm::vec3(
-        //     (float)gv.color.red / 256.0,
-        //     (float)gv.color.green / 256.0,
-        //     (float)gv.color.blue / 256.0
-        // );
         vv.col = glm::vec3(
-            1.0,
-            0.0,
-            0.0
+            (float)gv.color.red / 256.0,
+            (float)gv.color.green / 256.0,
+            (float)gv.color.blue / 256.0
         );
+        // vv.col = glm::vec3(
+        //     1.0,
+        //     0.0,
+        //     0.0
+        // );
         VWINDOW_ERROR("Drawing Pos({}, {}) -> ({}, {}), Col({}, {}, {})", 
             gv.x, gv.y,
             vv.pos.x, vv.pos.y, 
@@ -231,6 +232,23 @@ void Window::DrawPolygon(const Geometry::Polygon& polygon)
             PSX_ASSERT(res == true);
         }
     }
+}
+
+void Window::drawQuad(const Geometry::Polygon& quad)
+{
+    PSX_ASSERT(quad.num_vertices == 4);
+    // break quad into 2 triangles
+    Geometry::Polygon tri1 = quad;
+    tri1.num_vertices = 3;
+
+    Geometry::Polygon tri2 = quad;
+    tri2.num_vertices = 3;
+    tri2.vertices[0] = quad.vertices[1];
+    tri2.vertices[1] = quad.vertices[2];
+    tri2.vertices[2] = quad.vertices[3];
+
+    drawTri(tri1);
+    drawTri(tri2);
 }
 
 }// end ns
