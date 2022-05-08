@@ -23,6 +23,7 @@
 #include "view/imgui/dbgmod.hh"
 #include "view/imgui/imgui_layer.hh"
 #include "gpu/gpu.hh"
+#include "io/timer.hh"
 
 #define BUS_INFO(...) PSXLOG_INFO("Bus", __VA_ARGS__)
 #define BUS_WARN(...) PSXLOG_WARN("Bus", __VA_ARGS__)
@@ -99,6 +100,12 @@ T Read(u32 addr, Bus::RWVerbosity verb)
     constexpr u32 dma_size = (0x1f80'10fc - 0x1f80'1080);
     if (inRange(0x1f80'1080, dma_size, addr)) {
         return Dma::Read<T>(addr);
+    }
+
+    // Timers
+    constexpr u32 timer_size = (0x1f80'112c - 0x1f80'1100);
+    if (inRange(0x1f80'1100, timer_size, addr)) {
+        return Timer::Read<T>(addr);
     }
 
     // Memory Control Register
@@ -181,6 +188,12 @@ void Write(T data, u32 addr, Bus::RWVerbosity verb)
     if (inRange(0x1f80'1080, dma_size, addr)) {
         Dma::Write<T>(data, addr);
         return;
+    }
+
+    // Timers
+    constexpr u32 timer_size = (0x1f80'112c - 0x1f80'1100);
+    if (inRange(0x1f80'1100, timer_size, addr)) {
+        return Timer::Write<T>(data, addr);
     }
 
     // Memory Control Register
