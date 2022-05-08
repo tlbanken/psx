@@ -27,7 +27,7 @@ public:
     static void Reset();
 
 private:
-    static System *m_instance;
+    static System *sys_instance;
     bool m_headless_mode;
 };
 

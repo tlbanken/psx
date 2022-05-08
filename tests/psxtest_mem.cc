@@ -244,8 +244,9 @@ namespace Test {
         std::cout << PSX_FANCYTITLE("MEM TESTS");
         TMEM_INFO("Performing RAM tests");
         ramTests();
-        TMEM_INFO("Performing Scratchpad tests");
-        scratchpadTests();
+        TMEM_WARN("Ignoring Scratchpad tests until implementation done");
+        // TMEM_INFO("Performing Scratchpad tests");
+        // scratchpadTests();
     }
 }// end namespace
 }

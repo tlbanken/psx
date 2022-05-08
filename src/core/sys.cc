@@ -38,6 +38,8 @@
 
 namespace Psx {
 
+System *System::sys_instance = nullptr;
+
 System::System(const std::string& bios_path, bool headless_mode)
     : m_headless_mode(headless_mode)
 {
@@ -58,6 +60,7 @@ System::System(const std::string& bios_path, bool headless_mode)
     Gpu::Init();
     Cop0::Init();
     Bios::Init(bios_path);
+    System::sys_instance = this;
 }
 
 System::~System()
@@ -81,7 +84,9 @@ void System::Reset()
     Scratchpad::Reset();
     MemControl::Reset();
     Bus::Reset();
-    View::Clear();
+    if (!System::sys_instance->m_headless_mode) {
+        View::Clear();
+    }
 }
 
 /*
