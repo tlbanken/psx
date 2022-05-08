@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.19)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-project(PSX VERSION 0.0.3)
+project(PSX VERSION 0.0.4)
 
 # For now, hardcode the build type
 set(CMAKE_BUILD_TYPE Debug)

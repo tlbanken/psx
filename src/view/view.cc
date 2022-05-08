@@ -71,5 +71,10 @@ void DrawPolygon(const Geometry::Polygon& polygon)
     s.window->DrawPolygon(polygon);
 }
 
+void Clear()
+{
+    s.window->Clear();
+}
+
 } // end ns
 }

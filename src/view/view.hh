@@ -20,6 +20,7 @@ bool ShouldClose();
 void SetTitleExtra(const std::string& extra);
 void OnUpdate();
 void DrawPolygon(const Geometry::Polygon& polygon);
+void Clear();
 
 } // end ns
 }

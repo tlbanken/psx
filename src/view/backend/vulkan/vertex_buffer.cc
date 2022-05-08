@@ -83,8 +83,9 @@ void VertexBuffer::Flush()
 void VertexBuffer::Draw(VkCommandBuffer command_buffer)
 {
     // TODO: Only do this on vertex change
-    // memcpy(m_raw_memory, m_vertices.data(), m_next_index * sizeof(Vertex));
-    memcpy(m_raw_memory, m_vertices.data(), m_vertices.size() * sizeof(Vertex));
+    // TODO: this may cause loss of data if we force flush before ready
+    memcpy(m_raw_memory, m_vertices.data(), m_next_index * sizeof(Vertex));
+    // memcpy(m_raw_memory, m_vertices.data(), m_vertices.size() * sizeof(Vertex));
 
     VkBuffer vertex_buffers[] = {m_buffer};
     VkDeviceSize offsets[] = {0};

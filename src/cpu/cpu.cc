@@ -248,10 +248,24 @@ void OnActive(bool *active)
             g_emu_state.paused = false;
         }
         ImGui::SameLine();
-        if (ImGui::Button("Step")) {
+        if (ImGui::Button("Step +1")) {
             // Step Mode
-            g_emu_state.step_instr = true;
+            g_emu_state.step_count += 1;
         }
+        ImGui::SameLine();
+        if (ImGui::Button("Step +10")) {
+            g_emu_state.step_count += 10;
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("Step +100")) {
+            g_emu_state.step_count += 100;
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("Step +1000")) {
+            g_emu_state.step_count += 1000;
+        }
+        ImGui::SameLine();
+        ImGui::Text("Steps Left: %u", g_emu_state.step_count);
         ImGui::SameLine();
         // Input new PC
         static char pc_buf[9] = "";

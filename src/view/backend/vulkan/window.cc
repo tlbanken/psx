@@ -196,6 +196,11 @@ void Window::DrawPolygon(const Geometry::Polygon& polygon)
     }
 }
 
+void Window::Clear()
+{
+    m_wd->vertex_buffer->Flush();
+}
+
 void Window::drawTri(const Geometry::Polygon& tri)
 {
     PSX_ASSERT(tri.num_vertices == 3);

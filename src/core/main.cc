@@ -35,7 +35,7 @@ int main()
 {
     // init global emulation state
     g_emu_state.paused = false;
-    g_emu_state.step_instr = false;
+    g_emu_state.step_count = 0;
 
     // init the logger
     Psx::Log::Init(std::cerr, true);

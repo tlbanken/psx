@@ -29,6 +29,7 @@ public:
     void Render();
     void OnUpdate();
     void DrawPolygon(const Geometry::Polygon& polygon);
+    void Clear();
 
 private:
     SDL_Window *m_window = nullptr;

@@ -42,12 +42,14 @@ enum class CmdType {
 };
 
 // Polygon states
-enum class PolyState {
+enum class Gp0State {
     Ready,
     Color,
     Vertex,
     Texture,
-    LoadImage,
+    LoadImageCoord,
+    LoadImageSize,
+    LoadImageData,
 };
 
 struct PolyConfig {
@@ -61,7 +63,7 @@ struct State {
 
     // current command being processed
     u8 cmd = GPU_CMD_NONE;
-    PolyState poly_state = PolyState::Ready;
+    Gp0State gp0_state = Gp0State::Ready;
 
     struct DrawingEnv {
         // texture flip
@@ -102,6 +104,7 @@ struct State {
 // Prototypes
 void handleGP1Cmd(u32 word);
 void copyRectangleCpuToVram(u32 word);
+void copyRectangleVramToCpu(u32 word);
 void softReset();
 void resetCmdQueue();
 void ackIrq();
@@ -134,7 +137,7 @@ void Reset()
 {
     GPU_INFO("Resetting state");
     // handlePolygon(0, true);
-    s.poly_state = PolyState::Ready;
+    s.gp0_state = Gp0State::Ready;
     s = {};
     Util::SetBits(s.sr, 26, 3, 0x7);
     // vram was reset, so need to resize
@@ -334,6 +337,10 @@ void DoGP0Cmd(u32 word)
         // TODO: need to build a state machine for the image transfer cmd
         copyRectangleCpuToVram(word);
         break;
+    case 0xc0:
+        // TODO: need to build a state machine for the image transfer cmd
+        copyRectangleVramToCpu(word);
+        break;
     case 0x1f: // interrupt request
         GPU_ERROR("No support for interrupt request!");
         finishedCommand();
@@ -450,7 +457,7 @@ namespace {
 inline void finishedCommand()
 {
     s.cmd = GPU_CMD_NONE;
-    s.poly_state = PolyState::Ready;
+    s.gp0_state = Gp0State::Ready;
 }
 
 
@@ -499,22 +506,23 @@ void handleMonoPoly(u32 word, const PolyConfig& config)
     static Geometry::Polygon s_poly;
     static Geometry::Color s_mono_col;
 
-    switch (s.poly_state) {
-    case PolyState::Ready:
+    switch (s.gp0_state) {
+    case Gp0State::Ready:
         GPU_INFO("Starting Mono Polygon command");
         s_mono_col = Geometry::Color(word);
-        s.poly_state = PolyState::Vertex;
+        s.gp0_state = Gp0State::Vertex;
         break;
-    case PolyState::Vertex:
+    case Gp0State::Vertex:
         s_poly.vertices[s_poly.num_vertices++] = Geometry::Vertex(word, s_mono_col);
         // stay in vertex state
         break;
     default:
-        GPU_FATAL("Unknown Polygon State: {}", (int)s.poly_state);
+        GPU_FATAL("Unknown Polygon State: {}", (int)s.gp0_state);
     }
     if (s_poly.num_vertices == config.num_vertices) {
         // draw!
         Psx::View::DrawPolygon(s_poly);
+        s_poly = {};
         finishedCommand();
         GPU_INFO("Finished Mono Polygon command");
     }
@@ -524,28 +532,29 @@ void handleShadedPoly(u32 word, const PolyConfig& config)
 {
     static Geometry::Polygon s_poly;
 
-    switch (s.poly_state) {
-    case PolyState::Ready:
+    switch (s.gp0_state) {
+    case Gp0State::Ready:
         GPU_INFO("Starting Shaded Polygon command");
-        s.poly_state = PolyState::Vertex;
+        s.gp0_state = Gp0State::Vertex;
         // TODO first color
         break;
-    case PolyState::Vertex:
+    case Gp0State::Vertex:
         s_poly.vertices[s_poly.num_vertices].x = (word >>  0) & 0xffff;
         s_poly.vertices[s_poly.num_vertices].y = (word >> 16) & 0xffff;
         s_poly.num_vertices++;
-        s.poly_state = PolyState::Color;
+        s.gp0_state = Gp0State::Color;
         break;
-    case PolyState::Color:
+    case Gp0State::Color:
         s_poly.vertices[s_poly.num_vertices].color = Geometry::Color(word);
-        s.poly_state = PolyState::Vertex;
+        s.gp0_state = Gp0State::Vertex;
         break;
     default:
-        GPU_FATAL("Unknown Polygon State: {}", (int)s.poly_state);
+        GPU_FATAL("Unknown Polygon State: {}", (int)s.gp0_state);
     }
     if (s_poly.num_vertices == config.num_vertices) {
         // draw!
         Psx::View::DrawPolygon(s_poly);
+        s_poly = {};
         finishedCommand();
         GPU_INFO("Finished Shaded Polygon command");
     }
@@ -556,26 +565,27 @@ void handleMonoTexturedPoly(u32 word, const PolyConfig& config)
     static Geometry::Polygon s_poly;
     static Geometry::Color s_mono_col;
 
-    switch (s.poly_state) {
-    case PolyState::Ready:
+    switch (s.gp0_state) {
+    case Gp0State::Ready:
         GPU_INFO("Starting Mono Textured Polygon command");
         s_mono_col = Geometry::Color(word);
-        s.poly_state = PolyState::Vertex;
+        s.gp0_state = Gp0State::Vertex;
         break;
-    case PolyState::Vertex:
+    case Gp0State::Vertex:
         s_poly.vertices[s_poly.num_vertices] = Geometry::Vertex(word, s_mono_col);
         // stay in vertex state
         break;
-    case PolyState::Texture:
+    case Gp0State::Texture:
         // TODO
         s_poly.num_vertices++;
         break;
     default:
-        GPU_FATAL("Unknown Polygon State: {}", (int)s.poly_state);
+        GPU_FATAL("Unknown Polygon State: {}", (int)s.gp0_state);
     }
     if (s_poly.num_vertices == config.num_vertices) {
         // draw!
         Psx::View::DrawPolygon(s_poly);
+        s_poly = {};
         finishedCommand();
         GPU_INFO("Finished Mono Textured Polygon command");
     } 
@@ -585,31 +595,32 @@ void handleShadedTexturedPoly(u32 word, const PolyConfig& config)
 {
     static Geometry::Polygon s_poly;
 
-    switch (s.poly_state) {
-    case PolyState::Ready:
+    switch (s.gp0_state) {
+    case Gp0State::Ready:
         GPU_INFO("Starting Shaded Textured Polygon command");
-        s.poly_state = PolyState::Vertex;
+        s.gp0_state = Gp0State::Vertex;
         // TODO first color
         break;
-    case PolyState::Vertex:
+    case Gp0State::Vertex:
         s_poly.vertices[s_poly.num_vertices].x = (word >>  0) & 0xffff;
         s_poly.vertices[s_poly.num_vertices].y = (word >> 16) & 0xffff;
-        s.poly_state = PolyState::Color;
+        s.gp0_state = Gp0State::Color;
         break;
-    case PolyState::Color:
+    case Gp0State::Color:
         s_poly.vertices[s_poly.num_vertices].color = Geometry::Color(word);
-        s.poly_state = PolyState::Vertex;
+        s.gp0_state = Gp0State::Vertex;
         break;
-    case PolyState::Texture:
+    case Gp0State::Texture:
         // TODO
         s_poly.num_vertices++;
         break;
     default:
-        GPU_FATAL("Unknown Polygon State: {}", (int)s.poly_state);
+        GPU_FATAL("Unknown Polygon State: {}", (int)s.gp0_state);
     }
     if (s_poly.num_vertices == config.num_vertices) {
         // draw!
         Psx::View::DrawPolygon(s_poly);
+        s_poly = {};
         finishedCommand();
         GPU_INFO("Finished Shaded Textured Polygon command");
     }
@@ -625,10 +636,18 @@ void copyRectangleCpuToVram(u32 word)
     //   ...  Data              (...)      <--- usually transferred via DMA
 
     // just implementing something to consume commands
-    static u32 i = 1;
-    static u32 n = 0;
-    GPU_WARN("Load Image (CPU TO VRAM) [state: {}] command not supported! Skipping word [{:08x}]...",i, word);
-    if (i == 3) {
+    static u32 s_data_left = 0;
+    switch (s.gp0_state) {
+    case Gp0State::Ready:
+        GPU_WARN("Load Image (CPU TO VRAM) command not supported!");
+        GPU_INFO("Load Image (CPU TO VRAM) START!");
+        s.gp0_state = Gp0State::LoadImageCoord;
+        break;
+    case Gp0State::LoadImageCoord:
+        s.gp0_state = Gp0State::LoadImageSize;
+        break;
+    case Gp0State::LoadImageSize:
+    {
         u32 w = word & 0xffff;
         u32 h = (word >> 16) & 0xffff;
         u32 img_size = w * h;
@@ -636,17 +655,47 @@ void copyRectangleCpuToVram(u32 word)
             // if img size is odd, round up
             img_size++;
         }
-        n = i + img_size;
-        GPU_INFO("Expecting {} more commands for Load Image (CPU TO VRAM)", n - i);
+        s_data_left = img_size / 2;
+        GPU_INFO("Load Image (CPU TO VRAM) ready to transfer {} words!", s_data_left);
+        s.gp0_state = Gp0State::LoadImageData;
+        break;
     }
-    if (i == n) {
-        i = 1;
-        i = 0;
-        GPU_INFO("Load Image Done!");
+    case Gp0State::LoadImageData:
+        s_data_left--;
+            GPU_ERROR("Load Image (CPU TO VRAM) {} LEFT!", s_data_left);
+        if (s_data_left == 0) {
+            finishedCommand();
+            GPU_INFO("Load Image (CPU TO VRAM) END!");
+        } 
+        break;
+    default:
+        GPU_FATAL("Invalid Image Load State: {}", (int)s.gp0_state);
+    }
+}
+
+void copyRectangleVramToCpu(u32 word)
+{
+    // GP0(C0h) - Copy Rectangle (VRAM to CPU)
+    //   1st  Command           (Cc000000h) ;
+    //   2nd  Source Coord      (YyyyXxxxh) ; write to GP0 port (as usually)
+    //   3rd  Width+Height      (YsizXsizh) ;
+    //   ...  Data              (...)       ;<--- read from GPUREAD port (or via DMA)
+    // TODO
+    switch (s.gp0_state) {
+    case Gp0State::Ready:
+        GPU_WARN("Load Image (VRAM TO CPU) command not supported!");
+        s.gp0_state = Gp0State::LoadImageCoord;
+        break;
+    case Gp0State::LoadImageCoord:
+        // TODO
+        s.gp0_state = Gp0State::LoadImageSize;
+        break;
+    case Gp0State::LoadImageSize:
+        // TODO
         finishedCommand();
-    } else {
-        s.poly_state = PolyState::LoadImage;
-        i++;
+        break;
+    default:
+        GPU_FATAL("Invalid Image Load State: {}", (int)s.gp0_state);
     }
 }
 

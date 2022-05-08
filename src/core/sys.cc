@@ -81,6 +81,7 @@ void System::Reset()
     Scratchpad::Reset();
     MemControl::Reset();
     Bus::Reset();
+    View::Clear();
 }
 
 /*
@@ -118,8 +119,9 @@ void System::Run()
         fps++;
 
         // system step
-        if (g_emu_state.step_instr) {
+        if (g_emu_state.step_count > 0) {
             Step();
+            g_emu_state.step_count--;
         } else {
             while (!g_emu_state.paused && delta_ns < frame_time_ns && clocks <= CPU_MAX_CLOCK_RATE) {
                 Step();
@@ -130,7 +132,9 @@ void System::Run()
 
         // reset some state
         delta_ns = 0;
-        g_emu_state.step_instr = false;
+        if (!g_emu_state.paused) {
+            g_emu_state.step_count = 0;
+        }
         should_close = View::ShouldClose();
     }
 }

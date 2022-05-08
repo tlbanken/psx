@@ -16,7 +16,7 @@
 // steping through instructions.
 struct EmuState {
     bool paused = false;
-    bool step_instr = false;
+    u32 step_count = 0;
 };
 
 extern EmuState g_emu_state;

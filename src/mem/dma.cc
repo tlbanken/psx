@@ -423,8 +423,8 @@ void doBlockDma()
     bool increment = !Util::GetBits(s.regs.channels[chnum].chcr, 1, 1);
     u32 num_words = s.regs.channels[chnum].bcr & 0xffff;
     if (num_words == 0) num_words = 0x1'0000;
-    u32 words_remaining = num_words;
     u32 base_addr = s.regs.channels[chnum].madr & 0x00ff'ffff;
+    u32 sync_mode = Util::GetBits(s.regs.channels[2].chcr, 9, 2);
 
     if constexpr (channel == Channel::Ch0) {
         PSX_ASSERT(0);
@@ -433,7 +433,11 @@ void doBlockDma()
     } else if constexpr (channel == Channel::Ch2) {
         // TODO
         PSX_ASSERT(dir_from_ram);
+        PSX_ASSERT(sync_mode == 1);
         u32 addr = base_addr;
+        u32 block_size = s.regs.channels[chnum].bcr & 0xffff;
+        u32 num_blocks = (s.regs.channels[chnum].bcr >> 16) & 0xffff;
+        u32 words_remaining = block_size * num_blocks;
         while (words_remaining > 0) {
             // TODO: where word?
             u32 word = Ram::Read<u32>(addr);
@@ -457,6 +461,7 @@ void doBlockDma()
             PSX_ASSERT(0);
         } else {
             u32 addr = base_addr;
+            u32 words_remaining = num_words;
             DMA_INFO("Transfering {} words to RAM @ 0x{:08x}", words_remaining, addr);
             // direction: to ram
             while (words_remaining > 0) {
