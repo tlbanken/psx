@@ -536,7 +536,7 @@ void handleShadedPoly(u32 word, const PolyConfig& config)
     case Gp0State::Ready:
         GPU_INFO("Starting Shaded Polygon command");
         s.gp0_state = Gp0State::Vertex;
-        // TODO first color
+        s_poly.vertices[s_poly.num_vertices].color = Geometry::Color(word);
         break;
     case Gp0State::Vertex:
         s_poly.vertices[s_poly.num_vertices].x = (word >>  0) & 0xffff;
@@ -568,16 +568,19 @@ void handleMonoTexturedPoly(u32 word, const PolyConfig& config)
     switch (s.gp0_state) {
     case Gp0State::Ready:
         GPU_INFO("Starting Mono Textured Polygon command");
-        s_mono_col = Geometry::Color(word);
+        // s_mono_col = Geometry::Color(word);
+        // TODO: don't hardcode color lol
+        s_mono_col = Geometry::Color(0x00ff'0000);
         s.gp0_state = Gp0State::Vertex;
         break;
     case Gp0State::Vertex:
         s_poly.vertices[s_poly.num_vertices] = Geometry::Vertex(word, s_mono_col);
-        // stay in vertex state
+        s.gp0_state = Gp0State::Texture;
         break;
     case Gp0State::Texture:
         // TODO
         s_poly.num_vertices++;
+        s.gp0_state = Gp0State::Vertex;
         break;
     default:
         GPU_FATAL("Unknown Polygon State: {}", (int)s.gp0_state);
@@ -599,7 +602,7 @@ void handleShadedTexturedPoly(u32 word, const PolyConfig& config)
     case Gp0State::Ready:
         GPU_INFO("Starting Shaded Textured Polygon command");
         s.gp0_state = Gp0State::Vertex;
-        // TODO first color
+        s_poly.vertices[s_poly.num_vertices].color = Geometry::Color(word);
         break;
     case Gp0State::Vertex:
         s_poly.vertices[s_poly.num_vertices].x = (word >>  0) & 0xffff;
