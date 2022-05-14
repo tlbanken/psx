@@ -27,6 +27,7 @@
 #include "core/sys.hh"
 #include "gpu/gpu.hh"
 #include "io/timer.hh"
+#include "cpu/interrupt.hh"
 
 #define IMGUILAYER_INFO(...) PSXLOG_INFO("ImGui-Layer", __VA_ARGS__)
 #define IMGUILAYER_WARN(...) PSXLOG_WARN("ImGui-Layer", __VA_ARGS__)
@@ -75,6 +76,7 @@ void OnUpdate()
     static bool dma_active = false;
     static bool gpu_active = false;
     static bool timer_active = false;
+    static bool int_active = false;
 
     // Call Modules if currently active
     if (ram_active) Ram::OnActive(&ram_active);
@@ -86,6 +88,7 @@ void OnUpdate()
     if (dma_active) Dma::OnActive(&dma_active);
     if (gpu_active) Gpu::OnActive(&gpu_active);
     if (timer_active) Timer::OnActive(&timer_active);
+    if (int_active) Interrupt::OnActive(&int_active);
 #ifdef PSX_DEBUG
     if (breakpoints_active) DbgMod::Breakpoints::OnActive(&breakpoints_active);
 #endif
@@ -106,6 +109,7 @@ void OnUpdate()
             ImGui::MenuItem("DMA", NULL, &dma_active);
             ImGui::MenuItem("GPU", NULL, &gpu_active);
             ImGui::MenuItem("Timers", NULL, &timer_active);
+            ImGui::MenuItem("Interrupts", NULL, &int_active);
 
             ImGui::EndMenu();
         }

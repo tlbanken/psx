@@ -26,6 +26,7 @@
 #include "mem/dma.hh"
 #include "view/imgui/dbgmod.hh"
 #include "cpu/asm/asm.hh"
+#include "cpu/interrupt.hh"
 #include "gpu/gpu.hh"
 #include "io/timer.hh"
 
@@ -62,6 +63,7 @@ System::System(const std::string& bios_path, bool headless_mode)
     Cop0::Init();
     Bios::Init(bios_path);
     Timer::Init();
+    Interrupt::Init();
     System::sys_instance = this;
 }
 
@@ -87,6 +89,7 @@ void System::Reset()
     MemControl::Reset();
     Bus::Reset();
     Timer::Reset();
+    Interrupt::Reset();
     if (!System::sys_instance->m_headless_mode) {
         View::Clear();
     }
@@ -176,6 +179,9 @@ bool System::Step()
 
     // timers
     Timer::Step();
+
+    // interrupt controller
+    Interrupt::Step();
     return true;
 }
 

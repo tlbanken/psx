@@ -24,6 +24,7 @@
 #include "view/imgui/imgui_layer.hh"
 #include "gpu/gpu.hh"
 #include "io/timer.hh"
+#include "cpu/interrupt.hh"
 
 #define BUS_INFO(...) PSXLOG_INFO("Bus", __VA_ARGS__)
 #define BUS_WARN(...) PSXLOG_WARN("Bus", __VA_ARGS__)
@@ -100,6 +101,11 @@ T Read(u32 addr, Bus::RWVerbosity verb)
     constexpr u32 dma_size = (0x1f80'10fc - 0x1f80'1080);
     if (inRange(0x1f80'1080, dma_size, addr)) {
         return Dma::Read<T>(addr);
+    }
+
+    // interrupts
+    if (addr == 0x1f80'1070 || addr == 0x1f80'1074) {
+        return Interrupt::Read<T>(addr);
     }
 
     // Timers
@@ -190,10 +196,17 @@ void Write(T data, u32 addr, Bus::RWVerbosity verb)
         return;
     }
 
+    // interrupts
+    if (addr == 0x1f80'1070 || addr == 0x1f80'1074) {
+        Interrupt::Write<T>(data, addr);
+        return;
+    }
+
     // Timers
     constexpr u32 timer_size = (0x1f80'112c - 0x1f80'1100);
     if (inRange(0x1f80'1100, timer_size, addr)) {
-        return Timer::Write<T>(data, addr);
+        Timer::Write<T>(data, addr);
+        return;
     }
 
     // Memory Control Register

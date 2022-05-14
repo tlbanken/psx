@@ -17,6 +17,8 @@
 
 #include "util/psxutil.hh"
 #include "util/psxlog.hh"
+#include "cpu/interrupt.hh"
+#include "view/imgui/dbgmod.hh"
 
 #define TIMER_INFO(...) PSXLOG_INFO("TIMER", __VA_ARGS__)
 #define TIMER_WARN(...) PSXLOG_WARN("TIMER", __VA_ARGS__)
@@ -124,9 +126,16 @@ void Step()
         if (s.timer_val[timer_num] == reset_target) {
             s.timer_val[timer_num] = 0;
             // TODO irqs
-            // if (s.timer_mode[timer_num].fields.irq_disabled == 0) {
-                
-            // }
+            if (s.timer_mode[timer_num].fields.irq_disabled == 0) {
+                Interrupt::Type itype;
+                switch (timer_num) {
+                case TimerNum::Dotclock: itype = Interrupt::Type::Timer0; break;
+                case TimerNum::HorzRetrace: itype = Interrupt::Type::Timer1; break;
+                case TimerNum::SysClock: itype = Interrupt::Type::Timer2; break;
+                default: PSX_ASSERT(0);
+                }
+                Interrupt::Signal(itype);
+            }
             
             // reached target/ffff
             if (reset_target == 0xffff) {
@@ -202,7 +211,7 @@ template void Write<u32>(u32 data, u32 addr);
 
 void OnActive(bool *active)
 {
-    if (!ImGui::Begin("DMA Debug", active)) {
+    if (!ImGui::Begin("Timers Debug", active)) {
         ImGui::End();
         return;
     }
